@@ -1,0 +1,78 @@
+meta {
+  name: Get Security Data
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/security-data
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has enrichment data", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('tenant_id');
+    expect(data).to.have.property('network_ranges');
+    expect(data).to.have.property('public_ips');
+    expect(data).to.have.property('egress_ips');
+    expect(data).to.have.property('domains');
+    expect(data).to.have.property('infrastructure_ips');
+    expect(data).to.have.property('last_updated');
+  });
+  
+  test("Network ranges are valid", function() {
+    const data = res.getBody();
+    expect(data.network_ranges).to.be.an('array');
+    if (data.network_ranges.length > 0) {
+      const networkRange = data.network_ranges[0];
+      expect(networkRange).to.have.property('cidr');
+      expect(networkRange).to.have.property('name');
+      expect(networkRange).to.have.property('network_type');
+    }
+  });
+  
+  test("Public IPs are valid", function() {
+    const data = res.getBody();
+    expect(data.public_ips).to.be.an('array');
+    if (data.public_ips.length > 0) {
+      const publicIP = data.public_ips[0];
+      expect(publicIP).to.have.property('ip_address');
+      expect(publicIP).to.have.property('ip_type');
+      expect(publicIP.ip_address).to.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
+    }
+  });
+  
+  test("Domains are valid", function() {
+    const data = res.getBody();
+    expect(data.domains).to.be.an('array');
+    if (data.domains.length > 0) {
+      const domain = data.domains[0];
+      expect(domain).to.have.property('domain_name');
+      expect(domain).to.have.property('domain_type');
+      expect(domain.domain_name).to.be.a('string');
+      expect(domain.domain_name.length).to.be.greaterThan(0);
+    }
+  });
+  
+  test("Infrastructure IPs are valid", function() {
+    const data = res.getBody();
+    expect(data.infrastructure_ips).to.be.an('array');
+    if (data.infrastructure_ips.length > 0) {
+      const infraIP = data.infrastructure_ips[0];
+      expect(infraIP).to.have.property('ip_address');
+      expect(infraIP).to.have.property('service_type');
+      expect(infraIP).to.have.property('hostname');
+      expect(infraIP.ip_address).to.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
+    }
+  });
+}

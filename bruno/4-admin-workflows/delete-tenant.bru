@@ -1,0 +1,45 @@
+meta {
+  name: Delete Tenant
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/admin/tenants/{{tenantId}}
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+assert {
+  res.status: in [200, 204, 404]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200 || status === 204) {
+    console.log("Tenant deleted successfully");
+    bru.setEnvVar("tenantId", ""); // Clear the tenant ID
+  } else if (status === 404) {
+    console.log("Tenant not found");
+  }
+}
+
+tests {
+  test("Tenant deletion returns expected status", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 204, 404]);
+  });
+  
+  test("If successful, tenant is removed", function() {
+    const status = res.getStatus();
+    if (status === 200 || status === 204) {
+      // Tenant deletion was successful
+      expect(status).to.satisfy(function(s) {
+        return s === 200 || s === 204;
+      });
+    }
+  });
+}

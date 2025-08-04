@@ -1,0 +1,286 @@
+package database
+
+import (
+	"encoding/json"
+	"os"
+
+	"github.com/booli/booli-admin-api/internal/models"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+)
+
+func tenantSettingsToJSON(settings models.TenantSettings) datatypes.JSON {
+	data, _ := json.Marshal(settings)
+	return datatypes.JSON(data)
+}
+
+func SeedDevelopmentData(db *gorm.DB) error {
+	env := os.Getenv("BOOLI_ENVIRONMENT")
+	if env != "development" && env != "test" {
+		return nil
+	}
+
+	if err := createMSPTenant(db); err != nil {
+		return err
+	}
+
+	if err := createDefaultRoles(db); err != nil {
+		return err
+	}
+
+	if err := createTestTenants(db); err != nil {
+		return err
+	}
+
+	if err := createTestUsers(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SeedProductionData(db *gorm.DB) error {
+	env := os.Getenv("BOOLI_ENVIRONMENT")
+	if env == "development" || env == "test" {
+		return nil
+	}
+
+	if err := createMSPTenant(db); err != nil {
+		return err
+	}
+
+	if err := createDefaultRoles(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createTestTenants(db *gorm.DB) error {
+	testTenants := []models.Tenant{
+		{
+			Name:   "Acme Corporation",
+			Domain: "acme.example.com",
+			Status: models.TenantStatusActive,
+			Type:   models.TenantTypeClient,
+			Settings: tenantSettingsToJSON(models.TenantSettings{
+				EnableSSO:         true,
+				EnableMFA:         false,
+				EnableAudit:       true,
+				MaxUsers:          1000,
+				MaxRoles:          50,
+				MaxSSOProviders:   5,
+				DataRetentionDays: 365,
+				ComplianceFlags:   []string{"SOC2"},
+			}),
+		},
+		{
+			Name:   "Demo Company",
+			Domain: "demo.example.com",
+			Status: models.TenantStatusActive,
+			Type:   models.TenantTypeClient,
+			Settings: tenantSettingsToJSON(models.TenantSettings{
+				EnableSSO:         false,
+				EnableMFA:         true,
+				EnableAudit:       true,
+				MaxUsers:          500,
+				MaxRoles:          25,
+				MaxSSOProviders:   3,
+				DataRetentionDays: 180,
+				ComplianceFlags:   []string{"GDPR"},
+			}),
+		},
+		{
+			Name:   "Test MSP Partner",
+			Domain: "partner.example.com",
+			Status: models.TenantStatusActive,
+			Type:   models.TenantTypeMSP,
+			Settings: tenantSettingsToJSON(models.TenantSettings{
+				EnableSSO:         true,
+				EnableMFA:         true,
+				EnableAudit:       true,
+				MaxUsers:          2000,
+				MaxRoles:          100,
+				MaxSSOProviders:   10,
+				DataRetentionDays: 730,
+				ComplianceFlags:   []string{"SOC2", "HIPAA"},
+			}),
+		},
+	}
+
+	for _, tenant := range testTenants {
+		var existingTenant models.Tenant
+		err := db.Where("name = ?", tenant.Name).First(&existingTenant).Error
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				if err := db.Create(&tenant).Error; err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func createTestUsers(db *gorm.DB) error {
+	var mspTenant models.Tenant
+	err := db.Where("type = ?", models.TenantTypeMSP).First(&mspTenant).Error
+	if err != nil {
+		return err
+	}
+
+	var acmeTenant models.Tenant
+	err = db.Where("name = ?", "Acme Corporation").First(&acmeTenant).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createMSPTenant(db *gorm.DB) error {
+	mspName := os.Getenv("BOOLI_MSP_NAME")
+	if mspName == "" {
+		mspName = "MSP Organization"
+	}
+
+	mspDomain := os.Getenv("BOOLI_MSP_DOMAIN")
+	if mspDomain == "" {
+		mspDomain = "msp.local"
+	}
+
+	mspTenant := &models.Tenant{
+		Name:   mspName,
+		Domain: mspDomain,
+		Status: models.TenantStatusActive,
+		Type:   models.TenantTypeMSP,
+		Settings: tenantSettingsToJSON(models.TenantSettings{
+			EnableSSO:         true,
+			EnableMFA:         true,
+			EnableAudit:       true,
+			MaxUsers:          -1,
+			MaxRoles:          -1,
+			MaxSSOProviders:   -1,
+			DataRetentionDays: 2555,
+			ComplianceFlags:   []string{"SOC2", "GDPR"},
+		}),
+	}
+
+	var existingTenant models.Tenant
+	err := db.Where("type = ?", models.TenantTypeMSP).First(&existingTenant).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return db.Create(mspTenant).Error
+		}
+		return err
+	}
+	return nil
+}
+
+func createDefaultRoles(db *gorm.DB) error {
+	var mspTenant models.Tenant
+	err := db.Where("type = ?", models.TenantTypeMSP).First(&mspTenant).Error
+	if err != nil {
+		return err
+	}
+
+	defaultRoles := []struct {
+		name        string
+		description string
+		permissions models.Permissions
+	}{
+		{
+			name:        "msp-admin",
+			description: "Full MSP administrative access",
+			permissions: models.Permissions{
+				UserCreate: true, UserRead: true, UserUpdate: true, UserDelete: true, UserList: true,
+				RoleCreate: true, RoleRead: true, RoleUpdate: true, RoleDelete: true, RoleList: true, RoleAssign: true,
+				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
+				AuditRead: true, AuditExport: true,
+				TenantCreate: true, TenantRead: true, TenantUpdate: true, TenantDelete: true, TenantList: true,
+				SystemConfig: true, SystemMonitor: true, SystemMaintain: true,
+			},
+		},
+		{
+			name:        "msp-power",
+			description: "MSP power user access",
+			permissions: models.Permissions{
+				UserRead: true, UserUpdate: true, UserList: true,
+				RoleRead: true, RoleList: true,
+				SSORead: true, SSOUpdate: true, SSOTest: true,
+				AuditRead: true, AuditExport: true,
+				TenantRead: true, TenantUpdate: true, TenantList: true,
+				SystemMonitor: true,
+			},
+		},
+		{
+			name:        "msp-basic",
+			description: "Basic MSP user access",
+			permissions: models.Permissions{
+				UserRead: true, UserList: true,
+				RoleRead: true, RoleList: true,
+				SSORead:    true,
+				AuditRead:  true,
+				TenantRead: true, TenantList: true,
+				SystemMonitor: true,
+			},
+		},
+		{
+			name:        "tenant-admin",
+			description: "Full tenant administrative access",
+			permissions: models.Permissions{
+				UserCreate: true, UserRead: true, UserUpdate: true, UserDelete: true, UserList: true,
+				RoleCreate: true, RoleRead: true, RoleUpdate: true, RoleDelete: true, RoleList: true, RoleAssign: true,
+				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
+				AuditRead: true, AuditExport: true,
+			},
+		},
+		{
+			name:        "tenant-power",
+			description: "Tenant power user access",
+			permissions: models.Permissions{
+				UserRead: true, UserUpdate: true, UserList: true,
+				RoleRead: true, RoleList: true,
+				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
+				AuditRead: true, AuditExport: true,
+			},
+		},
+		{
+			name:        "tenant-basic",
+			description: "Basic tenant user access",
+			permissions: models.Permissions{
+				UserRead: true, UserList: true,
+				RoleRead: true, RoleList: true,
+				SSORead:   true,
+				AuditRead: true,
+			},
+		},
+	}
+
+	for _, roleData := range defaultRoles {
+		var existingRole models.Role
+		err := db.Where("tenant_id = ? AND name = ?", mspTenant.ID, roleData.name).First(&existingRole).Error
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				permissionsJSON, _ := json.Marshal(roleData.permissions)
+				role := &models.Role{
+					TenantID:    mspTenant.ID,
+					Name:        roleData.name,
+					Description: roleData.description,
+					Permissions: datatypes.JSON(permissionsJSON),
+					IsSystem:    true,
+				}
+				if err := db.Create(role).Error; err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+
+	return nil
+}

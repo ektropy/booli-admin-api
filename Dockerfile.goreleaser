@@ -1,0 +1,23 @@
+FROM alpine:3.19
+
+RUN apk --no-cache add ca-certificates tzdata curl
+
+RUN addgroup -g 1000 -S booli && \
+    adduser -u 1000 -S booli -G booli
+
+WORKDIR /app
+
+COPY booli-admin-api /app/
+
+RUN chmod +x /app/booli-admin-api
+
+RUN chown -R booli:booli /app
+
+USER booli
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8081/health || exit 1
+
+ENTRYPOINT ["/app/booli-admin-api"]

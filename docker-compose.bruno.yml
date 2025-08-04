@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: booli-admin-postgres
+    network_mode: host
+    environment:
+      POSTGRES_USER: ${BOOLI_DATABASE_USER}
+      POSTGRES_PASSWORD: ${BOOLI_DATABASE_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: keycloak
+      PGPORT: 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: booli-admin-valkey
+    network_mode: host
+    command: ["valkey-server", "--port", "6379"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: booli-admin-keycloak
+    network_mode: host
+    environment:
+      KEYCLOAK_ADMIN: ${BOOLI_KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${BOOLI_KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://localhost:5432/keycloak
+      KC_DB_USERNAME: ${BOOLI_DATABASE_USER}
+      KC_DB_PASSWORD: ${BOOLI_DATABASE_PASSWORD}
+      KC_HOSTNAME_STRICT: false
+      KC_FRONTEND_URL: http://localhost:8083
+      KC_HTTP_ENABLED: true
+      KC_HTTP_PORT: 8083
+      KC_HTTP_MANAGEMENT_PORT: 9003
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    command: ["start-dev"]
+
+  # System initialization container
+  init-system:
+    image: booli-admin-api:test
+    container_name: booli-admin-init-system
+    network_mode: host
+    environment:
+      BOOLI_ENVIRONMENT: development
+      BOOLI_DATABASE_HOST: localhost
+      BOOLI_DATABASE_PORT: 5432
+      BOOLI_DATABASE_USER: postgres
+      BOOLI_DATABASE_PASSWORD: postgres
+      BOOLI_DATABASE_DBNAME: booli_admin
+      BOOLI_DATABASE_SSLMODE: disable
+      BOOLI_KEYCLOAK_URL: http://localhost:8083
+      BOOLI_KEYCLOAK_ADMIN_USER: admin
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
+      BOOLI_KEYCLOAK_MASTER_REALM: master
+      BOOLI_KEYCLOAK_API_AUDIENCE: booli-admin-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    command: ["/app/booli-admin-api", "-init"]
+    restart: "no"
+
+  backend:
+    image: booli-admin-api:test
+    container_name: booli-admin-backend
+    network_mode: host
+    environment:
+      BOOLI_ENVIRONMENT: production
+      BOOLI_SERVER_PORT: ${BOOLI_SERVER_PORT:-8081}
+      BOOLI_DATABASE_HOST: localhost
+      BOOLI_DATABASE_PORT: ${BOOLI_DATABASE_PORT:-5432}
+      BOOLI_DATABASE_USER: ${BOOLI_DATABASE_USER}
+      BOOLI_DATABASE_PASSWORD: ${BOOLI_DATABASE_PASSWORD}
+      BOOLI_DATABASE_DBNAME: ${BOOLI_DATABASE_DBNAME}
+      BOOLI_DATABASE_SSLMODE: ${BOOLI_DATABASE_SSLMODE:-disable}
+      BOOLI_REDIS_HOST: localhost
+      BOOLI_REDIS_PORT: ${BOOLI_REDIS_PORT:-6379}
+      BOOLI_KEYCLOAK_URL: http://localhost:8083
+      BOOLI_KEYCLOAK_ADMIN_USER: ${BOOLI_KEYCLOAK_ADMIN_USER}
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: ${BOOLI_KEYCLOAK_ADMIN_PASSWORD}
+      BOOLI_KEYCLOAK_MASTER_REALM: ${BOOLI_KEYCLOAK_MASTER_REALM:-master}
+      BOOLI_KEYCLOAK_API_AUDIENCE: ${BOOLI_KEYCLOAK_API_AUDIENCE:-booli-admin-api}
+      BOOLI_KEYCLOAK_CLIENT_ID: ${BOOLI_KEYCLOAK_CLIENT_ID}
+      BOOLI_KEYCLOAK_CLIENT_SECRET: ${BOOLI_KEYCLOAK_CLIENT_SECRET}
+      BOOLI_KEYCLOAK_MSP_REALM: ${BOOLI_KEYCLOAK_MSP_REALM}
+      KEYCLOAK_MSP_REALM: ${KEYCLOAK_MSP_REALM}
+      KEYCLOAK_MSP_REALM_ENABLED: ${KEYCLOAK_MSP_REALM_ENABLED}
+      KEYCLOAK_MSP_REALM_DISPLAY_NAME: ${KEYCLOAK_MSP_REALM_DISPLAY_NAME}
+      KEYCLOAK_MSP_CLIENT_ID: ${KEYCLOAK_MSP_CLIENT_ID}
+      KEYCLOAK_MSP_CLIENT_SECRET: ${KEYCLOAK_MSP_CLIENT_SECRET}
+      KEYCLOAK_MSP_CLIENT_REDIRECT_URIS: http://localhost:8081/auth/callback
+      KEYCLOAK_MSP_CLIENT_WEB_ORIGINS: http://localhost:8081
+      KEYCLOAK_MSP_CLIENT_STANDARD_FLOW: ${KEYCLOAK_MSP_CLIENT_STANDARD_FLOW}
+      KEYCLOAK_MSP_CLIENT_SERVICE_ACCOUNTS: ${KEYCLOAK_MSP_CLIENT_SERVICE_ACCOUNTS}
+      KEYCLOAK_MSP_CLIENT_DIRECT_ACCESS: ${KEYCLOAK_MSP_CLIENT_DIRECT_ACCESS}
+      KEYCLOAK_MSP_CLIENT_IMPLICIT_FLOW: ${KEYCLOAK_MSP_CLIENT_IMPLICIT_FLOW}
+      KEYCLOAK_MSP_CLIENT_PUBLIC: ${KEYCLOAK_MSP_CLIENT_PUBLIC}
+      KEYCLOAK_MSP_DEFAULT_USER_USERNAME: ${KEYCLOAK_MSP_DEFAULT_USER_USERNAME}
+      KEYCLOAK_MSP_DEFAULT_USER_PASSWORD: ${KEYCLOAK_MSP_DEFAULT_USER_PASSWORD}
+      KEYCLOAK_MSP_DEFAULT_USER_EMAIL: ${KEYCLOAK_MSP_DEFAULT_USER_EMAIL}
+      KEYCLOAK_MSP_DEFAULT_USER_FIRST_NAME: ${KEYCLOAK_MSP_DEFAULT_USER_FIRST_NAME}
+      KEYCLOAK_MSP_DEFAULT_USER_LAST_NAME: ${KEYCLOAK_MSP_DEFAULT_USER_LAST_NAME}
+      KEYCLOAK_MSP_DEFAULT_USER_ROLES: ${KEYCLOAK_MSP_DEFAULT_USER_ROLES}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      init-system:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: booli-admin-pgadmin
+    network_mode: host
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    profiles:
+      - tools
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: booli-admin-redis-commander
+    network_mode: host
+    environment:
+      REDIS_HOSTS: local:localhost:6379
+      PORT: 8082
+    depends_on:
+      - valkey
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  valkey_data:
+    driver: local
+  keycloak_data:
+    driver: local
+  pgadmin_data:
+    driver: local

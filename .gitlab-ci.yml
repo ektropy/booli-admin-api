@@ -1,0 +1,424 @@
+# GitLab CI/CD Pipeline for Booli Admin API
+# MSP/MSSP Multi-tenant Booli Admin Portal
+
+variables:
+  # Application info
+  APP_NAME: "booli-admin-api"
+  DOCKER_REGISTRY: "${CI_REGISTRY}"
+  IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+
+  # Go configuration
+  GO_VERSION: "1.23"
+  CGO_ENABLED: "0"
+  GOOS: "linux"
+  GOARCH: "amd64"
+
+  # Test configuration
+  POSTGRES_DB: "booli_admin_test"
+  POSTGRES_USER: "test"
+  POSTGRES_PASSWORD: "test"
+  POSTGRES_HOST_AUTH_METHOD: "trust"
+
+  # Docker configuration
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# Default image for jobs
+default:
+  image: golang:${GO_VERSION}-alpine
+
+  # Global before script
+  before_script:
+    - apk add --no-cache git make curl docker-cli
+    - go install github.com/go-task/task/v3/cmd/task@latest
+    - export PATH=$PATH:$(go env GOPATH)/bin
+
+# Pipeline stages
+stages:
+  - prepare
+  - test
+  - build
+  - api-test
+  - security
+  - deploy
+  - release
+
+# Cache configuration
+.go-cache: &go-cache
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-go-modules"
+    paths:
+      - /go/pkg/mod/
+      - .task/
+
+# Docker service for integration tests
+.docker-service: &docker-service
+  services:
+    - docker:24-dind
+
+# Prepare stage
+prepare:
+  stage: prepare
+  <<: *go-cache
+  script:
+    - task deps
+    - task install-deps
+  artifacts:
+    paths:
+      - go.mod
+      - go.sum
+    expire_in: 1 hour
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Code quality and formatting
+code-quality:
+  stage: test
+  <<: *go-cache
+  needs: ["prepare"]
+  script:
+    - task fmt
+    - task lint
+    - |
+      if [ -n "$(git diff --name-only)" ]; then
+        echo "Code formatting issues found. Please run 'task fmt'"
+        git diff
+        exit 1
+      fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Unit tests
+unit-tests:
+  stage: test
+  <<: *go-cache
+  needs: ["prepare"]
+  script:
+    - task test-unit
+  coverage: '/coverage: \d+\.\d+% of statements/'
+  artifacts:
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.html
+      - coverage.out
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Integration tests with testcontainers
+integration-tests:
+  stage: test
+  image: golang:${GO_VERSION}
+  services:
+    - docker:24-dind
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-go-modules"
+    paths:
+      - /go/pkg/mod/
+      - .task/
+  needs: ["prepare"]
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+  before_script:
+    - apt-get update && apt-get install -y make curl
+    - go install github.com/go-task/task/v3/cmd/task@latest
+    - export PATH=$PATH:$(go env GOPATH)/bin
+    - task deps
+    - task install-deps
+  script:
+    - task test-integration
+  artifacts:
+    reports:
+      junit: integration-report.xml
+    paths:
+      - integration-coverage.html
+      - integration-coverage.out
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Bruno API Tests with full environment
+api-tests-bruno:
+  stage: api-test
+  image: golang:${GO_VERSION}
+  services:
+    - name: postgres:15-alpine
+      alias: postgres
+    - name: valkey/valkey:8.0-alpine
+      alias: valkey
+    - name: quay.io/keycloak/keycloak:26.0
+      alias: keycloak
+      command: ["start-dev"]
+  variables:
+    # Database
+    POSTGRES_DB: booli_admin_test
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    # Application
+    BOOLI_ENVIRONMENT: test
+    BOOLI_SERVER_PORT: "8081"
+    BOOLI_DATABASE_HOST: postgres
+    BOOLI_DATABASE_PORT: "5432"
+    BOOLI_DATABASE_USER: postgres
+    BOOLI_DATABASE_PASSWORD: postgres
+    BOOLI_DATABASE_DBNAME: booli_admin_test
+    BOOLI_DATABASE_SSLMODE: disable
+    BOOLI_REDIS_HOST: valkey
+    BOOLI_REDIS_PORT: "6379"
+    BOOLI_KEYCLOAK_URL: http://keycloak:8080
+    BOOLI_KEYCLOAK_ADMIN_USER: admin
+    BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
+    # Keycloak
+    KEYCLOAK_ADMIN: admin
+    KEYCLOAK_ADMIN_PASSWORD: admin
+    KC_DB: dev-mem
+    KC_HTTP_ENABLED: "true"
+    KC_HOSTNAME_STRICT: "false"
+    KC_HEALTH_ENABLED: "true"
+  needs: ["build"]
+  before_script:
+    # Install system dependencies
+    - apt-get update && apt-get install -y curl postgresql-client nodejs npm
+    # Install Bruno CLI
+    - npm install -g @usebruno/cli
+    # Setup Go
+    - export PATH=$PATH:$(go env GOPATH)/bin
+  script:
+    # Wait for services to be ready
+    - echo "Waiting for PostgreSQL..."
+    - until pg_isready -h postgres -p 5432; do sleep 2; done
+    
+    - echo "Waiting for Valkey..."
+    - until timeout 1 bash -c 'cat < /dev/null > /dev/tcp/valkey/6379'; do sleep 2; done
+    
+    - echo "Waiting for Keycloak..."
+    - |
+      timeout=300
+      while [ $timeout -gt 0 ]; do
+        if curl -f http://keycloak:8080/health/ready >/dev/null 2>&1; then
+          echo "Keycloak is ready"
+          break
+        fi
+        sleep 5
+        timeout=$((timeout - 5))
+      done
+    
+    # Copy built binary from build job
+    - cp dist/booli-admin-api_linux_amd64_v1/booli-admin-api ./
+    - chmod +x booli-admin-api
+    
+    # Initialize application
+    - echo "Initializing Keycloak configuration..."
+    - ./booli-admin-api -init-keycloak -force
+    
+    # Start API server
+    - echo "Starting API server..."
+    - ./booli-admin-api &
+    - SERVER_PID=$!
+    
+    # Wait for API server
+    - |
+      timeout=60
+      while [ $timeout -gt 0 ]; do
+        if curl -f http://localhost:8081/health >/dev/null 2>&1; then
+          echo "API server is ready"
+          break
+        fi
+        sleep 2
+        timeout=$((timeout - 2))
+      done
+    
+    # Run Bruno tests
+    - echo "Running Bruno API tests..."
+    - cd bruno
+    - bru run --env local --output junit.xml --format junit
+    
+    # Stop server
+    - kill $SERVER_PID || true
+  artifacts:
+    reports:
+      junit: bruno/junit.xml
+    paths:
+      - bruno/junit.xml
+      - bruno/test-results.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: false
+
+# Security scanning
+security-scan:
+  stage: security
+  <<: *go-cache
+  needs: ["build"]
+  script:
+    - task security
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Dependency scanning
+dependency-scan:
+  stage: security
+  image: golang:${GO_VERSION}-alpine
+  script:
+    - apk add --no-cache git
+    - go list -json -deps ./... | nancy sleuth
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Build application using goreleaser
+build:
+  stage: build
+  <<: *go-cache
+  needs: ["prepare", "unit-tests", "code-quality"]
+  script:
+    - task build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Build Docker image using goreleaser
+docker-build:
+  stage: build
+  image: docker:24
+  <<: *docker-service
+  needs: ["build"]
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_CERT_PATH: "/certs/client"
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  script:
+    - task docker
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Deploy to staging
+deploy-staging:
+  stage: deploy
+  image: alpine:latest
+  needs: ["docker-build", "api-tests-bruno", "security-scan"]
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "Deploying to staging environment..."
+    - |
+      curl -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $STAGING_DEPLOY_TOKEN" \
+        -d "{
+          \"image\": \"$IMAGE_NAME:$CI_COMMIT_SHORT_SHA\",
+          \"environment\": \"staging\",
+          \"commit\": \"$CI_COMMIT_SHORT_SHA\"
+        }" \
+        $STAGING_DEPLOY_WEBHOOK || echo "Staging deployment webhook failed"
+    - echo "Staging deployment initiated"
+  environment:
+    name: staging
+    url: https://booli-admin-api-staging.example.com
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Deploy to production
+deploy-production:
+  stage: deploy
+  image: alpine:latest
+  needs: ["docker-build", "api-tests-bruno", "security-scan"]
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "Deploying to production environment..."
+    - |
+      curl -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $PRODUCTION_DEPLOY_TOKEN" \
+        -d "{
+          \"image\": \"$IMAGE_NAME:$CI_COMMIT_TAG\",
+          \"environment\": \"production\",
+          \"version\": \"$CI_COMMIT_TAG\"
+        }" \
+        $PRODUCTION_DEPLOY_WEBHOOK
+    - echo "Production deployment initiated"
+  environment:
+    name: production
+    url: https://booli-admin-api.example.com
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual
+
+# Release job
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs: ["docker-build"]
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: |
+      ## Booli Admin API Release $CI_COMMIT_TAG
+
+      ### Changes
+      - See commit history for detailed changes
+
+      ### Docker Images
+      - `$IMAGE_NAME:$CI_COMMIT_TAG`
+      - `$IMAGE_NAME:latest`
+
+      ### Deployment
+      - Staging: Automatic
+      - Production: Manual approval required
+  rules:
+    - if: $CI_COMMIT_TAG
+
+# Cleanup job
+cleanup:
+  stage: .post
+  image: alpine:latest
+  script:
+    - echo "Cleaning up temporary artifacts..."
+  rules:
+    - when: always
+  allow_failure: true
+
+# Include additional CI templates
+include:
+  # Security scanning
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/License-Scanning.gitlab-ci.yml
+
+  # Code quality
+  - template: Code-Quality.gitlab-ci.yml
+
+# Override SAST job for Go
+gosec-sast:
+  variables:
+    SAST_EXCLUDED_ANALYZERS: "eslint,nodejs-scan,phpcs-security-audit,pmd-apex,security-code-scan,semgrep,sobelow,spotbugs"

@@ -1,0 +1,60 @@
+meta {
+  name: Environment Validation Tests
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "tenant_name": "Acme Corporation",
+    "name": "",
+    "description": "Test environment with validation errors",
+    "environment": "test",
+    "network_ranges": [
+      {
+        "cidr": "invalid-cidr",
+        "name": "invalid-network"
+      }
+    ],
+    "public_ips": [
+      {
+        "ip_address": "invalid-ip",
+        "name": "invalid-ip"
+      }
+    ],
+    "domains": [
+      {
+        "domain_name": "",
+        "name": "empty-domain"
+      }
+    ]
+  }
+}
+
+tests {
+  test("Status is 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Response has error message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.be.a('string');
+    expect(data.error.length).to.be.greaterThan(0);
+  });
+  
+  test("Error mentions validation failure", function() {
+    const data = res.getBody();
+    expect(data.error.toLowerCase()).to.include('validation');
+  });
+}

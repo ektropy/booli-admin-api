@@ -1,0 +1,56 @@
+meta {
+  name: Get Infrastructure Data
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/infrastructure
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is array of infrastructure IPs", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('infrastructure_ips');
+    expect(data.infrastructure_ips).to.be.an('array');
+  });
+  
+  test("Infrastructure IPs have required fields", function() {
+    const data = res.getBody();
+    if (data.infrastructure_ips && data.infrastructure_ips.length > 0) {
+      const infraIP = data.infrastructure_ips[0];
+      expect(infraIP).to.have.property('id');
+      expect(infraIP).to.have.property('ip_address');
+      expect(infraIP).to.have.property('service_type');
+      expect(infraIP).to.have.property('hostname');
+      expect(infraIP).to.have.property('environment_id');
+      expect(infraIP).to.have.property('tenant_id');
+    }
+  });
+  
+  test("IP address format is valid", function() {
+    const data = res.getBody();
+    if (data.infrastructure_ips && data.infrastructure_ips.length > 0) {
+      const infraIP = data.infrastructure_ips[0];
+      expect(infraIP.ip_address).to.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/);
+    }
+  });
+  
+  test("Service field is not empty", function() {
+    const data = res.getBody();
+    if (data.infrastructure_ips && data.infrastructure_ips.length > 0) {
+      const infraIP = data.infrastructure_ips[0];
+      expect(infraIP.service_type).to.be.a('string');
+    }
+  });
+}

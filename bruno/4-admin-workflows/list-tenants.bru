@@ -1,0 +1,41 @@
+meta {
+  name: List Tenants
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/tenants
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Tenant list returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains tenant array", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("tenants");
+    expect(body.tenants).to.be.an("array");
+  });
+  
+  test("Pagination info included", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("total");
+    expect(body).to.have.property("page");
+    expect(body).to.have.property("page_size");
+  });
+  
+  test("Debug tenant data", function() {
+    const body = res.getBody();
+    console.log("Tenants:", JSON.stringify(body, null, 2));
+  });
+}

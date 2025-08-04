@@ -1,0 +1,31 @@
+meta {
+  name: Delete Environment
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/environments/{{environment_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("Status is 204", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+  
+  test("Response body is empty", function() {
+    expect(res.getBody()).to.be.empty;
+  });
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    bru.setEnvVar("environment_id", null);
+  }
+}

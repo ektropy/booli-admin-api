@@ -1,0 +1,118 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+booli-admin-api
+booli-admin-api-test
+server
+
+# Go
+*.test
+*.out
+go.work
+vendor/
+
+# Test coverage
+coverage.out
+coverage.html
+coverage_improved.out
+*.coverprofile
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Configuration files
+config.yaml
+config.toml
+config.json
+!config.*.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+!scripts/*.sql
+
+# Cache
+*.cache
+.cache/
+
+# Bruno API testing
+bruno/.env
+bruno/test-results.xml
+bruno/*.log
+
+# Documentation build artifacts
+docs/_build/
+docs/site/
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+
+# Goreleaser
+dist/
+.goreleaser.yml
+
+# Security scanning
+*.sarif
+gosec-results.*
+trivy-results.*
+
+# SBOM files
+*.sbom.json
+*.spdx.json
+
+# Cosign signatures
+*.sig
+*.cert
+
+# Task runner
+.task/
+
+# Integration test artifacts
+tests/integration/*.log
+tests/integration/backend.log

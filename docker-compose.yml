@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: booli-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${BOOLI_DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${BOOLI_DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${BOOLI_DATABASE_DBNAME:-booli_admin}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: booli-valkey
+    ports:
+      - "6379:6379"
+    command: ["valkey-server", "--port", "6379"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: booli-keycloak
+    ports:
+      - "8083:8083"
+    environment:
+      KEYCLOAK_ADMIN: ${BOOLI_KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${BOOLI_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${BOOLI_DATABASE_USER:-postgres}
+      KC_DB_PASSWORD: ${BOOLI_DATABASE_PASSWORD:-postgres}
+      KC_HOSTNAME_STRICT: false
+      KC_FRONTEND_URL: http://localhost:8083
+      KC_HTTP_ENABLED: true
+      KC_HTTP_PORT: 8083
+      KC_HTTP_MANAGEMENT_PORT: 9003
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    command: ["start-dev"]
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: booli-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    profiles:
+      - tools
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: booli-redis-commander
+    ports:
+      - "8082:8081"
+    environment:
+      REDIS_HOSTS: local:valkey:6379
+    depends_on:
+      - valkey
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  valkey_data:
+    driver: local
+  keycloak_data:
+    driver: local
+  pgadmin_data:
+    driver: local

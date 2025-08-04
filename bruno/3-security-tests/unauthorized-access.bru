@@ -1,0 +1,25 @@
+meta {
+  name: Test Unauthorized Access
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/tenants
+}
+
+assert {
+  res.status: eq 401
+}
+
+tests {
+  test("Admin endpoint requires authentication", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+  
+  test("Returns authentication error", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("error");
+    expect(body.error).to.include("Authentication required");
+  });
+}

@@ -1,0 +1,43 @@
+meta {
+  name: Lookup Enrichment Data
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/lookup?q=203.0.113.1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("Status is 200 or 404", function() {
+    expect([200, 404]).to.include(res.getStatus());
+  });
+  
+  test("Response has lookup data when found", function() {
+    if (res.getStatus() === 200) {
+      const data = res.getBody();
+      expect(data).to.have.property('found');
+      expect(data).to.have.property('type');
+      expect(data).to.have.property('data');
+      expect(data.found).to.be.true;
+    }
+  });
+  
+  test("Response indicates not found when appropriate", function() {
+    if (res.getStatus() === 404) {
+      const data = res.getBody();
+      expect(data).to.have.property('found');
+      expect(data.found).to.be.false;
+    }
+  });
+}
+
+vars:post-response {
+  lookup_found: res.getStatus() === 200
+}

@@ -1,0 +1,52 @@
+meta {
+  name: List Environments
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments?page=1&page_size=10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has pagination data", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('environments');
+    expect(data).to.have.property('total');
+    expect(data).to.have.property('page');
+    expect(data).to.have.property('page_size');
+    expect(data).to.have.property('total_pages');
+  });
+  
+  test("Environments array is valid", function() {
+    const data = res.getBody();
+    expect(data.environments).to.be.an('array');
+    expect(data.total).to.be.a('number');
+    expect(data.page).to.equal(1);
+    expect(data.page_size).to.equal(10);
+  });
+  
+  test("Each environment has required fields", function() {
+    const data = res.getBody();
+    if (data.environments.length > 0) {
+      const environment = data.environments[0];
+      expect(environment).to.have.property('id');
+      expect(environment).to.have.property('name');
+      expect(environment).to.have.property('description');
+      expect(environment).to.have.property('environment');
+      expect(environment).to.have.property('is_active');
+      expect(environment).to.have.property('created_at');
+      expect(environment).to.have.property('updated_at');
+    }
+  });
+}

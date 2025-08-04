@@ -1,0 +1,42 @@
+meta {
+  name: Get MSP Platform Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{keycloakUrl}}/realms/msp-platform/protocol/openid-connect/token
+  body: formUrlEncoded
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: msp-platform-client
+  client_secret: msp-platform-secret
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.access_token: isDefined
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    bru.setEnvVar("accessToken", body.access_token);
+  }
+}
+
+tests {
+  test("Token request returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains access token", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("access_token");
+    expect(body.access_token).to.be.a("string");
+  });
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq healthy
+  res.body.service: eq booli-admin-api
+}
+
+tests {
+  test("Health endpoint returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains service info", function() {
+    const body = res.getBody();
+    expect(body.status).to.equal("healthy");
+    expect(body.service).to.equal("booli-admin-api");
+  });
+}

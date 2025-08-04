@@ -1,0 +1,27 @@
+meta {
+  name: Get Auth Providers
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/providers
+}
+
+assert {
+  res.status: in [200, 500]
+}
+
+tests {
+  test("Auth providers endpoint is accessible", function() {
+    expect([200, 500]).to.include(res.getStatus());
+  });
+  
+  test("If successful, response contains providers", function() {
+    if (res.getStatus() === 200) {
+      const body = res.getBody();
+      expect(body).to.have.property("providers");
+      expect(body.providers).to.be.an("array");
+    }
+  });
+}

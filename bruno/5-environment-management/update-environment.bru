@@ -1,0 +1,45 @@
+meta {
+  name: Update Environment
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/environments/{{environment_id}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "production-updated",
+    "description": "Updated production environment with enhanced security",
+    "is_active": true
+  }
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Environment is updated", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id', bru.getEnvVar("environment_id"));
+    expect(data).to.have.property('name', 'production-updated');
+    expect(data).to.have.property('description', 'Updated production environment with enhanced security');
+    expect(data).to.have.property('is_active', true);
+  });
+  
+  test("Infrastructure data is preserved", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('network_ranges');
+    expect(data).to.have.property('public_ips');
+    expect(data).to.have.property('domains');
+    expect(data).to.have.property('infrastructure_ips');
+  });
+}

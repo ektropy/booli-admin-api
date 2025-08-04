@@ -1,0 +1,36 @@
+meta {
+  name: Validate Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/validate
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "{{accessToken}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Token validation returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response indicates valid token", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("valid");
+    expect(body.valid).to.equal(true);
+  });
+}

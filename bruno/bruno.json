@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Booli Admin API Tests",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

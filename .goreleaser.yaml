@@ -1,0 +1,221 @@
+# GoReleaser configuration
+# https://goreleaser.com/customization/
+version: 2
+
+project_name: booli-admin-api
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod verify
+    - go generate ./...
+
+builds:
+  - id: booli-admin-api
+    main: ./cmd/server
+    binary: booli-admin-api
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - id: booli-admin-api
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+signs:
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    certificate: '${artifact}.cert'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - '--yes'
+    artifacts: all
+    output: true
+
+sboms:
+  - artifacts: archive
+    documents:
+      - '{{ .ArtifactName }}.sbom.json'
+    cmd: syft
+    args: 
+      - "${artifact}"
+      - "--output"
+      - "json=${document}"
+
+dockers:
+  - goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=Booli Admin API"
+      - "--label=org.opencontainers.image.url=https://github.com/booli/booli-auth-keycloak"
+      - "--label=org.opencontainers.image.source=https://github.com/booli/booli-auth-keycloak"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=CC-BY-NC-ND-4.0"
+      - "--platform=linux/amd64"
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+  
+  - goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:latest-arm64"
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=Booli Admin API"
+      - "--label=org.opencontainers.image.url=https://github.com/booli/booli-auth-keycloak"
+      - "--label=org.opencontainers.image.source=https://github.com/booli/booli-auth-keycloak"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=CC-BY-NC-ND-4.0"
+      - "--platform=linux/arm64"
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+
+docker_manifests:
+  - name_template: "ghcr.io/booli/{{ .ProjectName }}:latest"
+    image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/booli/{{ .ProjectName }}:latest-arm64"
+  
+  - name_template: "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
+  
+
+docker_signs:
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    args:
+      - sign
+      - '${artifact}@${digest}'
+      - '--yes'
+    artifacts: images
+    output: true
+
+release:
+  github:
+    owner: booli
+    name: booli-auth-keycloak
+  
+  name_template: "v{{ .Version }}"
+  
+  header: |
+    ## Booli Admin API v{{ .Version }}
+    
+    ### Release Date: {{ .Date }}
+    
+  footer: |
+    ## Docker Images
+    
+    Pull the latest image:
+    ```bash
+    docker pull ghcr.io/booli/booli-admin-api:{{ .Version }}
+    ```
+    
+    ## Verifying Signatures
+    
+    All artifacts are signed with cosign. To verify:
+    ```bash
+    cosign verify-blob \
+      --certificate checksums.txt.cert \
+      --signature checksums.txt.sig \
+      checksums.txt
+    ```
+    
+    For Docker images:
+    ```bash
+    cosign verify ghcr.io/booli/booli-admin-api:{{ .Version }}
+    ```
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^style:'
+      - '^ci:'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: 'Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: 'Performance'
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 2
+    - title: 'Security'
+      regexp: "^.*sec[(\\w)]*:+.*$"
+      order: 3
+    - title: 'Other Changes'
+      order: 999
+
+snapshot:
+  version_template: "{{ .Timestamp }}-next"
+
+metadata:
+  mod_timestamp: '{{ .CommitTimestamp }}'

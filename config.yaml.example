@@ -1,0 +1,50 @@
+# Booli Admin API Configuration Example
+# Copy this file to config.yaml and modify as needed
+
+# Server configuration
+server:
+  port: "8081"
+  host: "0.0.0.0"
+
+# Application environment (development, production, test)
+environment: development
+
+# Database configuration
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: your_password_here
+  dbname: booli_admin
+  sslmode: disable
+  max_open_conns: 25
+  max_idle_conns: 5
+
+# Redis/Valkey configuration
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+# Keycloak configuration
+keycloak:
+  url: http://localhost:8083
+  admin_user: admin
+  admin_password: admin
+  master_realm: master
+  msp_realm: msp-platform
+  client_id: booli-admin
+  client_secret: your_client_secret_here
+  callback_url: http://localhost:8081/api/v1/auth/callback
+  api_audience: booli-admin-api
+
+# MSP Organization (for initial setup)
+msp:
+  name: "Your MSP Organization"
+  domain: yourdomain.com
+
+# Logging configuration
+logging:
+  level: info
+  format: json

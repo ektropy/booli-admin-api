@@ -1,0 +1,254 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: git describe --tags --match="v*" --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0-dev"
+  VERSION_FULL:
+    sh: git describe --tags --match="v*" --dirty --always 2>/dev/null || echo "v0.0.0-dev"
+  COMMIT:
+    sh: git rev-parse HEAD 2>/dev/null || echo "unknown"
+  BUILD_TIME:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.buildTime={{.BUILD_TIME}}
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  deps:
+    desc: Install dependencies
+    cmds:
+      - go mod download
+      - go mod verify
+
+  build:
+    desc: Build the binary
+    deps: [deps]
+    cmds:
+      - mkdir -p bin
+      - CGO_ENABLED=0 go build -ldflags="{{.LDFLAGS}}" -o bin/booli-admin-api ./cmd/server
+    generates:
+      - bin/booli-admin-api
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./... -short -v
+
+  test-coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test ./... -short -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+      - go tool cover -func=coverage.out
+
+  test-integration:
+    desc: Run integration tests
+    env:
+      RUN_INTEGRATION_TESTS: true
+    cmds:
+      - go test -tags=integration ./tests/integration/... -v -timeout 30m
+
+  test-integration-smoke:
+    desc: Run integration smoke test
+    cmds:
+      - go test -tags=integration -v ./tests/integration -run TestIntegrationEnvironmentSmokeTest
+
+  test-integration-sso:
+    desc: Run SSO workflow integration tests
+    env:
+      RUN_INTEGRATION_TESTS: true
+    cmds:
+      - go test -tags=integration -v ./tests/integration -run TestSSOWorkflowTestSuite -timeout 30m
+
+  test-integration-user:
+    desc: Run User workflow integration tests
+    env:
+      RUN_INTEGRATION_TESTS: true
+    cmds:
+      - go test -tags=integration -v ./tests/integration -run TestUserWorkflowTestSuite -timeout 30m
+
+  test-integration-all:
+    desc: Run all workflow integration tests
+    deps: [test-integration-smoke, test-integration-sso, test-integration-user]
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - go vet ./...
+      - go fmt ./...
+
+  tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  security:
+    desc: Run security scan
+    cmds:
+      - go vet ./...
+      - |
+        if command -v gosec >/dev/null 2>&1; then
+          gosec ./...
+        else
+          echo "gosec not installed, skipping security scan"
+        fi
+
+  check:
+    desc: Run all checks (test, lint, tidy)
+    deps: [test, lint, tidy]
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/ dist/ coverage.out coverage.html
+
+  dev:
+    desc: Build and run for development
+    deps: [build]
+    cmds:
+      - ./bin/booli-admin-api
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t booli-admin-api:{{.VERSION}} .
+
+  docker-test:
+    desc: Build Docker image for testing
+    cmds:
+      - docker build -t booli-admin-api:test .
+
+  docker-up:
+    desc: Start services with docker-compose
+    cmds:
+      - docker-compose up -d
+
+  docker-down:
+    desc: Stop services with docker-compose
+    cmds:
+      - docker-compose down
+
+  swagger:
+    desc: Generate Swagger documentation
+    cmds:
+      - swag init -g cmd/server/main.go -o docs/
+
+  install-dev-deps:
+    desc: Install development dependencies
+    cmds:
+      - go mod download
+      - go install github.com/goreleaser/goreleaser@latest
+      - go install github.com/swaggo/swag/cmd/swag@latest
+
+  init-dev:
+    desc: Initialize development environment
+    deps: [build]
+    env:
+      BOOLI_ENVIRONMENT: development
+      BOOLI_DATABASE_HOST: localhost
+      BOOLI_DATABASE_PORT: 5432
+      BOOLI_DATABASE_USER: postgres
+      BOOLI_DATABASE_PASSWORD: postgres
+      BOOLI_DATABASE_SSLMODE: disable
+      BOOLI_KEYCLOAK_URL: http://localhost:8083
+      BOOLI_KEYCLOAK_ADMIN_USER: admin
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
+    cmds:
+      - ./bin/booli-admin-api -init
+
+  init-database:
+    desc: Initialize databases only
+    deps: [build]
+    env:
+      BOOLI_ENVIRONMENT: development
+      BOOLI_DATABASE_HOST: localhost
+      BOOLI_DATABASE_PORT: 5432
+      BOOLI_DATABASE_USER: postgres
+      BOOLI_DATABASE_PASSWORD: postgres
+      BOOLI_DATABASE_SSLMODE: disable
+    cmds:
+      - ./bin/booli-admin-api -init-database
+
+  bruno-test:
+    desc: Run Bruno API tests with docker-compose
+    deps: [docker-test]
+    cmds:
+      - echo "Starting services and running Bruno tests..."
+      - docker-compose -f docker-compose.bruno.yml --env-file .env.bruno up -d
+      - echo "Waiting for backend to be ready..."
+      - |
+        for i in {1..60}; do
+          if curl -f http://localhost:8081/health >/dev/null 2>&1; then
+            echo "Backend is ready!"
+            break
+          fi
+          echo "Waiting for backend... ($i/60)"
+          sleep 2
+        done
+      - echo "Running Bruno tests..."
+      - cd bruno && bru run --env local
+      - echo "Stopping services..."
+      - docker-compose -f docker-compose.bruno.yml --env-file .env.bruno down -v
+
+  bruno-test-dev:
+    desc: Run Bruno API tests against running development environment
+    cmds:
+      - cd bruno && bru run --env local
+
+  dev-env-start:
+    desc: Start development environment
+    deps: [docker-test]
+    cmds:
+      - docker-compose up -d
+      - echo "Services started. Backend available at http://localhost:8081"
+      - echo "Keycloak available at http://localhost:8083"
+      - echo "Run 'task bruno-test-dev' to test against this environment"
+
+  dev-env-stop:
+    desc: Stop development environment
+    cmds:
+      - docker-compose down
+
+  snapshot:
+    desc: Build snapshot release with goreleaser
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  release:
+    desc: Build and publish release with goreleaser
+    cmds:
+      - goreleaser release --clean
+
+  release-dry-run:
+    desc: Test release configuration without publishing
+    cmds:
+      - goreleaser release --skip=publish --clean
+
+  sbom:
+    desc: Generate SBOM for the application
+    cmds:
+      - syft . -o json=sbom.json
+      - syft . -o spdx-json=sbom.spdx.json
+
+  sign:
+    desc: Sign artifacts with cosign
+    cmds:
+      - cosign sign-blob --output-signature=checksums.txt.sig --output-certificate=checksums.txt.cert checksums.txt
+
+  verify:
+    desc: Verify signatures with cosign
+    cmds:
+      - cosign verify-blob --certificate checksums.txt.cert --signature checksums.txt.sig checksums.txt
+
+  ci:
+    desc: CI pipeline simulation
+    deps: [check, build]
