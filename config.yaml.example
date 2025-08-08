@@ -44,6 +44,7 @@ keycloak:
   client_secret: your_client_secret_here
   callback_url: http://localhost:8081/api/v1/auth/callback
   api_audience: booli-admin-api
+  skip_tls_verify: false     # Skip TLS certificate verification (default: false)
 
 # MSP Organization (for initial setup)
 msp:

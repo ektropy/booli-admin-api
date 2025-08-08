@@ -50,15 +50,16 @@ type RedisConfig struct {
 }
 
 type KeycloakConfig struct {
-	URL          string `mapstructure:"url"`
-	AdminUser    string `mapstructure:"admin_user"`
-	AdminPass    string `mapstructure:"admin_password"`
-	MasterRealm  string `mapstructure:"master_realm"`
-	MSPRealm     string `mapstructure:"msp_realm"`
-	ClientID     string `mapstructure:"client_id"`
-	ClientSecret string `mapstructure:"client_secret"`
-	CallbackURL  string `mapstructure:"callback_url"`
-	APIAudience  string `mapstructure:"api_audience"`
+	URL           string `mapstructure:"url"`
+	AdminUser     string `mapstructure:"admin_user"`
+	AdminPass     string `mapstructure:"admin_password"`
+	MasterRealm   string `mapstructure:"master_realm"`
+	MSPRealm      string `mapstructure:"msp_realm"`
+	ClientID      string `mapstructure:"client_id"`
+	ClientSecret  string `mapstructure:"client_secret"`
+	CallbackURL   string `mapstructure:"callback_url"`
+	APIAudience   string `mapstructure:"api_audience"`
+	SkipTLSVerify bool   `mapstructure:"skip_tls_verify"`
 }
 
 func Load() (*Config, error) {
@@ -144,6 +145,7 @@ func setDefaults() {
 	viper.SetDefault("keycloak.client_secret", "")
 	viper.SetDefault("keycloak.callback_url", "")
 	viper.SetDefault("keycloak.api_audience", "booli-admin-api")
+	viper.SetDefault("keycloak.skip_tls_verify", false)
 }
 
 func NewLogger(environment string) (*zap.Logger, error) {

@@ -3,6 +3,7 @@ package keycloak
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,7 +28,12 @@ type AdminClient struct {
 	tokenExpiry  time.Time
 }
 
-func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, adminPass string, logger *zap.Logger) *AdminClient {
+func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, adminPass string, skipTLSVerify bool, logger *zap.Logger) *AdminClient {
+	transport := &http.Transport{}
+	if skipTLSVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	
 	return &AdminClient{
 		baseURL:      strings.TrimSuffix(baseURL, "/"),
 		adminRealm:   adminRealm,
@@ -36,7 +42,7 @@ func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, admi
 		adminUser:    adminUser,
 		adminPass:    adminPass,
 		logger:       logger,
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		httpClient:   &http.Client{Timeout: 30 * time.Second, Transport: transport},
 	}
 }
 

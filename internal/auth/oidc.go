@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ type OIDCProvider struct {
 	APIAudience         string
 	IsAzureAD           bool
 	TenantID            string
+	SkipTLSVerify       bool
 	provider            *oidc.Provider
 	oauth2Config        *oauth2.Config
 	verifier            *oidc.IDTokenVerifier
@@ -250,7 +252,11 @@ func (p *OIDCProvider) mapAzureADClaims(claims *OIDCClaims) {
 }
 
 func (p *OIDCProvider) GetWellKnownConfig(ctx context.Context) (map[string]interface{}, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+	transport := &http.Transport{}
+	if p.SkipTLSVerify {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
 
 	wellKnownURL := fmt.Sprintf("%s/.well-known/openid-configuration",
 		strings.TrimSuffix(p.IssuerURL, "/"))
@@ -315,23 +321,24 @@ func generateRandomState() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func CreateKeycloakProvider(name, baseURL, realm, clientID, clientSecret, redirectURL, apiAudience string) *OIDCProvider {
+func CreateKeycloakProvider(name, baseURL, realm, clientID, clientSecret, redirectURL, apiAudience string, skipTLSVerify bool) *OIDCProvider {
 	issuerURL := fmt.Sprintf("%s/realms/%s", strings.TrimSuffix(baseURL, "/"), realm)
 
 	return &OIDCProvider{
-		Name:         name,
-		IssuerURL:    issuerURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  redirectURL,
-		Scopes:       []string{"openid", "profile", "email", "roles"},
-		APIAudience:  apiAudience,
-		IsAzureAD:    false,
-		RealmName:    realm,
+		Name:          name,
+		IssuerURL:     issuerURL,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		RedirectURL:   redirectURL,
+		Scopes:        []string{"openid", "profile", "email", "roles"},
+		APIAudience:   apiAudience,
+		IsAzureAD:     false,
+		RealmName:     realm,
+		SkipTLSVerify: skipTLSVerify,
 	}
 }
 
-func CreateKeycloakMSPProvider(baseURL, mspRealm, clientID, clientSecret, redirectURL, apiAudience string) *OIDCProvider {
+func CreateKeycloakMSPProvider(baseURL, mspRealm, clientID, clientSecret, redirectURL, apiAudience string, skipTLSVerify bool) *OIDCProvider {
 	return CreateKeycloakProvider(
 		fmt.Sprintf("keycloak-%s", mspRealm),
 		baseURL,
@@ -340,6 +347,7 @@ func CreateKeycloakMSPProvider(baseURL, mspRealm, clientID, clientSecret, redire
 		clientSecret,
 		redirectURL,
 		apiAudience,
+		skipTLSVerify,
 	)
 }
 
