@@ -14,14 +14,14 @@ import (
 
 func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=10",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=%d",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
 	)
 
 	// Log connection attempt (without password)
 	safeDSN := fmt.Sprintf(
-		"host=%s port=%d user=%s dbname=%s sslmode=%s connect_timeout=10",
-		cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SSLMode,
+		"host=%s port=%d user=%s dbname=%s sslmode=%s connect_timeout=%d",
+		cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
 	)
 	fmt.Printf("Attempting database connection: %s\n", safeDSN)
 
@@ -45,10 +45,10 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 
 	sqlDB.SetMaxOpenConns(cfg.MaxConns)
 	sqlDB.SetMaxIdleConns(cfg.MaxIdle)
-	sqlDB.SetConnMaxLifetime(time.Hour)
-	sqlDB.SetConnMaxIdleTime(time.Minute * 5)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.MaxLifetime) * time.Second)
+	sqlDB.SetConnMaxIdleTime(time.Duration(cfg.MaxIdleTime) * time.Second)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ConnectTimeout)*time.Second)
 	defer cancel()
 	
 	if err := sqlDB.PingContext(ctx); err != nil {
@@ -60,18 +60,18 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 
 func ConnectRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-	fmt.Printf("Attempting Redis connection: %s (db: %d)\n", addr, cfg.DB)
+	fmt.Printf("Attempting Redis connection: %s (db: %d, timeout: %ds)\n", addr, cfg.DB, cfg.DialTimeout)
 	
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
 		Password:     cfg.Password,
 		DB:           cfg.DB,
-		DialTimeout:  10 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		DialTimeout:  time.Duration(cfg.DialTimeout) * time.Second,
+		ReadTimeout:  time.Duration(cfg.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.WriteTimeout) * time.Second,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.DialTimeout)*time.Second)
 	defer cancel()
 
 	_, err := client.Ping(ctx).Result()

@@ -25,22 +25,28 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
-	MaxConns int    `mapstructure:"max_connections"`
-	MaxIdle  int    `mapstructure:"max_idle"`
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	DBName          string `mapstructure:"dbname"`
+	SSLMode         string `mapstructure:"sslmode"`
+	MaxConns        int    `mapstructure:"max_connections"`
+	MaxIdle         int    `mapstructure:"max_idle"`
+	ConnectTimeout  int    `mapstructure:"connect_timeout"`
+	MaxLifetime     int    `mapstructure:"max_lifetime"`
+	MaxIdleTime     int    `mapstructure:"max_idle_time"`
 }
 
 type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
-	Prefix   string `mapstructure:"prefix"`
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	Password     string `mapstructure:"password"`
+	DB           int    `mapstructure:"db"`
+	Prefix       string `mapstructure:"prefix"`
+	DialTimeout  int    `mapstructure:"dial_timeout"`
+	ReadTimeout  int    `mapstructure:"read_timeout"`
+	WriteTimeout int    `mapstructure:"write_timeout"`
 }
 
 type KeycloakConfig struct {
@@ -117,11 +123,17 @@ func setDefaults() {
 	viper.SetDefault("database.sslmode", "require")
 	viper.SetDefault("database.max_connections", 25)
 	viper.SetDefault("database.max_idle", 5)
+	viper.SetDefault("database.connect_timeout", 10)
+	viper.SetDefault("database.max_lifetime", 3600)
+	viper.SetDefault("database.max_idle_time", 300)
 
 	viper.SetDefault("redis.host", "")
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.password", "")
 	viper.SetDefault("redis.db", 0)
+	viper.SetDefault("redis.dial_timeout", 10)
+	viper.SetDefault("redis.read_timeout", 10)
+	viper.SetDefault("redis.write_timeout", 10)
 
 	viper.SetDefault("keycloak.url", "")
 	viper.SetDefault("keycloak.admin_user", "")

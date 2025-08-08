@@ -19,6 +19,9 @@ database:
   sslmode: disable
   max_open_conns: 25
   max_idle_conns: 5
+  connect_timeout: 10     # Connection timeout in seconds (default: 10)
+  max_lifetime: 3600      # Maximum connection lifetime in seconds (default: 3600)
+  max_idle_time: 300      # Maximum idle time in seconds (default: 300)
 
 # Redis/Valkey configuration
 redis:
@@ -26,6 +29,9 @@ redis:
   port: 6379
   password: ""
   db: 0
+  dial_timeout: 10        # Connection timeout in seconds (default: 10)
+  read_timeout: 10        # Read timeout in seconds (default: 10)
+  write_timeout: 10       # Write timeout in seconds (default: 10)
 
 # Keycloak configuration
 keycloak:
