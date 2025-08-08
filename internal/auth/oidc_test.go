@@ -116,6 +116,8 @@ func TestCreateKeycloakProvider(t *testing.T) {
 				tt.clientSecret,
 				tt.redirectURL,
 				"booli-admin-api",
+				false,
+				"",
 			)
 
 			assert.Equal(t, tt.providerName, provider.Name)
@@ -227,6 +229,8 @@ func TestOIDCProvider_MSPPlatformConfiguration(t *testing.T) {
 		"platform-secret",
 		"https://admin.example.com/auth/callback",
 		"booli-admin-api",
+		false,
+		"",
 	)
 
 	assert.Equal(t, "keycloak", provider.Name)
