@@ -205,16 +205,24 @@ func (k *KeycloakInitializer) isKeycloakReady(ctx context.Context) bool {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		k.logger.Debug("Failed to create Keycloak readiness request", zap.Error(err), zap.String("url", url))
 		return false
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := k.keycloakAdmin.GetHTTPClient()
+	resp, err := client.Do(req)
 	if err != nil {
+		k.logger.Debug("Keycloak readiness check failed", zap.Error(err), zap.String("url", url))
 		return false
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK
+	if resp.StatusCode != http.StatusOK {
+		k.logger.Debug("Keycloak readiness check returned non-200 status", zap.Int("status", resp.StatusCode), zap.String("url", url))
+		return false
+	}
+
+	return true
 }
 
 func (k *KeycloakInitializer) initializeRealm(ctx context.Context, realm RealmConfig) error {

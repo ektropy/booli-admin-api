@@ -57,6 +57,10 @@ func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, admi
 	}
 }
 
+func (c *AdminClient) GetHTTPClient() *http.Client {
+	return c.httpClient
+}
+
 type RealmRepresentation struct {
 	ID                    string            `json:"id,omitempty"`
 	Realm                 string            `json:"realm"`
