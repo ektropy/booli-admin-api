@@ -13,12 +13,24 @@ import (
 )
 
 func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
+	if cfg.Host == "" {
+		return nil, fmt.Errorf("database host is required")
+	}
+	if cfg.User == "" {
+		return nil, fmt.Errorf("database user is required")
+	}
+	if cfg.DBName == "" {
+		return nil, fmt.Errorf("database name (dbname) is required")
+	}
+	if cfg.SSLMode == "" {
+		return nil, fmt.Errorf("database sslmode is required")
+	}
+
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=%d",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
 	)
 
-	// Log connection attempt (without password)
 	safeDSN := fmt.Sprintf(
 		"host=%s port=%d user=%s dbname=%s sslmode=%s connect_timeout=%d",
 		cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
