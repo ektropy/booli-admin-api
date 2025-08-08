@@ -51,18 +51,32 @@ func main() {
 	)
 	flag.Parse()
 
+	basicLogger, _ := zap.NewProduction()
+	if basicLogger == nil {
+		basicLogger, _ = zap.NewDevelopment()
+	}
+	defer basicLogger.Sync()
+
+	basicLogger.Info("Starting Booli Admin API", 
+		zap.String("version", version),
+		zap.String("commit", commit),
+		zap.String("built_date", date))
+
 	cfg, err := config.LoadWithConfigFile(*configFile)
 	if err != nil {
-		_, _ = os.Stderr.WriteString("Failed to load configuration: " + err.Error() + "\n")
-		os.Exit(1)
+		basicLogger.Fatal("Failed to load configuration",
+			zap.Error(err),
+			zap.String("config_file", *configFile),
+			zap.String("help", "Ensure configuration file exists or set environment variables with BOOLI_ prefix"))
 	}
 
 	logger, err := config.NewLogger(cfg.Environment)
 	if err != nil {
-		_, _ = os.Stderr.WriteString("Failed to initialize logger: " + err.Error() + "\n")
-		os.Exit(1)
+		basicLogger.Fatal("Failed to initialize logger", zap.Error(err))
 	}
 	defer logger.Sync()
+
+	logger.Info("Configuration loaded successfully", zap.String("environment", cfg.Environment))
 
 	cli := cli.New(logger)
 
