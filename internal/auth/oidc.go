@@ -259,7 +259,7 @@ func (p *OIDCProvider) GetWellKnownConfig(ctx context.Context) (map[string]inter
 	transport := &http.Transport{}
 	if p.SkipTLSVerify {
 		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402 -- User explicitly configured to skip TLS verification
 			MinVersion:         tls.VersionTLS12,
 		}
 	} else if p.CACertPath != "" {

@@ -36,7 +36,7 @@ func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, admi
 	
 	if skipTLSVerify {
 		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402 -- User explicitly configured to skip TLS verification
 			MinVersion:         tls.VersionTLS12,
 		}
 	} else if caCertPath != "" {
