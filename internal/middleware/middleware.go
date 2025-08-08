@@ -44,11 +44,14 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 			fields = append(fields, zap.String("tenant_id", tenantID.(string)))
 		}
 
+		// Always log requests, including health checks
 		switch {
 		case statusCode >= 500:
 			logger.Error("Server error", fields...)
 		case statusCode >= 400:
 			logger.Warn("Client error", fields...)
+		case path == "/health" || path == "/ready":
+			logger.Debug("Health check", fields...)
 		default:
 			logger.Info("Request completed", fields...)
 		}

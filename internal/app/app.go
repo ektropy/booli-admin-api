@@ -44,7 +44,12 @@ func (app *Application) Initialize() error {
 	
 	db, err := database.Connect(app.config.Database)
 	if err != nil {
-		return err
+		app.logger.Error("Failed to connect to database",
+			zap.Error(err),
+			zap.String("host", app.config.Database.Host),
+			zap.Int("port", app.config.Database.Port),
+			zap.String("database", app.config.Database.DBName))
+		return fmt.Errorf("database connection failed: %w", err)
 	}
 
 	app.logger.Info("Database connected successfully")
@@ -61,7 +66,11 @@ func (app *Application) Initialize() error {
 
 	redis, err := database.ConnectRedis(app.config.Redis)
 	if err != nil {
-		return err
+		app.logger.Error("Failed to connect to Redis",
+			zap.Error(err),
+			zap.String("host", app.config.Redis.Host),
+			zap.Int("port", app.config.Redis.Port))
+		return fmt.Errorf("redis connection failed: %w", err)
 	}
 
 	app.logger.Info("Redis connected successfully")
@@ -123,6 +132,10 @@ func (app *Application) Initialize() error {
 		WriteTimeout: time.Duration(app.config.Server.WriteTimeout) * time.Second,
 		IdleTimeout:  time.Duration(app.config.Server.IdleTimeout) * time.Second,
 	}
+
+	app.logger.Info("Application initialization completed successfully",
+		zap.String("server_address", app.server.Addr),
+		zap.Int("routes_configured", len(router.Routes())))
 
 	return nil
 }
@@ -239,10 +252,18 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 func (app *Application) Start() error {
 	app.logger.Info("HTTP server starting",
 		zap.String("service", "booli-admin-api"),
-		zap.String("port", app.config.Server.Port),
+		zap.String("address", app.server.Addr),
 		zap.String("version", app.version),
 		zap.String("environment", app.config.Environment))
-	return app.server.ListenAndServe()
+	
+	app.logger.Info("Server is now listening for requests",
+		zap.String("url", "http://0.0.0.0"+app.server.Addr+"/health"))
+	
+	if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		app.logger.Error("Server failed to start", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (app *Application) Shutdown(ctx context.Context) error {

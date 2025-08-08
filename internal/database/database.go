@@ -18,6 +18,13 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
 	)
 
+	// Log connection attempt (without password)
+	safeDSN := fmt.Sprintf(
+		"host=%s port=%d user=%s dbname=%s sslmode=%s connect_timeout=10",
+		cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SSLMode,
+	)
+	fmt.Printf("Attempting database connection: %s\n", safeDSN)
+
 	gormLogger := logger.Default.LogMode(logger.Info)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -52,10 +59,16 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 }
 
 func ConnectRedis(cfg config.RedisConfig) (*redis.Client, error) {
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	fmt.Printf("Attempting Redis connection: %s (db: %d)\n", addr, cfg.DB)
+	
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Password: cfg.Password,
-		DB:       cfg.DB,
+		Addr:         addr,
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		DialTimeout:  10 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
