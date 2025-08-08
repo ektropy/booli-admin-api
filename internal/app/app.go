@@ -98,7 +98,8 @@ func (app *Application) Initialize() error {
 			zap.Int("users", len(envConfig.Users)))
 
 		if err := initializer.Initialize(context.Background(), envConfig); err != nil {
-			app.logger.Warn("Keycloak initialization failed - continuing with manual configuration", zap.Error(err))
+			app.logger.Error("Keycloak initialization failed", zap.Error(err))
+			return fmt.Errorf("keycloak initialization failed: %w", err)
 		}
 	}
 
@@ -118,7 +119,8 @@ func (app *Application) Initialize() error {
 	)
 
 	if err := oidcService.AddProvider(context.Background(), mspProvider); err != nil {
-		app.logger.Warn("Failed to add MSP realm OIDC provider", zap.Error(err))
+		app.logger.Error("Failed to add MSP realm OIDC provider", zap.Error(err))
+		return fmt.Errorf("MSP realm OIDC provider configuration failed: %w", err)
 	}
 
 	serviceContainer := services.NewContainer(db, redis, keycloakAdmin, app.logger, app.config)
