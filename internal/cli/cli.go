@@ -338,6 +338,8 @@ func (cli *CLI) RunFullSystemInitialization(cfg *config.Config, force bool) erro
 			cfg.Keycloak.ClientSecret,
 			cfg.Keycloak.AdminUser,
 			cfg.Keycloak.AdminPass,
+			cfg.Keycloak.SkipTLSVerify,
+			cfg.Keycloak.CACertPath,
 			cli.logger,
 		)
 		oidcService := auth.NewOIDCService(cli.logger)
@@ -399,6 +401,8 @@ func (cli *CLI) RunFullSystemInitialization(cfg *config.Config, force bool) erro
 		cfg.Keycloak.ClientSecret,
 		cfg.Keycloak.AdminUser,
 		cfg.Keycloak.AdminPass,
+		cfg.Keycloak.SkipTLSVerify,
+		cfg.Keycloak.CACertPath,
 		cli.logger,
 	)
 

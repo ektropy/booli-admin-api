@@ -118,6 +118,8 @@ func main() {
 			cfg.Keycloak.ClientSecret,
 			cfg.Keycloak.AdminUser,
 			cfg.Keycloak.AdminPass,
+			cfg.Keycloak.SkipTLSVerify,
+			cfg.Keycloak.CACertPath,
 			logger,
 		)
 

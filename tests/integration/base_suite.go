@@ -241,6 +241,8 @@ func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
 		"",
 		suite.Config.KeycloakAdminUser,
 		suite.Config.KeycloakAdminPassword,
+		false,
+		"",
 		logger,
 	)
 

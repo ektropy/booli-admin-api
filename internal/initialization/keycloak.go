@@ -468,6 +468,8 @@ func (k *KeycloakInitializer) registerOIDCProvider(ctx context.Context, provider
 		provider.ClientSecret,
 		provider.CallbackURL,
 		k.config.Keycloak.APIAudience,
+		k.config.Keycloak.SkipTLSVerify,
+		k.config.Keycloak.CACertPath,
 	)
 
 	if err := k.oidcService.AddProvider(ctx, keycloakProvider); err != nil {

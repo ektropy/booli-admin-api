@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -28,10 +30,19 @@ type AdminClient struct {
 	tokenExpiry  time.Time
 }
 
-func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, adminPass string, skipTLSVerify bool, logger *zap.Logger) *AdminClient {
+func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, adminPass string, skipTLSVerify bool, caCertPath string, logger *zap.Logger) *AdminClient {
 	transport := &http.Transport{}
+	
 	if skipTLSVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	} else if caCertPath != "" {
+		caCert, err := os.ReadFile(caCertPath)
+		if err == nil {
+			caCertPool := x509.NewCertPool()
+			if caCertPool.AppendCertsFromPEM(caCert) {
+				transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+			}
+		}
 	}
 	
 	return &AdminClient{

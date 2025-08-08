@@ -60,6 +60,7 @@ type KeycloakConfig struct {
 	CallbackURL   string `mapstructure:"callback_url"`
 	APIAudience   string `mapstructure:"api_audience"`
 	SkipTLSVerify bool   `mapstructure:"skip_tls_verify"`
+	CACertPath    string `mapstructure:"ca_cert_path"`
 }
 
 func Load() (*Config, error) {
@@ -146,6 +147,7 @@ func setDefaults() {
 	viper.SetDefault("keycloak.callback_url", "")
 	viper.SetDefault("keycloak.api_audience", "booli-admin-api")
 	viper.SetDefault("keycloak.skip_tls_verify", false)
+	viper.SetDefault("keycloak.ca_cert_path", "")
 }
 
 func NewLogger(environment string) (*zap.Logger, error) {

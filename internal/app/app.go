@@ -83,6 +83,7 @@ func (app *Application) Initialize() error {
 		app.config.Keycloak.AdminUser,
 		app.config.Keycloak.AdminPass,
 		app.config.Keycloak.SkipTLSVerify,
+		app.config.Keycloak.CACertPath,
 		app.logger,
 	)
 
@@ -118,6 +119,7 @@ func (app *Application) Initialize() error {
 		callbackURL,
 		app.config.Keycloak.APIAudience,
 		app.config.Keycloak.SkipTLSVerify,
+		app.config.Keycloak.CACertPath,
 	)
 
 	if err := oidcService.AddProvider(context.Background(), mspProvider); err != nil {
