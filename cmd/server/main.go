@@ -57,10 +57,11 @@ func main() {
 	}
 	defer basicLogger.Sync()
 
-	basicLogger.Info("Starting Booli Admin API", 
+	basicLogger.Info("Booli Admin API starting",
+		zap.String("service", "booli-admin-api"),
 		zap.String("version", version),
 		zap.String("commit", commit),
-		zap.String("built_date", date))
+		zap.String("build_date", date))
 
 	cfg, err := config.LoadWithConfigFile(*configFile)
 	if err != nil {
@@ -76,7 +77,10 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.Info("Configuration loaded successfully", zap.String("environment", cfg.Environment))
+	logger.Info("Configuration loaded successfully",
+		zap.String("environment", cfg.Environment),
+		zap.String("server_port", cfg.Server.Port),
+		zap.String("database_host", cfg.Database.Host))
 
 	cli := cli.New(logger)
 
@@ -166,5 +170,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("Server exited")
+	logger.Info("Booli Admin API stopped",
+		zap.String("service", "booli-admin-api"))
 }

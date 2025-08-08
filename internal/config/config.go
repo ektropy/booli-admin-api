@@ -141,8 +141,17 @@ func NewLogger(environment string) (*zap.Logger, error) {
 		config = zap.NewDevelopmentConfig()
 		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.EncoderConfig.TimeKey = "timestamp"
+		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	} else {
 		config = zap.NewProductionConfig()
+		config.EncoderConfig.TimeKey = "timestamp"
+		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		config.EncoderConfig.MessageKey = "message"
+		config.EncoderConfig.LevelKey = "level"
+		config.EncoderConfig.CallerKey = "caller"
+		config.EncoderConfig.StacktraceKey = "stacktrace"
+		
 		if environment == "test" {
 			config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		} else {

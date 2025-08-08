@@ -37,19 +37,34 @@ func New(cfg *config.Config, logger *zap.Logger, version string) *Application {
 }
 
 func (app *Application) Initialize() error {
+	app.logger.Info("Initializing database connection",
+		zap.String("host", app.config.Database.Host),
+		zap.Int("port", app.config.Database.Port),
+		zap.String("database", app.config.Database.DBName))
+	
 	db, err := database.Connect(app.config.Database)
 	if err != nil {
 		return err
 	}
 
+	app.logger.Info("Database connected successfully")
+
 	if err := database.Initialize(db); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
+
+	app.logger.Info("Database initialized successfully")
+
+	app.logger.Info("Initializing Redis connection",
+		zap.String("host", app.config.Redis.Host),
+		zap.Int("port", app.config.Redis.Port))
 
 	redis, err := database.ConnectRedis(app.config.Redis)
 	if err != nil {
 		return err
 	}
+
+	app.logger.Info("Redis connected successfully")
 
 	keycloakAdmin := keycloak.NewAdminClient(
 		app.config.Keycloak.URL,
@@ -222,11 +237,22 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 }
 
 func (app *Application) Start() error {
-	app.logger.Info("Starting server", zap.String("port", app.config.Server.Port))
+	app.logger.Info("HTTP server starting",
+		zap.String("service", "booli-admin-api"),
+		zap.String("port", app.config.Server.Port),
+		zap.String("version", app.version),
+		zap.String("environment", app.config.Environment))
 	return app.server.ListenAndServe()
 }
 
 func (app *Application) Shutdown(ctx context.Context) error {
-	app.logger.Info("Shutting down server...")
-	return app.server.Shutdown(ctx)
+	app.logger.Info("HTTP server shutting down gracefully",
+		zap.String("service", "booli-admin-api"))
+	err := app.server.Shutdown(ctx)
+	if err != nil {
+		app.logger.Error("Error during server shutdown", zap.Error(err))
+	} else {
+		app.logger.Info("HTTP server shutdown completed successfully")
+	}
+	return err
 }
