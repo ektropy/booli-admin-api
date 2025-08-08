@@ -88,6 +88,17 @@ func (h *HealthHandler) ValidateKeycloak(c *gin.Context) {
 		return
 	}
 
+	if err := h.initializer.TestAuthentication(ctx); err != nil {
+		h.logger.Error("Keycloak authentication test failed", zap.Error(err))
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":      "unhealthy",
+			"message":     "Keycloak authentication failed - check credentials",
+			"error":       err.Error(),
+			"environment": h.config.Environment,
+		})
+		return
+	}
+
 	if err := h.initializer.ValidateConfiguration(ctx, initConfig); err != nil {
 		h.logger.Error("Keycloak configuration validation failed", zap.Error(err))
 		c.JSON(http.StatusServiceUnavailable, gin.H{

@@ -225,6 +225,10 @@ func (k *KeycloakInitializer) isKeycloakReady(ctx context.Context) bool {
 	return true
 }
 
+func (k *KeycloakInitializer) TestAuthentication(ctx context.Context) error {
+	return k.keycloakAdmin.TestAuthentication(ctx)
+}
+
 func (k *KeycloakInitializer) initializeRealm(ctx context.Context, realm RealmConfig) error {
 	k.logger.Info("Initializing realm", zap.String("realm", realm.Name))
 

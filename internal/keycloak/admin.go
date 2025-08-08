@@ -71,6 +71,32 @@ func (c *AdminClient) GetHTTPClient() *http.Client {
 	return c.httpClient
 }
 
+func (c *AdminClient) TestAuthentication(ctx context.Context) error {
+	c.accessToken = ""
+	c.tokenExpiry = time.Time{}
+	
+	if err := c.getAccessToken(ctx); err != nil {
+		return fmt.Errorf("authentication test failed: %w", err)
+	}
+	
+	resp, err := c.makeRequest(ctx, "GET", "", nil)
+	if err != nil {
+		return fmt.Errorf("authentication test request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("authentication test failed: received 401 unauthorized")
+	}
+	
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("authentication test failed: unexpected status %d", resp.StatusCode)
+	}
+	
+	c.logger.Debug("Keycloak authentication test successful")
+	return nil
+}
+
 type RealmRepresentation struct {
 	ID                    string            `json:"id,omitempty"`
 	Realm                 string            `json:"realm"`
@@ -229,7 +255,27 @@ func (c *AdminClient) tryGetAccessToken(ctx context.Context, username, password 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("token request failed with status %d", resp.StatusCode)
+		var errorMsg string
+		switch resp.StatusCode {
+		case http.StatusUnauthorized:
+			errorMsg = fmt.Sprintf("authentication failed for user '%s' - check username/password", username)
+		case http.StatusForbidden:
+			errorMsg = fmt.Sprintf("user '%s' does not have admin privileges", username)
+		case http.StatusNotFound:
+			errorMsg = "Keycloak admin endpoint not found - check URL and realm"
+		default:
+			errorMsg = fmt.Sprintf("token request failed with status %d", resp.StatusCode)
+		}
+		
+		body, _ := io.ReadAll(resp.Body)
+		if len(body) > 0 {
+			c.logger.Debug("Token request error details", 
+				zap.String("username", username),
+				zap.Int("status", resp.StatusCode),
+				zap.String("response", string(body)))
+		}
+		
+		return fmt.Errorf("%s", errorMsg)
 	}
 
 	var tokenResp struct {
@@ -326,6 +372,10 @@ func (c *AdminClient) changeAdminPassword(ctx context.Context, currentPassword, 
 }
 
 func (c *AdminClient) makeRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
+	return c.makeRequestWithRetry(ctx, method, path, body, false)
+}
+
+func (c *AdminClient) makeRequestWithRetry(ctx context.Context, method, path string, body interface{}, isRetry bool) (*http.Response, error) {
 	if err := c.getAccessToken(ctx); err != nil {
 		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
@@ -356,6 +406,14 @@ func (c *AdminClient) makeRequest(ctx context.Context, method, path string, body
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized && !isRetry {
+		resp.Body.Close()
+		c.logger.Debug("Received 401, invalidating token and retrying", zap.String("method", method), zap.String("path", path))
+		c.accessToken = ""
+		c.tokenExpiry = time.Time{}
+		return c.makeRequestWithRetry(ctx, method, path, body, true)
 	}
 
 	return resp, nil
