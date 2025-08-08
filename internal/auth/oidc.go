@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -257,13 +258,19 @@ func (p *OIDCProvider) mapAzureADClaims(claims *OIDCClaims) {
 func (p *OIDCProvider) GetWellKnownConfig(ctx context.Context) (map[string]interface{}, error) {
 	transport := &http.Transport{}
 	if p.SkipTLSVerify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
+		}
 	} else if p.CACertPath != "" {
-		caCert, err := os.ReadFile(p.CACertPath)
+		caCert, err := os.ReadFile(filepath.Clean(p.CACertPath))
 		if err == nil {
 			caCertPool := x509.NewCertPool()
 			if caCertPool.AppendCertsFromPEM(caCert) {
-				transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+				transport.TLSClientConfig = &tls.Config{
+					RootCAs:    caCertPool,
+					MinVersion: tls.VersionTLS12,
+				}
 			}
 		}
 	}

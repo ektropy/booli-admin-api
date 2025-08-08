@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -34,13 +35,22 @@ func NewAdminClient(baseURL, adminRealm, clientID, clientSecret, adminUser, admi
 	transport := &http.Transport{}
 	
 	if skipTLSVerify {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
+		}
 	} else if caCertPath != "" {
-		caCert, err := os.ReadFile(caCertPath)
+		if !filepath.IsAbs(caCertPath) {
+			logger.Warn("CA certificate path should be absolute", zap.String("path", caCertPath))
+		}
+		caCert, err := os.ReadFile(filepath.Clean(caCertPath))
 		if err == nil {
 			caCertPool := x509.NewCertPool()
 			if caCertPool.AppendCertsFromPEM(caCert) {
-				transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+				transport.TLSClientConfig = &tls.Config{
+					RootCAs:    caCertPool,
+					MinVersion: tls.VersionTLS12,
+				}
 			}
 		}
 	}
