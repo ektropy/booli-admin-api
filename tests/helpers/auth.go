@@ -21,6 +21,8 @@ func SetupTestOIDCProviders(oidcService *auth.OIDCService, keycloakURL, callback
 		"msp-secret",
 		callbackURL,
 		"booli-admin-api",
+		false,
+		"",
 	)
 
 	if err := oidcService.AddProvider(context.Background(), mspProvider); err != nil {
