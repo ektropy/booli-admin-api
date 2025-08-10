@@ -9,7 +9,7 @@ vars:
     sh: git rev-parse HEAD 2>/dev/null || echo "unknown"
   BUILD_TIME:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
-  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.buildTime={{.BUILD_TIME}}
+  LDFLAGS: -s -w -X main.version={{.VERSION_FULL}} -X main.commit={{.COMMIT}} -X main.date={{.BUILD_TIME}}
 
 tasks:
   default:
@@ -32,10 +32,26 @@ tasks:
     generates:
       - bin/booli-admin-api
 
+  build-fast:
+    desc: Fast build with caching
+    cmds:
+      - mkdir -p bin
+      - CGO_ENABLED=0 go build -ldflags="{{.LDFLAGS}}" -trimpath -o bin/booli-admin-api ./cmd/server
+    env:
+      GOCACHE: /tmp/go-build-cache
+      GOMODCACHE: /tmp/go-mod-cache
+
   test:
     desc: Run unit tests
     cmds:
       - go test ./... -short -v
+
+  test-fast:
+    desc: Run tests in parallel with caching
+    cmds:
+      - go test -short -race -parallel 4 ./...
+    env:
+      GOCACHE: /tmp/go-build-cache
 
   test-coverage:
     desc: Run tests with coverage
@@ -121,6 +137,20 @@ tasks:
     desc: Build Docker image
     cmds:
       - docker build -t booli-admin-api:{{.VERSION}} .
+
+  docker-build-fast:
+    desc: Fast Docker build with buildkit caching
+    cmds:
+      - docker buildx build --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache,mode=max -f Dockerfile.fast -t booli-admin-api:{{.VERSION}} --load .
+    env:
+      DOCKER_BUILDKIT: 1
+
+  docker-build-multi:
+    desc: Build multi-architecture Docker image
+    cmds:
+      - docker buildx build --platform linux/amd64,linux/arm64 -f Dockerfile.fast -t booli-admin-api:{{.VERSION}} .
+    env:
+      DOCKER_BUILDKIT: 1
 
   docker-test:
     desc: Build Docker image for testing
@@ -252,3 +282,17 @@ tasks:
   ci:
     desc: CI pipeline simulation
     deps: [check, build]
+
+  ci-fast:
+    desc: Fast CI pipeline (parallel execution)
+    cmds:
+      - task: test-fast
+      - task: lint
+      - task: build-fast
+    silent: true
+
+  ci-docker:
+    desc: Build and push Docker image
+    cmds:
+      - task: docker-build-fast
+      - echo "Image built successfully"

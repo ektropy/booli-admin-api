@@ -10,7 +10,6 @@ import (
 	"github.com/booli/booli-admin-api/internal/constants"
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -56,16 +55,10 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 			return
 		}
 
-		tenantID, err := extractTenantFromClaims(claims)
-		if err != nil {
-			utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeTenantRequired,
-				"Invalid tenant context", err.Error())
-			c.Abort()
-			return
-		}
-
+		realmName := extractRealmFromClaims(claims, providerName)
+		
 		c.Set("user_id", claims.Subject)
-		c.Set("tenant_id", tenantID)
+		c.Set("realm_name", realmName)
 		c.Set("user_email", claims.Email)
 		c.Set("user_roles", claims.RealmAccess.Roles)
 		c.Set("provider_name", providerName)
@@ -75,60 +68,42 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 	}
 }
 
-func extractTenantFromClaims(claims *auth.OIDCClaims) (string, error) {
+func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string {
+	// For Keycloak providers, extract realm from provider name
+	if strings.HasPrefix(providerName, "keycloak-") {
+		return strings.TrimPrefix(providerName, "keycloak-")
+	}
+	
+	// For Azure AD and other providers, use tenant context or create a default realm name
 	if claims.TenantContext != "" {
-		return claims.TenantContext, nil
+		return claims.TenantContext
 	}
-
-	if strings.HasPrefix(claims.Subject, "tenant-") {
-		return strings.TrimPrefix(claims.Subject, "tenant-"), nil
-	}
-
+	
 	if claims.TenantID != "" {
-		return claims.TenantID, nil
+		return claims.TenantID
 	}
-
-	for _, role := range claims.RealmAccess.Roles {
-		if role == "msp-admin" {
-			return generateMSPAdminTenantID(claims.Subject), nil
-		}
-	}
-
-	return claims.Subject, nil
+	
+	// Default fallback - use provider name as realm
+	return providerName
 }
 
-func generateMSPAdminTenantID(userSubject string) string {
-	return "00000000-0000-0000-0000-000000000001" // MSP admin virtual tenant ID
-}
 
-func TenantContextRequired() gin.HandlerFunc {
+func RealmContextRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tenantIDStr, exists := c.Get("tenant_id")
+		realmName, exists := c.Get("realm_name")
 		if !exists {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Tenant context required",
-				"code":  "TENANT_CONTEXT_REQUIRED",
+				"error": "Realm context required",
+				"code":  "REALM_CONTEXT_REQUIRED",
 			})
 			c.Abort()
 			return
 		}
 
-		tenantID, err := uuid.Parse(tenantIDStr.(string))
-		if err != nil {
+		if realmName.(string) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid tenant ID",
-				"code":  "INVALID_TENANT_ID",
-			})
-			c.Abort()
-			return
-		}
-
-		if err := setPostgreSQLTenantContext(c, tenantID); err != nil {
-			logger := c.MustGet("logger").(*zap.Logger)
-			logger.Error("Failed to set PostgreSQL tenant context", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal server error",
-				"code":  "TENANT_CONTEXT_ERROR",
+				"error": "Invalid realm name",
+				"code":  "INVALID_REALM_NAME",
 			})
 			c.Abort()
 			return
@@ -314,11 +289,6 @@ func extractToken(c *gin.Context) (string, error) {
 	return parts[1], nil
 }
 
-func setPostgreSQLTenantContext(c *gin.Context, tenantID uuid.UUID) error {
-
-	c.Set("postgres_tenant_context", tenantID.String())
-	return nil
-}
 
 func containsRole(userRoles []string, targetRole string) bool {
 	for _, role := range userRoles {
@@ -338,22 +308,22 @@ func containsPermission(userPermissions []string, targetPermission string) bool 
 	return false
 }
 
-func GetUserID(c *gin.Context) (uuid.UUID, error) {
-	userIDStr, exists := c.Get("user_id")
+func GetUserID(c *gin.Context) (string, error) {
+	userID, exists := c.Get("user_id")
 	if !exists {
-		return uuid.Nil, fmt.Errorf("user ID not found in context")
+		return "", fmt.Errorf("user ID not found in context")
 	}
 
-	return uuid.Parse(userIDStr.(string))
+	return userID.(string), nil
 }
 
-func GetTenantID(c *gin.Context) (uuid.UUID, error) {
-	tenantIDStr, exists := c.Get("tenant_id")
+func GetRealmName(c *gin.Context) (string, error) {
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		return uuid.Nil, fmt.Errorf("tenant ID not found in context")
+		return "", fmt.Errorf("realm name not found in context")
 	}
 
-	return uuid.Parse(tenantIDStr.(string))
+	return realmName.(string), nil
 }
 
 func GetUserEmail(c *gin.Context) (string, error) {

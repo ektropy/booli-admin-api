@@ -24,6 +24,43 @@ func New(logger *zap.Logger) *CLI {
 	return &CLI{logger: logger}
 }
 
+// ShowUsageQuiet shows usage without logging (for --help)
+func ShowUsageQuiet() {
+	fmt.Println("Booli Admin API - Multi-tenant admin portal with Keycloak authentication")
+	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  booli-admin-api [flags]")
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println("  -init                 Initialize complete system (databases + Keycloak) then exit")
+	fmt.Println("  -init-keycloak        Initialize Keycloak realms and clients then exit")
+	fmt.Println("  -init-database        Initialize databases then exit")
+	fmt.Println("  -validate-only        Only validate configuration, don't initialize")
+	fmt.Println("  -force                Force initialization even if already configured")
+	fmt.Println("  -config string        Path to configuration file (YAML, TOML, or JSON)")
+	fmt.Println("  -help                 Show usage information")
+	fmt.Println("  -version              Show version information")
+	fmt.Println()
+	fmt.Println("Environment Variables:")
+	fmt.Println("  All configuration can be set via environment variables with BOOLI_ prefix")
+	fmt.Println("  Example: BOOLI_DATABASE_HOST=localhost")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  ./booli-admin-api                           # Start the server")
+	fmt.Println("  ./booli-admin-api -init                     # Initialize everything")
+	fmt.Println("  ./booli-admin-api -init-keycloak           # Initialize only Keycloak")
+	fmt.Println("  ./booli-admin-api -validate-only           # Validate configuration")
+	fmt.Println("  ./booli-admin-api -config config.yaml      # Use specific config file")
+}
+
+// ShowVersionInfoQuiet shows version without logging (for --version)
+func ShowVersionInfoQuiet(version, commit, buildTime string) {
+	fmt.Printf("Booli Admin API\n")
+	fmt.Printf("Version: %s\n", version)
+	fmt.Printf("Commit:  %s\n", commit)
+	fmt.Printf("Built:   %s\n", buildTime)
+}
+
 func (cli *CLI) ShowVersionInfo(version, commit, buildTime string) {
 	cli.logger.Info("Booli Admin API",
 		zap.String("version", version),
@@ -292,7 +329,6 @@ func (cli *CLI) migrateDatabaseTables(cfg *config.Config) error {
 
 	if err := db.AutoMigrate(
 		&models.Tenant{},
-		&models.Role{},
 		&models.SSOProvider{},
 		&models.AuditLog{},
 		&models.TenantEnvironment{},

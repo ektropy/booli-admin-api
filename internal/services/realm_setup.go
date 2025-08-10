@@ -1,0 +1,279 @@
+package services
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/booli/booli-admin-api/internal/keycloak"
+	"go.uber.org/zap"
+)
+
+// RealmSetupService handles initial setup and configuration of Keycloak realms
+type RealmSetupService struct {
+	keycloakAdmin *keycloak.AdminClient
+	logger        *zap.Logger
+}
+
+// NewRealmSetupService creates a new realm setup service
+func NewRealmSetupService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *RealmSetupService {
+	return &RealmSetupService{
+		keycloakAdmin: keycloakAdmin,
+		logger:        logger,
+	}
+}
+
+// MSPRole represents the configuration for an MSP role
+type MSPRole struct {
+	Name        string
+	Description string
+	Composite   bool
+	ClientRole  bool
+}
+
+// GetMSPRoles returns the standard MSP roles that should be configured
+func (s *RealmSetupService) GetMSPRoles() []MSPRole {
+	return []MSPRole{
+		{
+			Name:        "msp-admin",
+			Description: "MSP Administrator - Full access to all tenant realms and MSP operations",
+			Composite:   false,
+			ClientRole:  false,
+		},
+		{
+			Name:        "msp-power",
+			Description: "MSP Power User - Write access to tenant realms, limited MSP operations",
+			Composite:   false,
+			ClientRole:  false,
+		},
+		{
+			Name:        "msp-viewer",
+			Description: "MSP Viewer - Read-only access to tenant realms and MSP information",
+			Composite:   false,
+			ClientRole:  false,
+		},
+	}
+}
+
+// GetTenantRoles returns the standard tenant roles that should be configured
+func (s *RealmSetupService) GetTenantRoles() []MSPRole {
+	return []MSPRole{
+		{
+			Name:        "tenant-admin",
+			Description: "Tenant Administrator - Full access to tenant resources",
+			Composite:   false,
+			ClientRole:  false,
+		},
+		{
+			Name:        "tenant-user",
+			Description: "Tenant User - Standard user access to tenant resources",
+			Composite:   false,
+			ClientRole:  false,
+		},
+		{
+			Name:        "tenant-viewer",
+			Description: "Tenant Viewer - Read-only access to tenant resources",
+			Composite:   false,
+			ClientRole:  false,
+		},
+	}
+}
+
+// SetupMasterRealm configures the master realm with MSP roles
+func (s *RealmSetupService) SetupMasterRealm(ctx context.Context) error {
+	s.logger.Info("Setting up master realm with MSP roles")
+	
+	// Configure MSP roles in master realm
+	mspRoles := s.GetMSPRoles()
+	for _, role := range mspRoles {
+		if err := s.createRealmRole(ctx, "master", role); err != nil {
+			return fmt.Errorf("failed to create MSP role %s: %w", role.Name, err)
+		}
+	}
+	
+	s.logger.Info("Master realm setup completed successfully")
+	return nil
+}
+
+// SetupTenantRealm configures a tenant realm with standard tenant roles
+func (s *RealmSetupService) SetupTenantRealm(ctx context.Context, realmName string) error {
+	s.logger.Info("Setting up tenant realm with standard roles", zap.String("realm", realmName))
+	
+	// Configure tenant roles
+	tenantRoles := s.GetTenantRoles()
+	for _, role := range tenantRoles {
+		if err := s.createRealmRole(ctx, realmName, role); err != nil {
+			return fmt.Errorf("failed to create tenant role %s in realm %s: %w", role.Name, realmName, err)
+		}
+	}
+	
+	s.logger.Info("Tenant realm setup completed successfully", zap.String("realm", realmName))
+	return nil
+}
+
+// SetupMSPRealm configures an MSP realm with both MSP and tenant roles
+func (s *RealmSetupService) SetupMSPRealm(ctx context.Context, mspRealmName string) error {
+	s.logger.Info("Setting up MSP realm with MSP and tenant roles", zap.String("realm", mspRealmName))
+	
+	// Configure MSP roles in MSP realm
+	mspRoles := s.GetMSPRoles()
+	for _, role := range mspRoles {
+		if err := s.createRealmRole(ctx, mspRealmName, role); err != nil {
+			return fmt.Errorf("failed to create MSP role %s in realm %s: %w", role.Name, mspRealmName, err)
+		}
+	}
+	
+	// Configure tenant roles in MSP realm (for managing tenant operations)
+	tenantRoles := s.GetTenantRoles()
+	for _, role := range tenantRoles {
+		if err := s.createRealmRole(ctx, mspRealmName, role); err != nil {
+			return fmt.Errorf("failed to create tenant role %s in MSP realm %s: %w", role.Name, mspRealmName, err)
+		}
+	}
+	
+	s.logger.Info("MSP realm setup completed successfully", zap.String("realm", mspRealmName))
+	return nil
+}
+
+// createRealmRole creates a realm-level role in Keycloak
+func (s *RealmSetupService) createRealmRole(ctx context.Context, realmName string, role MSPRole) error {
+	// Check if role already exists
+	existingRole, err := s.keycloakAdmin.GetRealmRole(ctx, realmName, role.Name)
+	if err == nil && existingRole != nil {
+		s.logger.Debug("Role already exists, skipping creation",
+			zap.String("realm", realmName),
+			zap.String("role", role.Name))
+		return nil
+	}
+	
+	// Create the role using the existing method signature
+	err = s.keycloakAdmin.CreateRealmRole(ctx, realmName, role.Name, role.Description)
+	if err != nil {
+		return fmt.Errorf("failed to create realm role: %w", err)
+	}
+	
+	s.logger.Info("Created realm role",
+		zap.String("realm", realmName),
+		zap.String("role", role.Name),
+		zap.String("description", role.Description))
+	
+	return nil
+}
+
+// EnsureMSPAdminUser creates or updates an MSP admin user in the master realm
+func (s *RealmSetupService) EnsureMSPAdminUser(ctx context.Context, username, email, password string) error {
+	s.logger.Info("Ensuring MSP admin user exists", zap.String("username", username))
+	
+	// Check if user already exists
+	existingUser, err := s.keycloakAdmin.GetUserByUsername(ctx, "master", username)
+	if err != nil && existingUser == nil {
+		// User doesn't exist, create them
+		userRepresentation := &keycloak.UserRepresentation{
+			Username: username,
+			Email:    email,
+			Enabled:  true,
+			Credentials: []keycloak.CredentialRepresentation{
+				{
+					Type:      "password",
+					Value:     password,
+					Temporary: false,
+				},
+			},
+		}
+		
+		createdUser, err := s.keycloakAdmin.CreateUser(ctx, "master", userRepresentation)
+		if err != nil {
+			return fmt.Errorf("failed to create MSP admin user: %w", err)
+		}
+		
+		s.logger.Info("Created MSP admin user", 
+			zap.String("username", createdUser.Username),
+			zap.String("user_id", createdUser.ID))
+		
+		existingUser = createdUser
+	}
+	
+	// Assign MSP admin role to the user
+	err = s.keycloakAdmin.AssignRealmRoleToUser(ctx, "master", existingUser.ID, "msp-admin")
+	if err != nil {
+		return fmt.Errorf("failed to assign MSP admin role: %w", err)
+	}
+	
+	s.logger.Info("MSP admin user setup completed successfully", 
+		zap.String("username", username),
+		zap.String("user_id", existingUser.ID))
+	
+	return nil
+}
+
+// ValidateRealmRoleSetup verifies that all required roles are properly configured
+func (s *RealmSetupService) ValidateRealmRoleSetup(ctx context.Context, realmName string, isMSPRealm bool) error {
+	s.logger.Info("Validating realm role setup", zap.String("realm", realmName))
+	
+	// Get expected roles based on realm type
+	var expectedRoles []MSPRole
+	if isMSPRealm {
+		expectedRoles = append(s.GetMSPRoles(), s.GetTenantRoles()...)
+	} else {
+		expectedRoles = s.GetTenantRoles()
+	}
+	
+	// Check each expected role
+	for _, expectedRole := range expectedRoles {
+		role, err := s.keycloakAdmin.GetRealmRole(ctx, realmName, expectedRole.Name)
+		if err != nil || role == nil {
+			return fmt.Errorf("required role %s not found in realm %s", expectedRole.Name, realmName)
+		}
+		
+		s.logger.Debug("Validated realm role",
+			zap.String("realm", realmName),
+			zap.String("role", role.Name))
+	}
+	
+	s.logger.Info("Realm role setup validation completed successfully", zap.String("realm", realmName))
+	return nil
+}
+
+// GetRealmRoleHierarchy returns the role hierarchy for access level determination
+func (s *RealmSetupService) GetRealmRoleHierarchy() map[string]int {
+	return map[string]int{
+		// Tenant roles
+		"tenant-viewer": 1,
+		"tenant-user":   2,
+		"tenant-admin":  3,
+		
+		// MSP roles (higher authority)
+		"msp-viewer": 4,
+		"msp-power":  5,
+		"msp-admin":  6,
+	}
+}
+
+// DetermineAccessLevelFromRoles converts user roles to access level
+func (s *RealmSetupService) DetermineAccessLevelFromRoles(roles []string) keycloak.RealmAccessLevel {
+	hierarchy := s.GetRealmRoleHierarchy()
+	maxLevel := 0
+	
+	for _, role := range roles {
+		if level, exists := hierarchy[role]; exists && level > maxLevel {
+			maxLevel = level
+		}
+	}
+	
+	// Map hierarchy levels to access levels
+	switch {
+	case maxLevel >= 6: // msp-admin
+		return keycloak.RealmAccessMSPAdmin
+	case maxLevel >= 5: // msp-power
+		return keycloak.RealmAccessWrite
+	case maxLevel >= 4: // msp-viewer
+		return keycloak.RealmAccessRead
+	case maxLevel >= 3: // tenant-admin
+		return keycloak.RealmAccessAdmin
+	case maxLevel >= 2: // tenant-user
+		return keycloak.RealmAccessWrite
+	case maxLevel >= 1: // tenant-viewer
+		return keycloak.RealmAccessRead
+	default:
+		return keycloak.RealmAccessNone
+	}
+}

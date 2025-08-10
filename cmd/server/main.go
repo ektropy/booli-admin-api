@@ -51,6 +51,18 @@ func main() {
 	)
 	flag.Parse()
 
+	// Handle help and version without any logging
+	if *showHelp {
+		cli.ShowUsageQuiet()
+		return
+	}
+
+	if *showVersion {
+		cli.ShowVersionInfoQuiet(version, commit, date)
+		return
+	}
+
+	// Now initialize loggers only for actual operations
 	basicLogger, _ := zap.NewProduction()
 	if basicLogger == nil {
 		basicLogger, _ = zap.NewDevelopment()
@@ -83,16 +95,6 @@ func main() {
 		zap.String("database_host", cfg.Database.Host))
 
 	cli := cli.New(logger)
-
-	if *showHelp {
-		cli.ShowUsage()
-		return
-	}
-
-	if *showVersion {
-		cli.ShowVersionInfo(version, commit, date)
-		return
-	}
 
 	if *initFlag {
 		if err := cli.RunFullSystemInitialization(cfg, *force); err != nil {

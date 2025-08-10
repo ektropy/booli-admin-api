@@ -40,8 +40,8 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 		if userID, exists := c.Get("user_id"); exists {
 			fields = append(fields, zap.String("user_id", userID.(string)))
 		}
-		if tenantID, exists := c.Get("tenant_id"); exists {
-			fields = append(fields, zap.String("tenant_id", tenantID.(string)))
+		if realmName, exists := c.Get("realm_name"); exists {
+			fields = append(fields, zap.String("realm_name", realmName.(string)))
 		}
 
 		// Always log requests, including health checks
@@ -151,8 +151,8 @@ func AuditLog() gin.HandlerFunc {
 			if userID, exists := c.Get("user_id"); exists {
 				fields = append(fields, zap.String("user_id", userID.(string)))
 			}
-			if tenantID, exists := c.Get("tenant_id"); exists {
-				fields = append(fields, zap.String("tenant_id", tenantID.(string)))
+			if realmName, exists := c.Get("realm_name"); exists {
+				fields = append(fields, zap.String("realm_name", realmName.(string)))
 			}
 			if email, exists := c.Get("user_email"); exists {
 				fields = append(fields, zap.String("user_email", email.(string)))

@@ -7,36 +7,32 @@ import (
 
 	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/models"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type AuditService struct {
 	db     *gorm.DB
-	redis  *redis.Client
 	logger *zap.Logger
 	config *config.Config
 }
 
-func NewAuditService(db *gorm.DB, redis *redis.Client, logger *zap.Logger, cfg *config.Config) *AuditService {
+func NewAuditService(db *gorm.DB, logger *zap.Logger, cfg *config.Config) *AuditService {
 	return &AuditService{
 		db:     db,
-		redis:  redis,
 		logger: logger,
 		config: cfg,
 	}
 }
 
-func (s *AuditService) ListAuditLogs(ctx context.Context, tenantID uuid.UUID, req *models.AuditLogSearchRequest) ([]models.AuditLog, int64, error) {
+func (s *AuditService) ListAuditLogs(ctx context.Context, realmName string, req *models.AuditLogSearchRequest) ([]models.AuditLog, int64, error) {
 	var logs []models.AuditLog
 	var total int64
 
-	query := s.db.WithContext(ctx).Model(&models.AuditLog{}).Where("tenant_id = ?", tenantID)
+	query := s.db.WithContext(ctx).Model(&models.AuditLog{}).Where("realm_name = ?", realmName)
 
-	if req.UserID != nil {
-		query = query.Where("user_id = ?", *req.UserID)
+	if req.KeycloakUserID != nil {
+		query = query.Where("keycloak_user_id = ?", *req.KeycloakUserID)
 	}
 
 	if req.Action != "" {
@@ -85,16 +81,16 @@ func (s *AuditService) ListAuditLogs(ctx context.Context, tenantID uuid.UUID, re
 		orderBy = fmt.Sprintf("%s %s", req.SortBy, order)
 	}
 
-	if err := query.Preload("User").Order(orderBy).Offset(offset).Limit(req.PageSize).Find(&logs).Error; err != nil {
+	if err := query.Order(orderBy).Offset(offset).Limit(req.PageSize).Find(&logs).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to list audit logs: %w", err)
 	}
 
 	return logs, total, nil
 }
 
-func (s *AuditService) GetAuditLog(ctx context.Context, tenantID, logID uuid.UUID) (*models.AuditLog, error) {
+func (s *AuditService) GetAuditLog(ctx context.Context, realmName, logID string) (*models.AuditLog, error) {
 	var log models.AuditLog
-	if err := s.db.WithContext(ctx).Preload("User").Where("id = ? AND tenant_id = ?", logID, tenantID).First(&log).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("id = ? AND realm_name = ?", logID, realmName).First(&log).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -104,10 +100,10 @@ func (s *AuditService) GetAuditLog(ctx context.Context, tenantID, logID uuid.UUI
 	return &log, nil
 }
 
-func (s *AuditService) CreateAuditLog(ctx context.Context, tenantID uuid.UUID, req *models.CreateAuditLogRequest) (*models.AuditLog, error) {
+func (s *AuditService) CreateAuditLog(ctx context.Context, realmName string, req *models.CreateAuditLogRequest) (*models.AuditLog, error) {
 	log := &models.AuditLog{
-		TenantID:     tenantID,
-		UserID:       req.UserID,
+		RealmName:      realmName,
+		KeycloakUserID: req.KeycloakUserID,
 		Action:       req.Action,
 		ResourceType: req.ResourceType,
 		ResourceID:   req.ResourceID,
@@ -126,13 +122,13 @@ func (s *AuditService) CreateAuditLog(ctx context.Context, tenantID uuid.UUID, r
 	return log, nil
 }
 
-func (s *AuditService) GetAuditStats(ctx context.Context, tenantID uuid.UUID, from, to time.Time) (*models.AuditLogStatsResponse, error) {
+func (s *AuditService) GetAuditStats(ctx context.Context, realmName string, from, to time.Time) (*models.AuditLogStatsResponse, error) {
 	stats := &models.AuditLogStatsResponse{
 		SeverityBreakdown: make(map[models.AuditSeverity]int64),
 		StatusBreakdown:   make(map[models.AuditStatus]int64),
 	}
 
-	query := s.db.WithContext(ctx).Model(&models.AuditLog{}).Where("tenant_id = ?", tenantID)
+	query := s.db.WithContext(ctx).Model(&models.AuditLog{}).Where("realm_name = ?", realmName)
 	if !from.IsZero() {
 		query = query.Where("created_at >= ?", from)
 	}

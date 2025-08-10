@@ -12,7 +12,6 @@ import (
 type Container struct {
 	Tenant      *TenantService
 	User        *UserService
-	Role        *RoleService
 	SSO         *SSOService
 	Audit       *AuditService
 	Environment *EnvironmentService
@@ -31,11 +30,10 @@ func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.Admi
 	}
 
 	return &Container{
-		Tenant:      NewTenantService(db, redis, keycloakAdmin, logger, cfg),
-		User:        NewUserService(db, redis, keycloakAdmin, logger, cfg),
-		Role:        NewRoleService(db, redis, logger, cfg),
-		SSO:         NewSSOService(db, redis, logger, cfg),
-		Audit:       NewAuditService(db, redis, logger, cfg),
+		Tenant:      NewTenantService(keycloakAdmin, logger),
+		User:        NewUserService(keycloakAdmin, logger),
+		SSO:         NewSSOService(keycloakAdmin, logger),
+		Audit:       NewAuditService(db, logger, cfg),
 		Environment: NewEnvironmentService(db, valkeyCache, logger),
 	}
 }

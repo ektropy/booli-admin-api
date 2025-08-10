@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -24,8 +23,6 @@ type IntegrationTestSuite struct {
 }
 
 func (suite *IntegrationTestSuite) TestHealthEndpoint() {
-	log.Println("Testing health endpoint...")
-
 	healthURL := fmt.Sprintf("http://%s:%s/health", suite.backendHost, suite.backendPort)
 	resp, err := http.Get(healthURL)
 	require.NoError(suite.T(), err)
@@ -39,13 +36,9 @@ func (suite *IntegrationTestSuite) TestHealthEndpoint() {
 	bodyStr := string(body)
 	assert.Contains(suite.T(), bodyStr, `"status":"healthy"`)
 	assert.Contains(suite.T(), bodyStr, `"service":"booli-admin-api"`)
-
-	log.Println("Health endpoint test passed")
 }
 
 func (suite *IntegrationTestSuite) TestDatabaseConnectivity() {
-	log.Println("Testing database connectivity...")
-
 	err := suite.db.Ping()
 	require.NoError(suite.T(), err)
 
@@ -53,13 +46,9 @@ func (suite *IntegrationTestSuite) TestDatabaseConnectivity() {
 	err = suite.db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&count)
 	require.NoError(suite.T(), err)
 	assert.Greater(suite.T(), count, 0)
-
-	log.Printf("Database connectivity test passed (found %d tables)", count)
 }
 
 func (suite *IntegrationTestSuite) TestKeycloakConnectivity() {
-	log.Println("Testing Keycloak connectivity...")
-
 	url := fmt.Sprintf("http://%s:%s/health/ready", suite.keycloakHost, suite.keycloakMgmtPort)
 	resp, err := http.Get(url)
 	require.NoError(suite.T(), err)
@@ -69,25 +58,18 @@ func (suite *IntegrationTestSuite) TestKeycloakConnectivity() {
 
 	token := suite.AuthenticateUser("master", "admin-cli", "", suite.Config.KeycloakAdminUser, suite.Config.KeycloakAdminPassword)
 	assert.NotEmpty(suite.T(), token)
-
-	log.Println("Keycloak connectivity test passed")
 }
 
 func (suite *IntegrationTestSuite) TestValkeyConnectivity() {
-	log.Println("Testing Valkey connectivity...")
 
 	resp, err := http.Get(suite.GetHealthURL())
 	require.NoError(suite.T(), err)
 	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
-
-	log.Println("Valkey connectivity test passed (via backend health check)")
 }
 
 func (suite *IntegrationTestSuite) TestAuthenticationFlow() {
-	log.Println("Testing authentication flow...")
-
 	resp, err := suite.MakeRequest("GET", "/admin/tenants", nil, nil)
 	require.NoError(suite.T(), err)
 	defer func() { _ = resp.Body.Close() }()
@@ -99,12 +81,9 @@ func (suite *IntegrationTestSuite) TestAuthenticationFlow() {
 
 	bodyStr := string(body)
 	assert.Contains(suite.T(), bodyStr, `"error":"Authentication required"`)
-
-	log.Println("Authentication flow test passed")
 }
 
 func (suite *IntegrationTestSuite) TestContainerOrchestration() {
-	log.Println("Testing container orchestration...")
 
 	containers := map[string]testcontainers.Container{
 		"PostgreSQL": suite.postgresContainer,
@@ -119,17 +98,12 @@ func (suite *IntegrationTestSuite) TestContainerOrchestration() {
 		require.NoError(suite.T(), err)
 		assert.True(suite.T(), state.Running, "Container %s should be running", name)
 
-		log.Printf("Container %s is running", name)
 	}
 
 	require.NotNil(suite.T(), suite.backendProcess, "Backend process should not be nil")
-	log.Printf("Backend process is running (PID: %d)", suite.backendProcess.Pid)
-
-	log.Println("Container orchestration test passed")
 }
 
 func (suite *IntegrationTestSuite) TestEndToEndWorkflow() {
-	log.Println("Testing end-to-end workflow...")
 
 	resp, err := http.Get(suite.GetHealthURL())
 	require.NoError(suite.T(), err)
@@ -147,7 +121,6 @@ func (suite *IntegrationTestSuite) TestEndToEndWorkflow() {
 	err = suite.db.Ping()
 	require.NoError(suite.T(), err)
 
-	log.Println("End-to-end workflow test passed")
 }
 
 func TestIntegrationSuite(t *testing.T) {

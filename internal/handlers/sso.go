@@ -10,17 +10,16 @@ import (
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type SSOServiceInterface interface {
-	ListProviders(ctx context.Context, tenantID uuid.UUID, page, pageSize int) ([]*models.SSOProvider, int64, error)
-	CreateProvider(ctx context.Context, provider *models.SSOProvider) (*models.SSOProvider, error)
-	GetProvider(ctx context.Context, tenantID, providerID uuid.UUID) (*models.SSOProvider, error)
-	UpdateProvider(ctx context.Context, tenantID, providerID uuid.UUID, req *models.UpdateSSOProviderRequest) (*models.SSOProvider, error)
-	DeleteProvider(ctx context.Context, tenantID, providerID uuid.UUID) error
-	TestConnection(ctx context.Context, tenantID, providerID uuid.UUID, req *models.TestSSOProviderRequest) (*models.SSOTestResult, error)
+	ListProviders(ctx context.Context, realmName string, page, pageSize int) ([]*models.SSOProvider, int64, error)
+	CreateProvider(ctx context.Context, realmName string, req *models.CreateSSOProviderRequest) (*models.SSOProvider, error)
+	GetProvider(ctx context.Context, realmName, alias string) (*models.SSOProvider, error)
+	UpdateProvider(ctx context.Context, realmName, alias string, req *models.UpdateSSOProviderRequest) (*models.SSOProvider, error)
+	DeleteProvider(ctx context.Context, realmName, alias string) error
+	TestProvider(ctx context.Context, realmName, alias string, req *models.TestSSOProviderRequest) (*models.SSOTestResult, error)
 }
 
 type SSOHandler struct {
@@ -45,9 +44,9 @@ func NewSSOHandler(ssoService SSOServiceInterface, logger *zap.Logger) *SSOHandl
 // @Success 200 {object} map[string]interface{}
 // @Router /sso/providers [get]
 func (h *SSOHandler) ListProviders(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -65,7 +64,7 @@ func (h *SSOHandler) ListProviders(c *gin.Context) {
 		}
 	}
 
-	providers, total, err := h.ssoService.ListProviders(c.Request.Context(), tenantID.(uuid.UUID), page, pageSize)
+	providers, total, err := h.ssoService.ListProviders(c.Request.Context(), realmName.(string), page, pageSize)
 	if err != nil {
 		h.logger.Error("Failed to list SSO providers", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to list SSO providers", nil)
@@ -96,9 +95,9 @@ func (h *SSOHandler) ListProviders(c *gin.Context) {
 // @Success 201 {object} map[string]interface{}
 // @Router /sso/providers [post]
 func (h *SSOHandler) CreateProvider(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -113,23 +112,7 @@ func (h *SSOHandler) CreateProvider(c *gin.Context) {
 		return
 	}
 
-	provider := &models.SSOProvider{
-		TenantID:      tenantID.(uuid.UUID),
-		ProviderType:  req.ProviderType,
-		ProviderName:  req.ProviderName,
-		DisplayName:   req.DisplayName,
-		Configuration: req.Configuration,
-		Status:        models.SSOStatusInactive,
-		IsDefault:     req.IsDefault,
-		Priority:      req.Priority,
-	}
-
-	if err := provider.ValidateConfiguration(); err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid configuration", err.Error())
-		return
-	}
-
-	createdProvider, err := h.ssoService.CreateProvider(c.Request.Context(), provider)
+	createdProvider, err := h.ssoService.CreateProvider(c.Request.Context(), realmName.(string), &req)
 	if err != nil {
 		h.logger.Error("Failed to create SSO provider", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create SSO provider", nil)
@@ -148,25 +131,19 @@ func (h *SSOHandler) CreateProvider(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /sso/providers/{id} [get]
 func (h *SSOHandler) GetProvider(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
-	providerID := c.Param("id")
-	if providerID == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider ID is required", nil)
+	alias := c.Param("id")
+	if alias == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider alias is required", nil)
 		return
 	}
 
-	parsedID, err := uuid.Parse(providerID)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid provider ID format", nil)
-		return
-	}
-
-	provider, err := h.ssoService.GetProvider(c.Request.Context(), tenantID.(uuid.UUID), parsedID)
+	provider, err := h.ssoService.GetProvider(c.Request.Context(), realmName.(string), alias)
 	if err != nil {
 		h.logger.Error("Failed to get SSO provider", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get SSO provider", nil)
@@ -191,21 +168,15 @@ func (h *SSOHandler) GetProvider(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /sso/providers/{id} [put]
 func (h *SSOHandler) UpdateProvider(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
-	providerID := c.Param("id")
-	if providerID == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider ID is required", nil)
-		return
-	}
-
-	parsedID, err := uuid.Parse(providerID)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid provider ID format", nil)
+	alias := c.Param("id")
+	if alias == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider alias is required", nil)
 		return
 	}
 
@@ -220,7 +191,7 @@ func (h *SSOHandler) UpdateProvider(c *gin.Context) {
 		return
 	}
 
-	updatedProvider, err := h.ssoService.UpdateProvider(c.Request.Context(), tenantID.(uuid.UUID), parsedID, &req)
+	updatedProvider, err := h.ssoService.UpdateProvider(c.Request.Context(), realmName.(string), alias, &req)
 	if err != nil {
 		h.logger.Error("Failed to update SSO provider", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to update SSO provider", nil)
@@ -244,25 +215,19 @@ func (h *SSOHandler) UpdateProvider(c *gin.Context) {
 // @Success 204
 // @Router /sso/providers/{id} [delete]
 func (h *SSOHandler) DeleteProvider(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
-	providerID := c.Param("id")
-	if providerID == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider ID is required", nil)
+	alias := c.Param("id")
+	if alias == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Provider alias is required", nil)
 		return
 	}
 
-	parsedID, err := uuid.Parse(providerID)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid provider ID format", nil)
-		return
-	}
-
-	err = h.ssoService.DeleteProvider(c.Request.Context(), tenantID.(uuid.UUID), parsedID)
+	err := h.ssoService.DeleteProvider(c.Request.Context(), realmName.(string), alias)
 	if err != nil {
 		h.logger.Error("Failed to delete SSO provider", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to delete SSO provider", nil)
@@ -281,9 +246,9 @@ func (h *SSOHandler) DeleteProvider(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /sso/test-connection [post]
 func (h *SSOHandler) TestConnection(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -293,19 +258,13 @@ func (h *SSOHandler) TestConnection(c *gin.Context) {
 		return
 	}
 
-	providerID := c.Query("provider_id")
-	if providerID == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "provider_id query parameter is required", nil)
+	alias := c.Query("alias")
+	if alias == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "alias query parameter is required", nil)
 		return
 	}
 
-	parsedID, err := uuid.Parse(providerID)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid provider ID format", nil)
-		return
-	}
-
-	testResult, err := h.ssoService.TestConnection(c.Request.Context(), tenantID.(uuid.UUID), parsedID, &req)
+	testResult, err := h.ssoService.TestProvider(c.Request.Context(), realmName.(string), alias, &req)
 	if err != nil {
 		h.logger.Error("Failed to test SSO connection", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to test SSO connection", nil)

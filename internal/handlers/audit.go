@@ -13,15 +13,14 @@ import (
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type AuditServiceInterface interface {
-	ListAuditLogs(ctx context.Context, tenantID uuid.UUID, req *models.AuditLogSearchRequest) ([]models.AuditLog, int64, error)
-	GetAuditLog(ctx context.Context, tenantID, logID uuid.UUID) (*models.AuditLog, error)
-	CreateAuditLog(ctx context.Context, tenantID uuid.UUID, req *models.CreateAuditLogRequest) (*models.AuditLog, error)
-	GetAuditStats(ctx context.Context, tenantID uuid.UUID, from, to time.Time) (*models.AuditLogStatsResponse, error)
+	ListAuditLogs(ctx context.Context, realmName string, req *models.AuditLogSearchRequest) ([]models.AuditLog, int64, error)
+	GetAuditLog(ctx context.Context, realmName, logID string) (*models.AuditLog, error)
+	CreateAuditLog(ctx context.Context, realmName string, req *models.CreateAuditLogRequest) (*models.AuditLog, error)
+	GetAuditStats(ctx context.Context, realmName string, from, to time.Time) (*models.AuditLogStatsResponse, error)
 }
 
 type AuditHandler struct {
@@ -48,9 +47,9 @@ func NewAuditHandler(auditService AuditServiceInterface, logger *zap.Logger) *Au
 // @Success 200 {object} map[string]interface{}
 // @Router /audit/logs [get]
 func (h *AuditHandler) List(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -70,10 +69,8 @@ func (h *AuditHandler) List(c *gin.Context) {
 		}
 	}
 
-	if userID := c.Query("user_id"); userID != "" {
-		if parsed, err := uuid.Parse(userID); err == nil {
-			req.UserID = &parsed
-		}
+	if keycloakUserID := c.Query("keycloak_user_id"); keycloakUserID != "" {
+		req.KeycloakUserID = &keycloakUserID
 	}
 
 	if action := c.Query("action"); action != "" {
@@ -122,7 +119,7 @@ func (h *AuditHandler) List(c *gin.Context) {
 		return
 	}
 
-	logs, total, err := h.auditService.ListAuditLogs(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	logs, total, err := h.auditService.ListAuditLogs(c.Request.Context(), realmName.(string), &req)
 	if err != nil {
 		h.logger.Error("Failed to list audit logs", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to list audit logs", nil)
@@ -153,9 +150,9 @@ func (h *AuditHandler) List(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /audit/logs/{id} [get]
 func (h *AuditHandler) Get(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -165,13 +162,7 @@ func (h *AuditHandler) Get(c *gin.Context) {
 		return
 	}
 
-	parsedID, err := uuid.Parse(logID)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid log ID format", nil)
-		return
-	}
-
-	log, err := h.auditService.GetAuditLog(c.Request.Context(), tenantID.(uuid.UUID), parsedID)
+	log, err := h.auditService.GetAuditLog(c.Request.Context(), realmName.(string), logID)
 	if err != nil {
 		h.logger.Error("Failed to get audit log", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get audit log", nil)
@@ -195,9 +186,9 @@ func (h *AuditHandler) Get(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /audit/export [post]
 func (h *AuditHandler) Export(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
+	realmName, exists := c.Get("realm_name")
 	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_id not found in context", nil)
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "realm_name not found in context", nil)
 		return
 	}
 
@@ -210,10 +201,8 @@ func (h *AuditHandler) Export(c *gin.Context) {
 	req.Page = 1
 	req.PageSize = 10000
 
-	if userID := c.Query("user_id"); userID != "" {
-		if parsed, err := uuid.Parse(userID); err == nil {
-			req.UserID = &parsed
-		}
+	if keycloakUserID := c.Query("keycloak_user_id"); keycloakUserID != "" {
+		req.KeycloakUserID = &keycloakUserID
 	}
 
 	if action := c.Query("action"); action != "" {
@@ -246,7 +235,7 @@ func (h *AuditHandler) Export(c *gin.Context) {
 		}
 	}
 
-	logs, _, err := h.auditService.ListAuditLogs(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	logs, _, err := h.auditService.ListAuditLogs(c.Request.Context(), realmName.(string), &req)
 	if err != nil {
 		h.logger.Error("Failed to list audit logs for export", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to export audit logs", nil)
@@ -267,19 +256,19 @@ func (h *AuditHandler) exportCSV(c *gin.Context, logs []models.AuditLog) {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
 
-	header := []string{"ID", "User ID", "User Email", "Action", "Resource Type", "Resource ID", "IP Address", "Severity", "Status", "Created At"}
+	header := []string{"ID", "Keycloak User ID", "User Email", "Action", "Resource Type", "Resource ID", "IP Address", "Severity", "Status", "Created At"}
 	_ = writer.Write(header)
 
 	for _, log := range logs {
 		userEmail := ""
-		userIDStr := ""
-		if log.UserID != nil {
-			userIDStr = log.UserID.String()
+		keycloakUserIDStr := ""
+		if log.KeycloakUserID != nil {
+			keycloakUserIDStr = *log.KeycloakUserID
 		}
 
 		record := []string{
-			log.ID.String(),
-			userIDStr,
+			log.ID,
+			keycloakUserIDStr,
 			userEmail,
 			log.Action,
 			log.ResourceType,

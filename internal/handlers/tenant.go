@@ -11,21 +11,20 @@ import (
 	"github.com/booli/booli-admin-api/internal/models"
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
 )
 
 type TenantService interface {
-	CreateTenant(ctx context.Context, req *models.CreateTenantRequest, mspTenantID *uuid.UUID) (*models.Tenant, error)
-	GetTenant(ctx context.Context, tenantID uuid.UUID, includeCounts bool) (*models.Tenant, error)
-	ListTenants(ctx context.Context, mspTenantID *uuid.UUID, page, pageSize int) (*models.TenantListResponse, error)
-	UpdateTenant(ctx context.Context, tenantID uuid.UUID, req *models.UpdateTenantRequest) (*models.Tenant, error)
-	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
-	ProvisionTenant(ctx context.Context, tenant *models.Tenant) error
-	GetUserCount(ctx context.Context, tenantID uuid.UUID) (int, error)
-	AddUserToTenant(ctx context.Context, tenantID uuid.UUID, userID string) error
-	RemoveUserFromTenant(ctx context.Context, tenantID uuid.UUID, userID string) error
+	CreateTenant(ctx context.Context, req *models.CreateTenantRequest, parentRealmName string) (*models.Tenant, error)
+	GetTenant(ctx context.Context, realmName string) (*models.Tenant, error)
+	ListTenants(ctx context.Context, parentRealmName string, page, pageSize int) (*models.TenantListResponse, error)
+	UpdateTenant(ctx context.Context, realmName string, req *models.UpdateTenantRequest) (*models.Tenant, error)
+	DeleteTenant(ctx context.Context, realmName string) error
+	ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (*models.Tenant, error)
+	GetUserCount(ctx context.Context, realmName string) (int, error)
+	AddUserToTenant(ctx context.Context, realmName, userID string) error
+	RemoveUserFromTenant(ctx context.Context, realmName, userID string) error
 }
 
 type TenantHandler struct {
@@ -62,26 +61,25 @@ func (h *TenantHandler) List(c *gin.Context) {
 		pageSize = constants.DefaultPageSize
 	}
 
-	var mspTenantID *uuid.UUID
+	var parentRealmName string
 	roles, _ := middleware.GetUserRoles(c)
 
-	isMSPUser := contains(roles, constants.RoleMSPAdmin) || contains(roles, constants.RoleMSPPower) || contains(roles, constants.RoleMSPBasic)
+	isMSPAdmin := contains(roles, constants.RoleMSPAdmin)
+	isMSPUser := isMSPAdmin || contains(roles, constants.RoleMSPPower) || contains(roles, constants.RoleMSPBasic)
 
-	if !isMSPUser {
-		tenantID, err := middleware.GetTenantID(c)
-		if err != nil {
-			RespondInvalidTenant(c, h.logger)
-			return
-		}
-		mspTenantID = &tenantID
+	if isMSPAdmin {
+		// MSP admins can see all tenants
+		parentRealmName = ""
+	} else if isMSPUser {
+		// MSP power users can see tenants under their MSP
+		parentRealmName = "master"
 	} else {
-		tenantID, err := middleware.GetTenantID(c)
-		if err == nil {
-			mspTenantID = &tenantID
-		}
+		// Regular users should not list tenants
+		utils.RespondWithError(c, http.StatusForbidden, utils.ErrCodeForbidden, "Access denied", nil)
+		return
 	}
 
-	tenants, err := h.tenantService.ListTenants(c.Request.Context(), mspTenantID, page, pageSize)
+	tenants, err := h.tenantService.ListTenants(c.Request.Context(), parentRealmName, page, pageSize)
 	if err != nil {
 		RespondListFailed(c, "tenants", err, h.logger)
 		return
@@ -109,21 +107,16 @@ func (h *TenantHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var mspTenantID *uuid.UUID
 	roles, _ := middleware.GetUserRoles(c)
-
-	if contains(roles, "msp-admin") {
-		mspTenantID = nil
-	} else if contains(roles, "msp-power") {
-		if req.Type == models.TenantTypeClient {
-			tenantID, err := middleware.GetTenantID(c)
-			if err == nil {
-				mspTenantID = &tenantID
-			}
-		}
+	if !contains(roles, constants.RoleMSPAdmin) && !contains(roles, constants.RoleMSPPower) {
+		utils.RespondWithError(c, http.StatusForbidden, utils.ErrCodeForbidden, "Access denied", nil)
+		return
 	}
 
-	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req, mspTenantID)
+	// For now, all tenant realms have master as parent (MSP realm)
+	parentRealmName := "master"
+
+	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req, parentRealmName)
 	if err != nil {
 		h.logger.Error("Failed to create tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create tenant", nil)
@@ -145,16 +138,13 @@ func (h *TenantHandler) Create(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{}
 // @Router /admin/tenants/{id} [get]
 func (h *TenantHandler) Get(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
-	includeCounts := c.Query("include_counts") == "true"
-
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID, includeCounts)
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
@@ -162,10 +152,12 @@ func (h *TenantHandler) Get(c *gin.Context) {
 	}
 
 	response := tenant.ToResponse()
+	
+	includeCounts := c.Query("include_counts") == "true"
 	if includeCounts {
 		userCount := 0
-		if tenant.KeycloakOrganizationID != "" {
-			count, err := h.tenantService.GetUserCount(c.Request.Context(), tenant.ID)
+		if tenant.KeycloakRealm != "" {
+			count, err := h.tenantService.GetUserCount(c.Request.Context(), tenant.KeycloakRealm)
 			if err != nil {
 				h.logger.Warn("Failed to get user count", zap.Error(err))
 			} else {
@@ -173,9 +165,9 @@ func (h *TenantHandler) Get(c *gin.Context) {
 			}
 		}
 		response.UserCount = userCount
-		response.RoleCount = len(tenant.Roles)
-		response.SSOProviderCount = len(tenant.SSOProviders)
-		response.ChildTenantCount = len(tenant.ChildTenants)
+		response.RoleCount = 0 // Roles are now in Keycloak
+		response.SSOProviderCount = 0 // SSO providers are now in Keycloak
+		response.ChildTenantCount = 0 // Child count would need separate query
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -195,10 +187,9 @@ func (h *TenantHandler) Get(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{}
 // @Router /admin/tenants/{id} [put]
 func (h *TenantHandler) Update(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
@@ -208,7 +199,7 @@ func (h *TenantHandler) Update(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, &req)
+	tenant, err := h.tenantService.UpdateTenant(c.Request.Context(), realmName, &req)
 	if err != nil {
 		h.logger.Error("Failed to update tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to update tenant", nil)
@@ -230,14 +221,13 @@ func (h *TenantHandler) Update(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{}
 // @Router /admin/tenants/{id} [delete]
 func (h *TenantHandler) Delete(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
-	if err := h.tenantService.DeleteTenant(c.Request.Context(), tenantID); err != nil {
+	if err := h.tenantService.DeleteTenant(c.Request.Context(), realmName); err != nil {
 		h.logger.Error("Failed to delete tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to delete tenant", nil)
 		return
@@ -260,19 +250,13 @@ func (h *TenantHandler) Delete(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{}
 // @Router /admin/tenants/{id}/provision [post]
 func (h *TenantHandler) ProvisionTenant(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	if tenantIDStr == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Realm name is required", nil)
 		return
 	}
 
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID format", nil)
-		return
-	}
-
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID, false)
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get tenant", nil)
@@ -284,28 +268,18 @@ func (h *TenantHandler) ProvisionTenant(c *gin.Context) {
 		return
 	}
 
-	if tenant.KeycloakOrganizationID != "" {
-		utils.RespondWithError(c, http.StatusConflict, utils.ErrCodeConflict, "Tenant already provisioned", nil)
-		return
-	}
-
-	err = h.tenantService.ProvisionTenant(c.Request.Context(), tenant)
-	if err != nil {
-		h.logger.Error("Failed to provision tenant", zap.Error(err), zap.String("tenant_id", tenant.ID.String()))
-		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to provision tenant", nil)
-		return
-	}
-
+	// In the new architecture, tenants are automatically provisioned when created
+	// This endpoint now just checks if the realm exists
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Tenant provisioned successfully",
+		"message": "Tenant is already provisioned",
+		"realm":   tenant.KeycloakRealm,
 	})
 }
 
 func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
@@ -321,7 +295,7 @@ func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID, false)
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
@@ -333,27 +307,10 @@ func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
 		return
 	}
 
-	var currentSettings models.TenantSettings
-	if len(tenant.Settings) > 0 {
-		_ = json.Unmarshal(tenant.Settings, &currentSettings)
-	}
-
+	// In the new architecture, SSO configuration will be handled directly in Keycloak
+	// This endpoint should configure Identity Providers in the Keycloak realm
+	
 	updatedSettings := models.TenantSettings{
-		LogoURL:           currentSettings.LogoURL,
-		PrimaryColor:      currentSettings.PrimaryColor,
-		SecondaryColor:    currentSettings.SecondaryColor,
-		ThemeMode:         currentSettings.ThemeMode,
-		EnableSSO:         currentSettings.EnableSSO,
-		EnableMFA:         currentSettings.EnableMFA,
-		EnableAudit:       currentSettings.EnableAudit,
-		MaxUsers:          currentSettings.MaxUsers,
-		MaxRoles:          currentSettings.MaxRoles,
-		MaxSSOProviders:   currentSettings.MaxSSOProviders,
-		NotificationEmail: currentSettings.NotificationEmail,
-		AlertWebhooks:     currentSettings.AlertWebhooks,
-		DataRetentionDays: currentSettings.DataRetentionDays,
-		ComplianceFlags:   currentSettings.ComplianceFlags,
-
 		MSPSSOEnabled:  req.MSPSSOEnabled,
 		MSPSSOProvider: req.MSPSSOProvider,
 		MSPSSOConfig:   req.MSPSSOConfig,
@@ -371,7 +328,7 @@ func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
 		Settings: (*datatypes.JSON)(&settingsJSON),
 	}
 
-	updatedTenant, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, updateReq)
+	updatedTenant, err := h.tenantService.UpdateTenant(c.Request.Context(), realmName, updateReq)
 	if err != nil {
 		h.logger.Error("Failed to update MSP SSO configuration", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to update MSP SSO configuration", nil)
@@ -385,14 +342,13 @@ func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
 }
 
 func (h *TenantHandler) GetMSPSSO(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID, false)
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
@@ -420,10 +376,9 @@ func (h *TenantHandler) GetMSPSSO(c *gin.Context) {
 }
 
 func (h *TenantHandler) TestMSPSSO(c *gin.Context) {
-	tenantIDStr := c.Param("id")
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant ID", nil)
+	realmName := c.Param("id")
+	if realmName == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
 		return
 	}
 
@@ -436,7 +391,7 @@ func (h *TenantHandler) TestMSPSSO(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID, false)
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)

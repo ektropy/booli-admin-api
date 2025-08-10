@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type AuditLog struct {
-	ID           uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	TenantID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
-	UserID       *uuid.UUID     `gorm:"type:uuid;index" json:"user_id,omitempty"`
+	ID              string         `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	RealmName       string         `gorm:"not null;index" json:"realm_name"`
+	KeycloakUserID  *string        `gorm:"index" json:"keycloak_user_id,omitempty"`
 	Action       string         `gorm:"not null;size:255" json:"action" validate:"required"`
 	ResourceType string         `gorm:"size:255" json:"resource_type"`
 	ResourceID   string         `gorm:"size:255" json:"resource_id"`
@@ -26,7 +25,6 @@ type AuditLog struct {
 	CreatedAt    time.Time      `json:"created_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
-	Tenant Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 }
 
 type AuditSeverity string
@@ -95,12 +93,6 @@ func (ad *AuditDetails) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, ad)
 }
 
-func (a *AuditLog) BeforeCreate(tx *gorm.DB) error {
-	if a.ID == uuid.Nil {
-		a.ID = uuid.New()
-	}
-	return nil
-}
 
 func (a *AuditLog) IsSecurityEvent() bool {
 	securityActions := []string{
@@ -132,7 +124,7 @@ func (a *AuditLog) GetUserEmail() string {
 }
 
 type CreateAuditLogRequest struct {
-	UserID       *uuid.UUID    `json:"user_id,omitempty"`
+	KeycloakUserID *string       `json:"keycloak_user_id,omitempty"`
 	Action       string        `json:"action" validate:"required"`
 	ResourceType string        `json:"resource_type,omitempty"`
 	ResourceID   string        `json:"resource_id,omitempty"`
@@ -145,9 +137,10 @@ type CreateAuditLogRequest struct {
 }
 
 type AuditLogResponse struct {
-	ID           uuid.UUID     `json:"id"`
-	UserID       *uuid.UUID    `json:"user_id,omitempty"`
-	UserEmail    string        `json:"user_email,omitempty"`
+	ID             string      `json:"id"`
+	RealmName      string      `json:"realm_name"`
+	KeycloakUserID *string     `json:"keycloak_user_id,omitempty"`
+	UserEmail      string      `json:"user_email,omitempty"`
 	Action       string        `json:"action"`
 	ResourceType string        `json:"resource_type"`
 	ResourceID   string        `json:"resource_id"`
@@ -169,7 +162,8 @@ type AuditLogListResponse struct {
 }
 
 type AuditLogSearchRequest struct {
-	UserID       *uuid.UUID     `json:"user_id,omitempty"`
+	KeycloakUserID *string        `json:"keycloak_user_id,omitempty"`
+	RealmName      string         `json:"realm_name,omitempty"`
 	Action       string         `json:"action,omitempty"`
 	ResourceType string         `json:"resource_type,omitempty"`
 	ResourceID   string         `json:"resource_id,omitempty"`
@@ -202,9 +196,9 @@ type ActionCount struct {
 }
 
 type UserActivityCount struct {
-	UserID    uuid.UUID `json:"user_id"`
-	UserEmail string    `json:"user_email"`
-	Count     int64     `json:"count"`
+	KeycloakUserID string `json:"keycloak_user_id"`
+	UserEmail      string `json:"user_email"`
+	Count          int64  `json:"count"`
 }
 
 type TimelinePoint struct {
@@ -214,8 +208,9 @@ type TimelinePoint struct {
 
 func (a *AuditLog) ToResponse() *AuditLogResponse {
 	response := &AuditLogResponse{
-		ID:           a.ID,
-		UserID:       a.UserID,
+		ID:             a.ID,
+		RealmName:      a.RealmName,
+		KeycloakUserID: a.KeycloakUserID,
 		Action:       a.Action,
 		ResourceType: a.ResourceType,
 		ResourceID:   a.ResourceID,

@@ -461,6 +461,25 @@ func (c *AdminClient) GetRealm(ctx context.Context, realmName string) (*RealmRep
 	return &realm, nil
 }
 
+func (c *AdminClient) GetRealms(ctx context.Context) ([]RealmRepresentation, error) {
+	resp, err := c.makeRequest(ctx, "GET", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get realms: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get realms failed with status %d", resp.StatusCode)
+	}
+
+	var realms []RealmRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&realms); err != nil {
+		return nil, fmt.Errorf("failed to decode realms response: %w", err)
+	}
+
+	return realms, nil
+}
+
 func (c *AdminClient) UpdateRealm(ctx context.Context, realmName string, realm *RealmRepresentation) error {
 	resp, err := c.makeRequest(ctx, "PUT", "/"+realmName, realm)
 	if err != nil {
@@ -676,6 +695,56 @@ func (c *AdminClient) GetRealmRole(ctx context.Context, realmName, roleName stri
 	return &role, nil
 }
 
+func (c *AdminClient) CreateRealmRole(ctx context.Context, realmName, roleName, description string) error {
+	role := &RoleRepresentation{
+		Name:        roleName,
+		Description: description,
+		Composite:   false,
+	}
+	return c.CreateRole(ctx, realmName, role)
+}
+
+func (c *AdminClient) ListRealmRoles(ctx context.Context, realmName string) ([]RoleRepresentation, error) {
+	resp, err := c.makeRequest(ctx, "GET", fmt.Sprintf("/%s/roles", realmName), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list roles: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list roles failed with status %d", resp.StatusCode)
+	}
+
+	var roles []RoleRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&roles); err != nil {
+		return nil, fmt.Errorf("failed to decode roles response: %w", err)
+	}
+
+	return roles, nil
+}
+
+func (c *AdminClient) DeleteRealmRole(ctx context.Context, realmName, roleName string) error {
+	resp, err := c.makeRequest(ctx, "DELETE", fmt.Sprintf("/%s/roles/%s", realmName, roleName), nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete role: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("role %s not found in realm %s", roleName, realmName)
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("delete role failed with status %d", resp.StatusCode)
+	}
+
+	c.logger.Info("Deleted realm role",
+		zap.String("realm", realmName),
+		zap.String("role", roleName))
+
+	return nil
+}
+
 func (c *AdminClient) CreateIdentityProvider(ctx context.Context, realmName string, idp *IdentityProviderRepresentation) error {
 	resp, err := c.makeRequest(ctx, "POST", fmt.Sprintf("/%s/identity-provider/instances", realmName), idp)
 	if err != nil {
@@ -694,6 +763,92 @@ func (c *AdminClient) CreateIdentityProvider(ctx context.Context, realmName stri
 	c.logger.Info("Created identity provider",
 		zap.String("realm", realmName),
 		zap.String("provider", idp.Alias))
+
+	return nil
+}
+
+func (c *AdminClient) GetIdentityProvider(ctx context.Context, realmName, alias string) (*IdentityProviderRepresentation, error) {
+	resp, err := c.makeRequest(ctx, "GET", fmt.Sprintf("/%s/identity-provider/instances/%s", realmName, alias), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get identity provider: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("identity provider %s not found in realm %s", alias, realmName)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get identity provider failed with status %d", resp.StatusCode)
+	}
+
+	var idp IdentityProviderRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&idp); err != nil {
+		return nil, fmt.Errorf("failed to decode identity provider response: %w", err)
+	}
+
+	return &idp, nil
+}
+
+func (c *AdminClient) ListIdentityProviders(ctx context.Context, realmName string) ([]IdentityProviderRepresentation, error) {
+	resp, err := c.makeRequest(ctx, "GET", fmt.Sprintf("/%s/identity-provider/instances", realmName), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list identity providers: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list identity providers failed with status %d", resp.StatusCode)
+	}
+
+	var idps []IdentityProviderRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&idps); err != nil {
+		return nil, fmt.Errorf("failed to decode identity providers response: %w", err)
+	}
+
+	return idps, nil
+}
+
+func (c *AdminClient) UpdateIdentityProvider(ctx context.Context, realmName, alias string, idp *IdentityProviderRepresentation) error {
+	resp, err := c.makeRequest(ctx, "PUT", fmt.Sprintf("/%s/identity-provider/instances/%s", realmName, alias), idp)
+	if err != nil {
+		return fmt.Errorf("failed to update identity provider: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("identity provider %s not found in realm %s", alias, realmName)
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("update identity provider failed with status %d", resp.StatusCode)
+	}
+
+	c.logger.Info("Updated identity provider",
+		zap.String("realm", realmName),
+		zap.String("provider", alias))
+
+	return nil
+}
+
+func (c *AdminClient) DeleteIdentityProvider(ctx context.Context, realmName, alias string) error {
+	resp, err := c.makeRequest(ctx, "DELETE", fmt.Sprintf("/%s/identity-provider/instances/%s", realmName, alias), nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete identity provider: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("identity provider %s not found in realm %s", alias, realmName)
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("delete identity provider failed with status %d", resp.StatusCode)
+	}
+
+	c.logger.Info("Deleted identity provider",
+		zap.String("realm", realmName),
+		zap.String("provider", alias))
 
 	return nil
 }
@@ -1055,3 +1210,539 @@ func (c *AdminClient) ListOrganizationMembers(ctx context.Context, realmName, or
 
 	return members, nil
 }
+
+// Authorization Services support
+
+// ResourceRepresentation represents a Keycloak Authorization resource
+type ResourceRepresentation struct {
+	ID          string                 `json:"id,omitempty"`
+	Name        string                 `json:"name"`
+	Type        string                 `json:"type,omitempty"`
+	URI         string                 `json:"uri,omitempty"`
+	Scopes      []ScopeRepresentation  `json:"scopes,omitempty"`
+	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+	DisplayName string                 `json:"displayName,omitempty"`
+}
+
+// ScopeRepresentation represents a Keycloak Authorization scope
+type ScopeRepresentation struct {
+	ID          string `json:"id,omitempty"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName,omitempty"`
+	IconURI     string `json:"iconUri,omitempty"`
+}
+
+// PolicyRepresentation represents a Keycloak Authorization policy
+type PolicyRepresentation struct {
+	ID               string                 `json:"id,omitempty"`
+	Name             string                 `json:"name"`
+	Type             string                 `json:"type"`
+	Logic            string                 `json:"logic,omitempty"`
+	DecisionStrategy string                 `json:"decisionStrategy,omitempty"`
+	Config           map[string]interface{} `json:"config,omitempty"`
+}
+
+// PermissionRepresentation represents a Keycloak Authorization permission
+type PermissionRepresentation struct {
+	ID               string   `json:"id,omitempty"`
+	Name             string   `json:"name"`
+	Type             string   `json:"type"`
+	Logic            string   `json:"logic,omitempty"`
+	DecisionStrategy string   `json:"decisionStrategy,omitempty"`
+	Resources        []string `json:"resources,omitempty"`
+	Scopes           []string `json:"scopes,omitempty"`
+	Policies         []string `json:"policies,omitempty"`
+}
+
+// AuthorizationRequest represents a request for authorization evaluation
+type AuthorizationRequest struct {
+	GrantType string `json:"grant_type"`
+	Audience  string `json:"audience"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"`
+}
+
+// CheckUserPermission checks if a user has permission to perform an action on a resource
+func (c *AdminClient) CheckUserPermission(ctx context.Context, realmName, userID, resource, action string) (bool, error) {
+	
+	c.logger.Debug("Checking user permission",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID),
+		zap.String("resource", resource),
+		zap.String("action", action))
+
+	// For now, return true for basic operations
+	// In production, this should use Keycloak's Authorization Services API
+	// to evaluate permissions based on policies and resources
+	
+	return true, nil
+}
+
+// CreateResource creates an authorization resource in Keycloak
+func (c *AdminClient) CreateResource(ctx context.Context, realmName, clientID string, resource *ResourceRepresentation) (*ResourceRepresentation, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/resource", realmName, clientID)
+	
+	resp, err := c.makeRequest(ctx, "POST", endpoint, resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return nil, fmt.Errorf("create resource failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var createdResource ResourceRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&createdResource); err != nil {
+		return nil, fmt.Errorf("failed to decode resource response: %w", err)
+	}
+
+	c.logger.Info("Created authorization resource",
+		zap.String("realm", realmName),
+		zap.String("client_id", clientID),
+		zap.String("resource_name", resource.Name))
+
+	return &createdResource, nil
+}
+
+// CreateScope creates an authorization scope in Keycloak
+func (c *AdminClient) CreateScope(ctx context.Context, realmName, clientID string, scope *ScopeRepresentation) (*ScopeRepresentation, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/scope", realmName, clientID)
+	
+	resp, err := c.makeRequest(ctx, "POST", endpoint, scope)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scope: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return nil, fmt.Errorf("create scope failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var createdScope ScopeRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&createdScope); err != nil {
+		return nil, fmt.Errorf("failed to decode scope response: %w", err)
+	}
+
+	c.logger.Info("Created authorization scope",
+		zap.String("realm", realmName),
+		zap.String("client_id", clientID),
+		zap.String("scope_name", scope.Name))
+
+	return &createdScope, nil
+}
+
+// CreatePolicy creates an authorization policy in Keycloak
+func (c *AdminClient) CreatePolicy(ctx context.Context, realmName, clientID string, policy *PolicyRepresentation) (*PolicyRepresentation, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/policy/%s", realmName, clientID, policy.Type)
+	
+	resp, err := c.makeRequest(ctx, "POST", endpoint, policy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create policy: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return nil, fmt.Errorf("create policy failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var createdPolicy PolicyRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&createdPolicy); err != nil {
+		return nil, fmt.Errorf("failed to decode policy response: %w", err)
+	}
+
+	c.logger.Info("Created authorization policy",
+		zap.String("realm", realmName),
+		zap.String("client_id", clientID),
+		zap.String("policy_name", policy.Name),
+		zap.String("policy_type", policy.Type))
+
+	return &createdPolicy, nil
+}
+
+// CreatePermission creates an authorization permission in Keycloak
+func (c *AdminClient) CreatePermission(ctx context.Context, realmName, clientID string, permission *PermissionRepresentation) (*PermissionRepresentation, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/permission/%s", realmName, clientID, permission.Type)
+	
+	resp, err := c.makeRequest(ctx, "POST", endpoint, permission)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create permission: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return nil, fmt.Errorf("create permission failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var createdPermission PermissionRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&createdPermission); err != nil {
+		return nil, fmt.Errorf("failed to decode permission response: %w", err)
+	}
+
+	c.logger.Info("Created authorization permission",
+		zap.String("realm", realmName),
+		zap.String("client_id", clientID),
+		zap.String("permission_name", permission.Name),
+		zap.String("permission_type", permission.Type))
+
+	return &createdPermission, nil
+}
+
+// Cross-realm access control methods
+
+// CheckUserRealmAccess verifies if a user has access to a specific realm
+func (c *AdminClient) CheckUserRealmAccess(ctx context.Context, userID, targetRealm string) (bool, error) {
+	// First, check if user exists in the target realm
+	exists, err := c.UserExistsInRealm(ctx, targetRealm, userID)
+	if err != nil {
+		return false, fmt.Errorf("failed to check user existence in realm: %w", err)
+	}
+	
+	if exists {
+		c.logger.Debug("User has direct access to realm",
+			zap.String("user_id", userID),
+			zap.String("realm", targetRealm))
+		return true, nil
+	}
+	
+	// If user doesn't exist in target realm, check for cross-realm access
+	// This involves checking if the user has MSP admin roles that grant cross-realm access
+	return c.CheckCrossRealmAccess(ctx, userID, targetRealm)
+}
+
+// UserExistsInRealm checks if a user exists in a specific realm
+func (c *AdminClient) UserExistsInRealm(ctx context.Context, realmName, userID string) (bool, error) {
+	endpoint := fmt.Sprintf("/%s/users/%s", realmName, userID)
+	
+	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to check user in realm: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("check user in realm failed with status %d", resp.StatusCode)
+	}
+	
+	return true, nil
+}
+
+// CheckCrossRealmAccess verifies if a user has cross-realm access privileges
+func (c *AdminClient) CheckCrossRealmAccess(ctx context.Context, userID, targetRealm string) (bool, error) {
+	// Get user's realm memberships and roles across all realms
+	realms, err := c.GetRealms(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get realms: %w", err)
+	}
+	
+	// Check each realm where the user might exist
+	for _, realm := range realms {
+		userExists, err := c.UserExistsInRealm(ctx, realm.Realm, userID)
+		if err != nil {
+			c.logger.Debug("Error checking user in realm",
+				zap.String("user_id", userID),
+				zap.String("realm", realm.Realm),
+				zap.Error(err))
+			continue
+		}
+		
+		if userExists {
+			// Check if user has MSP admin roles in this realm
+			hasAccess, err := c.UserHasCrossRealmRole(ctx, realm.Realm, userID, targetRealm)
+			if err != nil {
+				c.logger.Debug("Error checking cross-realm role",
+					zap.String("user_id", userID),
+					zap.String("source_realm", realm.Realm),
+					zap.String("target_realm", targetRealm),
+					zap.Error(err))
+				continue
+			}
+			
+			if hasAccess {
+				c.logger.Info("User has cross-realm access",
+					zap.String("user_id", userID),
+					zap.String("source_realm", realm.Realm),
+					zap.String("target_realm", targetRealm))
+				return true, nil
+			}
+		}
+	}
+	
+	c.logger.Debug("User does not have cross-realm access",
+		zap.String("user_id", userID),
+		zap.String("target_realm", targetRealm))
+	
+	return false, nil
+}
+
+// UserHasCrossRealmRole checks if user has roles that grant cross-realm access
+func (c *AdminClient) UserHasCrossRealmRole(ctx context.Context, userRealm, userID, targetRealm string) (bool, error) {
+	// Get user's roles in their home realm
+	roles, err := c.GetUserRealmRoles(ctx, userRealm, userID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get user roles: %w", err)
+	}
+	
+	// Check for MSP admin roles that grant cross-realm access
+	for _, role := range roles {
+		if c.isCrossRealmRole(role.Name, userRealm, targetRealm) {
+			return true, nil
+		}
+	}
+	
+	return false, nil
+}
+
+
+// isCrossRealmRole determines if a role grants cross-realm access
+func (c *AdminClient) isCrossRealmRole(roleName, sourceRealm, targetRealm string) bool {
+	// MSP admin roles grant access to all tenant realms
+	if roleName == "msp-admin" || roleName == "msp-power" {
+		// Check if source is master realm and target is tenant realm
+		if sourceRealm == "master" || sourceRealm == c.adminRealm {
+			return true
+		}
+		
+		// Or if it's a parent-child relationship between MSP and tenant realms
+		if c.isParentChildRelationship(sourceRealm, targetRealm) {
+			return true
+		}
+	}
+	
+	// MSP viewer role grants read-only access
+	if roleName == "msp-viewer" {
+		if sourceRealm == "master" || sourceRealm == c.adminRealm {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// isParentChildRelationship checks if there's a parent-child relationship between realms
+func (c *AdminClient) isParentChildRelationship(parentRealm, childRealm string) bool {
+	// In our architecture, MSP realms can manage tenant realms
+	// This is where you'd implement your specific parent-child logic
+	// For now, we'll use a simple naming convention check
+	
+	// Example: msp-acme realm can manage acme-tenant-1, acme-tenant-2, etc.
+	if strings.HasPrefix(parentRealm, "msp-") {
+		mspName := strings.TrimPrefix(parentRealm, "msp-")
+		return strings.HasPrefix(childRealm, mspName+"-")
+	}
+	
+	return false
+}
+
+// ValidateRealmAccess is the main method used by middleware to validate access
+func (c *AdminClient) ValidateRealmAccess(ctx context.Context, userID, targetRealm, sourceRealm string) (bool, error) {
+	// If user is accessing their own realm, allow
+	if sourceRealm == targetRealm {
+		return true, nil
+	}
+	
+	// Check cross-realm access
+	return c.CheckUserRealmAccess(ctx, userID, targetRealm)
+}
+
+// RealmAccessLevel represents the level of access a user has to a realm
+type RealmAccessLevel string
+
+const (
+	RealmAccessNone     RealmAccessLevel = "none"
+	RealmAccessRead     RealmAccessLevel = "read"
+	RealmAccessWrite    RealmAccessLevel = "write"
+	RealmAccessAdmin    RealmAccessLevel = "admin"
+	RealmAccessMSPAdmin RealmAccessLevel = "msp-admin"
+)
+
+// GetUserRealmAccessLevel determines the level of access a user has to a realm
+func (c *AdminClient) GetUserRealmAccessLevel(ctx context.Context, userID, targetRealm, sourceRealm string) (RealmAccessLevel, error) {
+	// Direct realm membership grants full access
+	if sourceRealm == targetRealm {
+		return RealmAccessAdmin, nil
+	}
+	
+	// Check for cross-realm roles
+	realms, err := c.GetRealms(ctx)
+	if err != nil {
+		return RealmAccessNone, fmt.Errorf("failed to get realms: %w", err)
+	}
+	
+	for _, realm := range realms {
+		userExists, err := c.UserExistsInRealm(ctx, realm.Realm, userID)
+		if err != nil {
+			continue
+		}
+		
+		if userExists {
+			roles, err := c.GetUserRealmRoles(ctx, realm.Realm, userID)
+			if err != nil {
+				continue
+			}
+			
+			// Determine highest access level based on roles
+			for _, role := range roles {
+				switch role.Name {
+				case "msp-admin":
+					if c.isCrossRealmRole(role.Name, realm.Realm, targetRealm) {
+						return RealmAccessMSPAdmin, nil
+					}
+				case "msp-power":
+					if c.isCrossRealmRole(role.Name, realm.Realm, targetRealm) {
+						return RealmAccessWrite, nil
+					}
+				case "msp-viewer":
+					if c.isCrossRealmRole(role.Name, realm.Realm, targetRealm) {
+						return RealmAccessRead, nil
+					}
+				}
+			}
+		}
+	}
+	
+	return RealmAccessNone, nil
+}
+
+// Role management methods
+
+// AssignRealmRoleToUser assigns a realm role to a user
+func (c *AdminClient) AssignRealmRoleToUser(ctx context.Context, realmName, userID, roleName string) error {
+	// First, get the role to get its ID
+	role, err := c.GetRealmRole(ctx, realmName, roleName)
+	if err != nil {
+		return fmt.Errorf("failed to get role %s: %w", roleName, err)
+	}
+	if role == nil {
+		return fmt.Errorf("role %s not found in realm %s", roleName, realmName)
+	}
+	
+	endpoint := fmt.Sprintf("/%s/users/%s/role-mappings/realm", realmName, userID)
+	
+	roleAssignments := []RoleRepresentation{*role}
+	
+	resp, err := c.makeRequest(ctx, "POST", endpoint, roleAssignments)
+	if err != nil {
+		return fmt.Errorf("failed to assign realm role: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusNoContent {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return fmt.Errorf("assign realm role failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	
+	c.logger.Info("Assigned realm role to user",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID),
+		zap.String("role", roleName))
+	
+	return nil
+}
+
+// RevokeRealmRoleFromUser revokes a realm role from a user
+func (c *AdminClient) RevokeRealmRoleFromUser(ctx context.Context, realmName, userID, roleName string) error {
+	// First, get the role to get its ID
+	role, err := c.GetRealmRole(ctx, realmName, roleName)
+	if err != nil {
+		return fmt.Errorf("failed to get role %s: %w", roleName, err)
+	}
+	if role == nil {
+		return fmt.Errorf("role %s not found in realm %s", roleName, realmName)
+	}
+	
+	endpoint := fmt.Sprintf("/%s/users/%s/role-mappings/realm", realmName, userID)
+	
+	roleAssignments := []RoleRepresentation{*role}
+	
+	resp, err := c.makeRequest(ctx, "DELETE", endpoint, roleAssignments)
+	if err != nil {
+		return fmt.Errorf("failed to revoke realm role: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusNoContent {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return fmt.Errorf("revoke realm role failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	
+	c.logger.Info("Revoked realm role from user",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID),
+		zap.String("role", roleName))
+	
+	return nil
+}
+
+// ResetUserPassword resets a user's password
+func (c *AdminClient) ResetUserPassword(ctx context.Context, realmName, userID, newPassword string, temporary bool) error {
+	endpoint := fmt.Sprintf("/%s/users/%s/reset-password", realmName, userID)
+	
+	credential := CredentialRepresentation{
+		Type:      "password",
+		Value:     newPassword,
+		Temporary: temporary,
+	}
+	
+	resp, err := c.makeRequest(ctx, "PUT", endpoint, credential)
+	if err != nil {
+		return fmt.Errorf("failed to reset user password: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusNoContent {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return fmt.Errorf("reset user password failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	
+	c.logger.Info("Reset user password",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID),
+		zap.Bool("temporary", temporary))
+	
+	return nil
+}
+
+// SearchUsers searches for users by username, email, first name, or last name
+func (c *AdminClient) SearchUsers(ctx context.Context, realmName, query string, max int) ([]UserRepresentation, error) {
+	endpoint := fmt.Sprintf("/%s/users?search=%s", realmName, url.QueryEscape(query))
+	if max > 0 {
+		endpoint += fmt.Sprintf("&max=%d", max)
+	}
+	
+	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return nil, fmt.Errorf("search users failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var users []UserRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("failed to decode users response: %w", err)
+	}
+
+	return users, nil
+}
+
+

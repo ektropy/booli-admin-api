@@ -67,6 +67,10 @@ func Load() (*Config, error) {
 	return LoadWithConfigFile("")
 }
 
+func LoadConfig(configFile string) (*Config, error) {
+	return LoadWithConfigFile(configFile)
+}
+
 func LoadWithConfigFile(configFile string) (*Config, error) {
 	setDefaults()
 
@@ -153,25 +157,33 @@ func setDefaults() {
 func NewLogger(environment string) (*zap.Logger, error) {
 	var config zap.Config
 
+	// Get log level from environment variable or use defaults
+	logLevel := getLogLevel(environment)
+
 	if environment == "development" {
 		config = zap.NewDevelopmentConfig()
-		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		config.Level = zap.NewAtomicLevelAt(logLevel)
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		config.EncoderConfig.TimeKey = "timestamp"
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		config.Development = true
+		config.DisableStacktrace = false
 	} else {
 		config = zap.NewProductionConfig()
+		config.Level = zap.NewAtomicLevelAt(logLevel)
 		config.EncoderConfig.TimeKey = "timestamp"
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 		config.EncoderConfig.MessageKey = "message"
 		config.EncoderConfig.LevelKey = "level"
 		config.EncoderConfig.CallerKey = "caller"
 		config.EncoderConfig.StacktraceKey = "stacktrace"
+		config.Development = false
 		
-		if environment == "test" {
-			config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		// Only show stacktraces for errors and above in production
+		if logLevel <= zapcore.WarnLevel {
+			config.DisableStacktrace = false
 		} else {
-			config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+			config.DisableStacktrace = true
 		}
 	}
 
@@ -184,4 +196,37 @@ func NewLogger(environment string) (*zap.Logger, error) {
 	}
 
 	return logger, nil
+}
+
+// getLogLevel determines the appropriate log level based on environment and env vars
+func getLogLevel(environment string) zapcore.Level {
+	// Check for explicit log level environment variable
+	if levelStr := viper.GetString("LOG_LEVEL"); levelStr != "" {
+		switch strings.ToLower(levelStr) {
+		case "debug":
+			return zapcore.DebugLevel
+		case "info":
+			return zapcore.InfoLevel
+		case "warn", "warning":
+			return zapcore.WarnLevel
+		case "error":
+			return zapcore.ErrorLevel
+		case "fatal":
+			return zapcore.FatalLevel
+		}
+	}
+
+	// Default levels based on environment
+	switch environment {
+	case "development":
+		return zapcore.DebugLevel
+	case "test":
+		return zapcore.DebugLevel
+	case "staging":
+		return zapcore.InfoLevel
+	case "production":
+		return zapcore.InfoLevel
+	default:
+		return zapcore.InfoLevel
+	}
 }

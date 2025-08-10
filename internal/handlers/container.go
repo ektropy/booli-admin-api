@@ -12,7 +12,6 @@ type Container struct {
 	Auth        *AuthHandler
 	Tenant      *TenantHandler
 	User        *UserHandler
-	Role        *RoleHandler
 	SSO         *SSOHandler
 	Audit       *AuditHandler
 	Environment *EnvironmentHandler
@@ -24,7 +23,6 @@ func NewContainer(services *services.Container, oidcService *auth.OIDCService, l
 		Auth:        NewAuthHandler(oidcService, logger),
 		Tenant:      NewTenantHandler(services.Tenant, logger),
 		User:        NewUserHandler(services.User, logger),
-		Role:        NewRoleHandler(services.Role, logger),
 		SSO:         NewSSOHandler(services.SSO, logger),
 		Audit:       NewAuditHandler(services.Audit, logger),
 		Environment: NewEnvironmentHandler(services.Environment, logger),

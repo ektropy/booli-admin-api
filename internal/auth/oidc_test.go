@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
+	"golang.org/x/oauth2"
 )
 
 func TestOIDCService_AddProvider(t *testing.T) {
@@ -254,4 +255,186 @@ func TestGenerateRandomState(t *testing.T) {
 
 	assert.Greater(t, len(state1), 20)
 	assert.Greater(t, len(state2), 20)
+}
+
+func TestNewOIDCService(t *testing.T) {
+	logger := zaptest.NewLogger(t)
+	service := NewOIDCService(logger)
+	
+	assert.NotNil(t, service)
+	assert.NotNil(t, service.providers)
+	assert.Equal(t, logger, service.logger)
+	assert.Empty(t, service.providers)
+}
+
+func TestCreateKeycloakMSPProvider(t *testing.T) {
+	provider := CreateKeycloakMSPProvider(
+		"https://keycloak.example.com",
+		"msp-realm",
+		"client-id",
+		"client-secret",
+		"https://app.example.com/callback",
+		"booli-admin-api",
+		true,
+		"/path/to/ca.crt",
+	)
+	
+	assert.NotNil(t, provider)
+	assert.Equal(t, "keycloak-msp-realm", provider.Name)
+	assert.Equal(t, "https://keycloak.example.com/realms/msp-realm", provider.IssuerURL)
+	assert.Equal(t, "msp-realm", provider.RealmName)
+	assert.True(t, provider.SkipTLSVerify)
+	assert.Equal(t, "/path/to/ca.crt", provider.CACertPath)
+	assert.False(t, provider.IsAzureAD)
+}
+
+func TestCreateAzureADProvider(t *testing.T) {
+	provider := CreateAzureADProvider(
+		"azure-ad",
+		"tenant-id-123",
+		"client-id",
+		"client-secret",
+		"https://app.example.com/callback",
+	)
+	
+	assert.NotNil(t, provider)
+	assert.Equal(t, "azure-ad", provider.Name)
+	assert.Equal(t, "https://login.microsoftonline.com/tenant-id-123/v2.0", provider.IssuerURL)
+	assert.Equal(t, "client-id", provider.ClientID)
+	assert.Equal(t, "client-secret", provider.ClientSecret)
+	assert.Equal(t, "https://app.example.com/callback", provider.RedirectURL)
+	assert.True(t, provider.IsAzureAD)
+	assert.Equal(t, "tenant-id-123", provider.TenantID)
+	assert.Contains(t, provider.Scopes, "profile")
+	assert.Contains(t, provider.Scopes, "email")
+	assert.Contains(t, provider.Scopes, "User.Read")
+}
+
+func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
+	provider := CreateKeycloakProvider(
+		"test-keycloak",
+		"https://keycloak.example.com",
+		"test-realm",
+		"client-id",
+		"client-secret",
+		"https://app.example.com/callback",
+		"booli-admin-api",
+		false,
+		"",
+	)
+	
+	// Mock the oauth2Config for testing
+	provider.oauth2Config = &oauth2.Config{
+		ClientID:    provider.ClientID,
+		RedirectURL: provider.RedirectURL,
+		Scopes:      provider.Scopes,
+	}
+	
+	// Test with empty state (should generate random)
+	url := provider.GenerateAuthURL("")
+	assert.Contains(t, url, "client_id=client-id")
+	assert.Contains(t, url, "redirect_uri=")
+	assert.Contains(t, url, "state=")
+	
+	// Test with provided state
+	url = provider.GenerateAuthURL("test-state-123")
+	assert.Contains(t, url, "state=test-state-123")
+}
+
+func TestOIDCProvider_MapAzureADClaims(t *testing.T) {
+	provider := CreateAzureADProvider(
+		"azure-ad",
+		"tenant-id-123",
+		"client-id",
+		"client-secret",
+		"https://app.example.com/callback",
+	)
+	
+	claims := &OIDCClaims{
+		Subject:  "user-123",
+		Email:    "user@example.com",
+		Roles:    []string{"admin", "user"},
+		TenantID: "azure-tenant-123",
+	}
+	
+	provider.mapAzureADClaims(claims)
+	
+	// Should map roles to realm access
+	assert.Contains(t, claims.RealmAccess.Roles, "admin")
+	assert.Contains(t, claims.RealmAccess.Roles, "user")
+	
+	// Should map tenant ID to tenant context
+	assert.Equal(t, "azure-tenant-123", claims.TenantContext)
+}
+
+func TestOIDCProvider_MapAzureADClaims_EmptyValues(t *testing.T) {
+	provider := CreateAzureADProvider(
+		"azure-ad",
+		"tenant-id-123",
+		"client-id",
+		"client-secret",
+		"https://app.example.com/callback",
+	)
+	
+	claims := &OIDCClaims{
+		Subject: "user-123",
+		Email:   "user@example.com",
+	}
+	
+	provider.mapAzureADClaims(claims)
+	
+	// Should handle empty values gracefully
+	assert.Empty(t, claims.RealmAccess.Roles)
+	assert.Empty(t, claims.TenantContext)
+}
+
+func TestOIDCProvider_SecurityConfiguration(t *testing.T) {
+	tests := []struct {
+		name           string
+		skipTLSVerify  bool
+		caCertPath     string
+		expectedSkip   bool
+		expectedCAPath string
+	}{
+		{
+			name:           "Skip TLS verification",
+			skipTLSVerify:  true,
+			caCertPath:     "",
+			expectedSkip:   true,
+			expectedCAPath: "",
+		},
+		{
+			name:           "Use CA certificate",
+			skipTLSVerify:  false,
+			caCertPath:     "/path/to/ca.crt",
+			expectedSkip:   false,
+			expectedCAPath: "/path/to/ca.crt",
+		},
+		{
+			name:           "Default secure configuration",
+			skipTLSVerify:  false,
+			caCertPath:     "",
+			expectedSkip:   false,
+			expectedCAPath: "",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := CreateKeycloakProvider(
+				"test-keycloak",
+				"https://keycloak.example.com",
+				"test-realm",
+				"client-id",
+				"client-secret",
+				"https://app.example.com/callback",
+				"booli-admin-api",
+				tt.skipTLSVerify,
+				tt.caCertPath,
+			)
+			
+			assert.Equal(t, tt.expectedSkip, provider.SkipTLSVerify)
+			assert.Equal(t, tt.expectedCAPath, provider.CACertPath)
+		})
+	}
 }

@@ -24,10 +24,6 @@ func SeedDevelopmentData(db *gorm.DB) error {
 		return err
 	}
 
-	if err := createDefaultRoles(db); err != nil {
-		return err
-	}
-
 	if err := createTestTenants(db); err != nil {
 		return err
 	}
@@ -46,10 +42,6 @@ func SeedProductionData(db *gorm.DB) error {
 	}
 
 	if err := createMSPTenant(db); err != nil {
-		return err
-	}
-
-	if err := createDefaultRoles(db); err != nil {
 		return err
 	}
 
@@ -180,107 +172,3 @@ func createMSPTenant(db *gorm.DB) error {
 	return nil
 }
 
-func createDefaultRoles(db *gorm.DB) error {
-	var mspTenant models.Tenant
-	err := db.Where("type = ?", models.TenantTypeMSP).First(&mspTenant).Error
-	if err != nil {
-		return err
-	}
-
-	defaultRoles := []struct {
-		name        string
-		description string
-		permissions models.Permissions
-	}{
-		{
-			name:        "msp-admin",
-			description: "Full MSP administrative access",
-			permissions: models.Permissions{
-				UserCreate: true, UserRead: true, UserUpdate: true, UserDelete: true, UserList: true,
-				RoleCreate: true, RoleRead: true, RoleUpdate: true, RoleDelete: true, RoleList: true, RoleAssign: true,
-				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
-				AuditRead: true, AuditExport: true,
-				TenantCreate: true, TenantRead: true, TenantUpdate: true, TenantDelete: true, TenantList: true,
-				SystemConfig: true, SystemMonitor: true, SystemMaintain: true,
-			},
-		},
-		{
-			name:        "msp-power",
-			description: "MSP power user access",
-			permissions: models.Permissions{
-				UserRead: true, UserUpdate: true, UserList: true,
-				RoleRead: true, RoleList: true,
-				SSORead: true, SSOUpdate: true, SSOTest: true,
-				AuditRead: true, AuditExport: true,
-				TenantRead: true, TenantUpdate: true, TenantList: true,
-				SystemMonitor: true,
-			},
-		},
-		{
-			name:        "msp-basic",
-			description: "Basic MSP user access",
-			permissions: models.Permissions{
-				UserRead: true, UserList: true,
-				RoleRead: true, RoleList: true,
-				SSORead:    true,
-				AuditRead:  true,
-				TenantRead: true, TenantList: true,
-				SystemMonitor: true,
-			},
-		},
-		{
-			name:        "tenant-admin",
-			description: "Full tenant administrative access",
-			permissions: models.Permissions{
-				UserCreate: true, UserRead: true, UserUpdate: true, UserDelete: true, UserList: true,
-				RoleCreate: true, RoleRead: true, RoleUpdate: true, RoleDelete: true, RoleList: true, RoleAssign: true,
-				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
-				AuditRead: true, AuditExport: true,
-			},
-		},
-		{
-			name:        "tenant-power",
-			description: "Tenant power user access",
-			permissions: models.Permissions{
-				UserRead: true, UserUpdate: true, UserList: true,
-				RoleRead: true, RoleList: true,
-				SSOCreate: true, SSORead: true, SSOUpdate: true, SSODelete: true, SSOTest: true,
-				AuditRead: true, AuditExport: true,
-			},
-		},
-		{
-			name:        "tenant-basic",
-			description: "Basic tenant user access",
-			permissions: models.Permissions{
-				UserRead: true, UserList: true,
-				RoleRead: true, RoleList: true,
-				SSORead:   true,
-				AuditRead: true,
-			},
-		},
-	}
-
-	for _, roleData := range defaultRoles {
-		var existingRole models.Role
-		err := db.Where("tenant_id = ? AND name = ?", mspTenant.ID, roleData.name).First(&existingRole).Error
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				permissionsJSON, _ := json.Marshal(roleData.permissions)
-				role := &models.Role{
-					TenantID:    mspTenant.ID,
-					Name:        roleData.name,
-					Description: roleData.description,
-					Permissions: datatypes.JSON(permissionsJSON),
-					IsSystem:    true,
-				}
-				if err := db.Create(role).Error; err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-	}
-
-	return nil
-}

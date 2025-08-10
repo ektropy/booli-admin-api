@@ -7,26 +7,27 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/booli/booli-admin-api/internal/constants"
 	"github.com/booli/booli-admin-api/internal/middleware"
 	"github.com/booli/booli-admin-api/internal/models"
-	"github.com/booli/booli-admin-api/internal/services"
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type UserServiceInterface interface {
-	ListUsers(ctx context.Context, tenantID uuid.UUID, req *models.UserSearchRequest) ([]models.User, int64, error)
-	CreateUser(ctx context.Context, req *models.CreateUserRequest) (*models.User, error)
-	GetUser(ctx context.Context, tenantID uuid.UUID, userID string) (*models.User, error)
-	UpdateUser(ctx context.Context, tenantID uuid.UUID, userID string, req *models.UpdateUserRequest) (*models.User, error)
-	DeleteUser(ctx context.Context, tenantID uuid.UUID, userID string) error
-	BulkCreateUsers(ctx context.Context, tenantID uuid.UUID, req *models.BulkCreateUserRequest) ([]models.User, error)
-	ImportUsersFromCSV(ctx context.Context, tenantID uuid.UUID, records [][]string) (*services.CSVImportResult, error)
+	ListUsers(ctx context.Context, realmName string, req *models.UserSearchRequest) ([]models.User, int64, error)
+	CreateUser(ctx context.Context, realmName string, req *models.CreateUserRequest) (*models.User, error)
+	GetUser(ctx context.Context, realmName, userID string) (*models.User, error)
+	UpdateUser(ctx context.Context, realmName, userID string, req *models.UpdateUserRequest) (*models.User, error)
+	DeleteUser(ctx context.Context, realmName, userID string) error
+	
+	// Bulk operations
+	BulkCreateUsers(ctx context.Context, realmName string, users []models.CreateUserRequest) (*models.BulkCreateResult, error)
+	ImportUsersFromCSV(ctx context.Context, realmName string, csvRecords [][]string) (*models.CSVImportResult, error)
 }
 
 type UserHandler struct {
@@ -43,11 +44,27 @@ func NewUserHandler(userService UserServiceInterface, logger *zap.Logger) *UserH
 	}
 }
 
+// @Summary List users
+// @Description Get paginated list of users with optional search and filtering
+// @Tags users
+// @Produce json
+// @Param page query int false "Page number (default: 1)"
+// @Param page_size query int false "Page size (default: 20, min: 1, max: 100)"
+// @Param search_term query string false "Search term for username or email"
+// @Param status query string false "Filter by user status (active, inactive)"
+// @Param role query string false "Filter by user role"
+// @Success 200 {object} models.UserListResponse
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /users [get]
+// @Router /admin/users [get]
 func (h *UserHandler) List(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired,
-			"Tenant context required", nil)
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized,
+			"Realm context required", nil)
 		return
 	}
 
@@ -75,16 +92,9 @@ func (h *UserHandler) List(c *gin.Context) {
 		req.Status = status
 	}
 
-	if department := c.Query("department"); department != "" {
-		req.Department = department
-	}
-
 	if role := c.Query("role"); role != "" {
 		req.Role = role
 	}
-
-	req.SortBy = c.Query("sort_by")
-	req.SortOrder = c.Query("sort_order")
 
 	if err := h.validator.Struct(&req); err != nil {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeValidationFailed,
@@ -92,7 +102,7 @@ func (h *UserHandler) List(c *gin.Context) {
 		return
 	}
 
-	users, total, err := h.userService.ListUsers(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	users, total, err := h.userService.ListUsers(c.Request.Context(), realmName, &req)
 	if err != nil {
 		h.logger.Error("Failed to list users", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError,
@@ -116,8 +126,12 @@ func (h *UserHandler) List(c *gin.Context) {
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body models.CreateUserRequest true "User creation request"
+// @Success 201 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Security BearerAuth
-// @Success 201 {object} map[string]interface{}
 // @Router /users [post]
 // @Router /admin/users [post]
 func (h *UserHandler) Create(c *gin.Context) {
@@ -127,27 +141,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	roles, _ := middleware.GetUserRoles(c)
-	isMSPAdmin := false
-	for _, role := range roles {
-		if role == constants.RoleMSPAdmin || role == constants.RoleMSPPower {
-			isMSPAdmin = true
-			break
-		}
-	}
-
-	if !isMSPAdmin {
-		tenantID, exists := c.Get("tenant_id")
-		if !exists {
-			utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired, "Tenant context required", nil)
-			return
-		}
-		req.TenantID = tenantID.(uuid.UUID)
-	} else {
-		if req.TenantID == uuid.Nil && req.TenantName == "" && req.TenantDomain == "" {
-			utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "tenant_name or tenant_domain is required for MSP admin user creation", nil)
-			return
-		}
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
+		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
@@ -156,7 +153,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	createdUser, err := h.userService.CreateUser(c.Request.Context(), &req)
+	createdUser, err := h.userService.CreateUser(c.Request.Context(), realmName, &req)
 	if err != nil {
 		h.logger.Error("Failed to create user", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create user", nil)
@@ -172,14 +169,18 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Produce json
 // @Param id path string true "User ID"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Router /users/{id} [get]
 // @Router /admin/users/{id} [get]
 func (h *UserHandler) Get(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired,
-			"Tenant context required", nil)
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized,
+			"Realm context required", nil)
 		return
 	}
 
@@ -189,7 +190,7 @@ func (h *UserHandler) Get(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.GetUser(c.Request.Context(), tenantID.(uuid.UUID), userID)
+	user, err := h.userService.GetUser(c.Request.Context(), realmName, userID)
 	if err != nil {
 		h.logger.Error("Failed to get user", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
@@ -210,15 +211,20 @@ func (h *UserHandler) Get(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
+// @Param request body models.UpdateUserRequest true "User update request"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Router /users/{id} [put]
 // @Router /admin/users/{id} [put]
 func (h *UserHandler) Update(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired,
-			"Tenant context required", nil)
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized,
+			"Realm context required", nil)
 		return
 	}
 
@@ -240,7 +246,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateUser(c.Request.Context(), tenantID.(uuid.UUID), userID, &req)
+	user, err := h.userService.UpdateUser(c.Request.Context(), realmName, userID, &req)
 	if err != nil {
 		h.logger.Error("Failed to update user", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to update user", nil)
@@ -261,6 +267,10 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Param id path string true "User ID"
 // @Security BearerAuth
 // @Success 204
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Router /users/{id} [delete]
 // @Router /admin/users/{id} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
@@ -270,26 +280,13 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	roles, _ := middleware.GetUserRoles(c)
-	isMSPAdmin := false
-	for _, role := range roles {
-		if role == constants.RoleMSPAdmin || role == constants.RoleMSPPower {
-			isMSPAdmin = true
-			break
-		}
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
+		return
 	}
 
-	var err error
-	if isMSPAdmin {
-		err = h.userService.DeleteUser(c.Request.Context(), uuid.Nil, userID)
-	} else {
-		tenantID, exists := c.Get("tenant_id")
-		if !exists {
-			utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired, "Tenant context required", nil)
-			return
-		}
-		err = h.userService.DeleteUser(c.Request.Context(), tenantID.(uuid.UUID), userID)
-	}
+	err = h.userService.DeleteUser(c.Request.Context(), realmName, userID)
 
 	if err != nil {
 		h.logger.Error("Failed to delete user", zap.Error(err))
@@ -305,14 +302,17 @@ func (h *UserHandler) Delete(c *gin.Context) {
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body models.BulkCreateUserRequest true "Bulk user creation request"
 // @Security BearerAuth
-// @Success 201 {object} map[string]interface{}
+// @Success 201 {object} models.BulkCreateResult
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Router /users/bulk-create [post]
 func (h *UserHandler) BulkCreate(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired,
-			"Tenant context required", nil)
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
 		return
 	}
 
@@ -322,24 +322,24 @@ func (h *UserHandler) BulkCreate(c *gin.Context) {
 		return
 	}
 
-	for i := range req.Users {
-		req.Users[i].TenantID = tenantID.(uuid.UUID)
-	}
-
-	if err := h.validator.Struct(&req); err != nil {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeValidationFailed,
-			"Validation failed", utils.FormatValidationErrors(err))
+	if len(req.Users) == 0 {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "No users provided", nil)
 		return
 	}
 
-	results, err := h.userService.BulkCreateUsers(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	if len(req.Users) > 100 {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Too many users (max 100 per request)", nil)
+		return
+	}
+
+	result, err := h.userService.BulkCreateUsers(c.Request.Context(), realmName, req.Users)
 	if err != nil {
-		h.logger.Error("Failed to bulk create users", zap.Error(err))
-		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to bulk create users", nil)
+		h.logger.Error("Bulk create failed", zap.Error(err))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Bulk create failed", nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"results": results})
+	c.JSON(http.StatusCreated, result)
 }
 
 // @Summary Import users from CSV
@@ -349,12 +349,15 @@ func (h *UserHandler) BulkCreate(c *gin.Context) {
 // @Produce json
 // @Param file formData file true "CSV file"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} models.CSVImportResult
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
 // @Router /users/import-csv [post]
 func (h *UserHandler) ImportCSV(c *gin.Context) {
-	_, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired, "Tenant context required", nil)
+	realmName, err := middleware.GetRealmName(c)
+	if err != nil {
+		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
 		return
 	}
 
@@ -365,11 +368,20 @@ func (h *UserHandler) ImportCSV(c *gin.Context) {
 	}
 	defer file.Close()
 
-	if header.Header.Get("Content-Type") != "text/csv" && !bytes.HasSuffix([]byte(header.Filename), []byte(".csv")) {
+	// Validate file type
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "File must be a CSV", nil)
 		return
 	}
 
+	// Validate file size (e.g., 10MB max)
+	const maxSize = 10 * 1024 * 1024
+	if header.Size > maxSize {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "File too large (max 10MB)", nil)
+		return
+	}
+
+	// Read and parse CSV
 	data, err := io.ReadAll(file)
 	if err != nil {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Failed to read file", nil)
@@ -388,22 +400,11 @@ func (h *UserHandler) ImportCSV(c *gin.Context) {
 		return
 	}
 
-	tenantIDValue, exists := c.Get("tenant_id")
-	if !exists {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeTenantRequired, "Tenant context required", nil)
-		return
-	}
-
-	tenantID, ok := tenantIDValue.(uuid.UUID)
-	if !ok {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid tenant_id format", nil)
-		return
-	}
-
-	result, err := h.userService.ImportUsersFromCSV(c.Request.Context(), tenantID, records)
+	// Process CSV import
+	result, err := h.userService.ImportUsersFromCSV(c.Request.Context(), realmName, records)
 	if err != nil {
-		h.logger.Error("Failed to import users from CSV", zap.Error(err))
-		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to import users from CSV", err.Error())
+		h.logger.Error("CSV import failed", zap.Error(err))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "CSV import failed", err.Error())
 		return
 	}
 

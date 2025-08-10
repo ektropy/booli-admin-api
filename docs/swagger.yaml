@@ -11,102 +11,6 @@ info:
   title: Booli Admin API
   version: "1.0"
 paths:
-  /admin/roles:
-    get:
-      description: Get list of roles
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List roles
-      tags:
-      - roles
-    post:
-      consumes:
-      - application/json
-      description: Create a new role
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create role
-      tags:
-      - roles
-  /admin/roles/{id}:
-    delete:
-      description: Delete role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      summary: Delete role
-      tags:
-      - roles
-    get:
-      description: Get role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get role
-      tags:
-      - roles
-    put:
-      consumes:
-      - application/json
-      description: Update role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update role
-      tags:
-      - roles
   /admin/tenants:
     get:
       description: 'Get paginated list of tenants (admin: all tenants, MSP: their
@@ -300,9 +204,9 @@ paths:
       summary: Update tenant
       tags:
       - admin
-  /admin/tenants/{id}/provision-realm:
+  /admin/tenants/{id}/provision:
     post:
-      description: Provision Keycloak realm for tenant
+      description: Provision authentication backend for tenant
       parameters:
       - description: Tenant ID
         in: path
@@ -334,25 +238,10 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Provision Keycloak realm
+      summary: Provision tenant
       tags:
       - admin
   /admin/users:
-    get:
-      description: Get paginated list of users
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List users
-      tags:
-      - users
     post:
       consumes:
       - application/json
@@ -846,102 +735,6 @@ paths:
       summary: Keycloak health check
       tags:
       - health
-  /roles:
-    get:
-      description: Get list of roles
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List roles
-      tags:
-      - roles
-    post:
-      consumes:
-      - application/json
-      description: Create a new role
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create role
-      tags:
-      - roles
-  /roles/{id}:
-    delete:
-      description: Delete role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      summary: Delete role
-      tags:
-      - roles
-    get:
-      description: Get role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get role
-      tags:
-      - roles
-    put:
-      consumes:
-      - application/json
-      description: Update role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update role
-      tags:
-      - roles
   /sso/providers:
     get:
       description: Get list of SSO providers for tenant
@@ -1057,21 +850,6 @@ paths:
       tags:
       - sso
   /users:
-    get:
-      description: Get paginated list of users
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List users
-      tags:
-      - users
     post:
       consumes:
       - application/json

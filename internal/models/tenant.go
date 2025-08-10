@@ -18,21 +18,20 @@ const (
 )
 
 type Tenant struct {
-	ID                     uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Name                   string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
-	Domain                 string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
-	KeycloakOrganizationID string         `gorm:"unique;size:255" json:"-"`
-	Type                   TenantType     `gorm:"default:'client'" json:"type"`
-	ParentTenantID         *uuid.UUID     `gorm:"type:uuid;index" json:"parent_tenant_id,omitempty"`
-	Status                 TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
-	Settings               datatypes.JSON `gorm:"type:jsonb" json:"settings"`
-	CreatedAt              time.Time      `json:"created_at"`
-	UpdatedAt              time.Time      `json:"updated_at"`
-	DeletedAt              gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	ID               uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Name             string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
+	Domain           string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
+	KeycloakRealm    string         `gorm:"unique;size:255" json:"-"`
+	Type             TenantType     `gorm:"default:'client'" json:"type"`
+	ParentTenantID   *uuid.UUID     `gorm:"type:uuid;index" json:"parent_tenant_id,omitempty"`
+	Status           TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
+	Settings         datatypes.JSON `gorm:"type:jsonb" json:"settings"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	ParentTenant *Tenant       `gorm:"foreignKey:ParentTenantID" json:"parent_tenant,omitempty"`
 	ChildTenants []Tenant      `gorm:"foreignKey:ParentTenantID" json:"child_tenants,omitempty"`
-	Roles        []Role        `gorm:"foreignKey:TenantID" json:"roles,omitempty"`
 	SSOProviders []SSOProvider `gorm:"foreignKey:TenantID" json:"sso_providers,omitempty"`
 	AuditLogs    []AuditLog    `gorm:"foreignKey:TenantID" json:"audit_logs,omitempty"`
 }

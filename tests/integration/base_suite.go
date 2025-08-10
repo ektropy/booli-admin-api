@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -55,29 +54,21 @@ func (suite *BaseIntegrationTestSuite) SetupSuite() {
 	suite.ctx = context.Background()
 	suite.Config = testconfig.GetTestConfig()
 
-	log.Println("Setting up Integration Test Suite...")
-
 	suite.startPostgreSQLContainer()
 	suite.startValkeyContainer()
 	suite.startKeycloakContainer()
 	suite.initializeKeycloak()
 	suite.startBackendContainer()
 	suite.initializeDatabaseConnection()
-
-	log.Println("Integration Test Suite setup completed")
 }
 
 func (suite *BaseIntegrationTestSuite) TearDownSuite() {
-	log.Println("Tearing down Integration Test Suite...")
-
 	if suite.db != nil {
 		_ = suite.db.Close()
 	}
 
 	if suite.backendProcess != nil {
-		if err := suite.backendProcess.Kill(); err != nil {
-			log.Printf("Warning: Failed to kill backend process: %v", err)
-		}
+		_ = suite.backendProcess.Kill()
 	}
 
 	containers := []testcontainers.Container{
@@ -88,13 +79,9 @@ func (suite *BaseIntegrationTestSuite) TearDownSuite() {
 
 	for _, container := range containers {
 		if container != nil {
-			if err := container.Terminate(suite.ctx); err != nil {
-				log.Printf("Warning: Failed to terminate container: %v", err)
-			}
+			_ = container.Terminate(suite.ctx)
 		}
 	}
-
-	log.Println("Integration Test Suite teardown completed")
 }
 
 func (suite *BaseIntegrationTestSuite) getContainerIP(container testcontainers.Container) string {
@@ -124,7 +111,6 @@ func (suite *BaseIntegrationTestSuite) getContainerIP(container testcontainers.C
 }
 
 func (suite *BaseIntegrationTestSuite) startPostgreSQLContainer() {
-	log.Println("Starting PostgreSQL container...")
 
 	req := testcontainers.ContainerRequest{
 		Image:        fmt.Sprintf("postgres:%s", suite.Config.PostgresVersion),
@@ -153,11 +139,9 @@ func (suite *BaseIntegrationTestSuite) startPostgreSQLContainer() {
 	suite.Require().NoError(err)
 	suite.postgresPort = port.Port()
 
-	log.Printf("PostgreSQL container started at %s:%s", suite.postgresHost, suite.postgresPort)
 }
 
 func (suite *BaseIntegrationTestSuite) startValkeyContainer() {
-	log.Println("Starting Valkey container...")
 
 	req := testcontainers.ContainerRequest{
 		Image:        fmt.Sprintf("valkey/valkey:%s", suite.Config.ValkeyVersion),
@@ -181,11 +165,9 @@ func (suite *BaseIntegrationTestSuite) startValkeyContainer() {
 	suite.Require().NoError(err)
 	suite.valkeyPort = port.Port()
 
-	log.Printf("Valkey container started at %s:%s", suite.valkeyHost, suite.valkeyPort)
 }
 
 func (suite *BaseIntegrationTestSuite) startKeycloakContainer() {
-	log.Println("Starting Keycloak container...")
 
 	req := testcontainers.ContainerRequest{
 		Image:        fmt.Sprintf("quay.io/keycloak/keycloak:%s", suite.Config.KeycloakVersion),
@@ -203,7 +185,10 @@ func (suite *BaseIntegrationTestSuite) startKeycloakContainer() {
 		WaitingFor: wait.ForHTTP("/health/ready").
 			WithPort("9000/tcp").
 			WithStartupTimeout(suite.Config.StartupTimeout).
-			WithPollInterval(suite.Config.PollInterval),
+			WithPollInterval(2 * time.Second).
+			WithStatusCodeMatcher(func(status int) bool {
+				return status == http.StatusOK
+			}),
 	}
 
 	container, err := testcontainers.GenericContainer(suite.ctx, testcontainers.GenericContainerRequest{
@@ -226,11 +211,9 @@ func (suite *BaseIntegrationTestSuite) startKeycloakContainer() {
 	suite.Require().NoError(err)
 	suite.keycloakMgmtPort = mgmtPort.Port()
 
-	log.Printf("Keycloak container started at %s:%s (mgmt: %s)", suite.keycloakHost, suite.keycloakPort, suite.keycloakMgmtPort)
 }
 
 func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
-	log.Println("Initializing Keycloak with MSP realm and test data...")
 
 	logger := zaptest.NewLogger(suite.T())
 
@@ -304,22 +287,18 @@ func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
 	err := keycloakInit.Initialize(suite.ctx, &setupConfig)
 	suite.Require().NoError(err)
 
-	log.Println("Keycloak initialization completed successfully")
 }
 
 func (suite *BaseIntegrationTestSuite) startBackendContainer() {
-	log.Println("Starting Booli Admin API backend...")
 
 	suite.backendHost = suite.Config.BackendHost
 	suite.backendPort = suite.Config.BackendPort
 
 	suite.buildAndStartBackendBinary()
 
-	log.Printf("Backend binary started at %s:%s", suite.backendHost, suite.backendPort)
 }
 
 func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
-	log.Println("Building backend binary for testing...")
 
 	buildCmd := exec.Command("go", "build", "-o", "booli-admin-api-test", "./cmd/server")
 	buildCmd.Dir = "../.."
@@ -328,11 +307,9 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 
 	err := buildCmd.Run()
 	if err != nil {
-		log.Printf("Failed to build backend binary: %v", err)
 		suite.T().Fatalf("Failed to build backend binary: %v", err)
 	}
 
-	log.Println("Backend binary built successfully")
 
 	env := []string{
 		"BOOLI_ENVIRONMENT=test",
@@ -375,11 +352,9 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 	logFileName := filepath.Join(logDir, logBaseName)
 	logFile, err := os.Create(filepath.Clean(logFileName))
 	if err != nil {
-		log.Printf("Failed to create log file: %v", err)
 		startCmd.Stdout = os.Stdout
 		startCmd.Stderr = os.Stderr
 	} else {
-		log.Printf("Backend output will be logged to %s and console", logFileName)
 
 		stdoutWriter := io.MultiWriter(os.Stdout, logFile)
 		stderrWriter := io.MultiWriter(os.Stderr, logFile)
@@ -390,13 +365,11 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 
 	err = startCmd.Start()
 	if err != nil {
-		log.Printf("Failed to start backend binary: %v", err)
 		suite.T().Fatalf("Failed to start backend binary: %v", err)
 	}
 
 	suite.backendProcess = startCmd.Process
 
-	log.Println("Backend binary started, waiting for health check...")
 
 	time.Sleep(2 * time.Second)
 
@@ -406,35 +379,26 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 func (suite *BaseIntegrationTestSuite) waitForBackendHealth() {
 	healthURL := fmt.Sprintf("http://%s:%s/health", suite.backendHost, suite.backendPort)
 
-	log.Printf("Health check URL: %s", healthURL)
 
 	for i := 0; i < 30; i++ {
-		log.Printf("Health check attempt %d/30", i+1)
 
 		if suite.backendProcess != nil {
-			if process, err := os.FindProcess(suite.backendProcess.Pid); err != nil {
-				log.Printf("Backend process not found: %v", err)
+			if _, err := os.FindProcess(suite.backendProcess.Pid); err != nil {
 				break
-			} else {
-				log.Printf("Backend process PID %d exists", process.Pid)
 			}
 		}
 		parsedURL, parseErr := url.Parse(healthURL)
 		if parseErr != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-			log.Printf("Invalid health URL: %s", healthURL)
 			break
 		}
 		resp, err := http.Get(parsedURL.String())
 		if err == nil && resp.StatusCode == http.StatusOK {
 			_ = resp.Body.Close()
-			log.Println("Backend health check passed")
 			return
 		}
 		if resp != nil {
-			log.Printf("Health check failed: HTTP %d", resp.StatusCode)
 			_ = resp.Body.Close()
 		} else {
-			log.Printf("Health check failed: %v", err)
 		}
 
 		time.Sleep(time.Second)
@@ -442,7 +406,6 @@ func (suite *BaseIntegrationTestSuite) waitForBackendHealth() {
 
 	if suite.backendProcess != nil {
 		if err := suite.backendProcess.Kill(); err != nil {
-			log.Printf("Warning: Failed to kill backend process after health check failure: %v", err)
 		}
 	}
 
@@ -462,7 +425,6 @@ func (suite *BaseIntegrationTestSuite) initializeDatabaseConnection() {
 	err = db.Ping()
 	suite.Require().NoError(err)
 
-	log.Println("Database connection initialized")
 }
 
 func (suite *BaseIntegrationTestSuite) AuthenticateUser(realm, clientID, clientSecret, username, password string) string {
@@ -492,7 +454,6 @@ func (suite *BaseIntegrationTestSuite) MakeRequest(method, path string, headers 
 func (suite *BaseIntegrationTestSuite) authenticateUserInternal(urlStr, clientID, clientSecret, username, password string) string {
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
-		log.Printf("Invalid URL provided: %s", urlStr)
 		return ""
 	}
 

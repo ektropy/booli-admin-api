@@ -1,5 +1,11 @@
 # Booli Admin API
 
+[![Fast CI/CD](https://github.com/booli/booli-admin-api/workflows/Fast%20CI%2FCD/badge.svg)](https://github.com/booli/booli-admin-api/actions/workflows/ci-fast.yml)
+[![Code Coverage](https://img.shields.io/codecov/c/github/booli/booli-admin-api)](https://codecov.io/gh/booli/booli-admin-api)
+[![Go Report Card](https://goreportcard.com/badge/github.com/booli/booli-admin-api)](https://goreportcard.com/report/github.com/booli/booli-admin-api)
+[![Docker Image](https://img.shields.io/badge/docker-ghcr.io-blue)](https://ghcr.io/booli/booli-admin-api)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Multi-tenant administrative portal with Keycloak authentication and MSP support.
 
 ## Features

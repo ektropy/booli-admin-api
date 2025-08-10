@@ -155,7 +155,16 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 
 	router := gin.New()
 
-	router.Use(middleware.Logger(app.logger))
+	// Request logging configuration based on environment
+	var loggingConfig middleware.RequestLoggingConfig
+	if app.config.Environment == "development" {
+		loggingConfig = middleware.DevelopmentRequestLoggingConfig()
+	} else {
+		loggingConfig = middleware.DefaultRequestLoggingConfig()
+	}
+
+	router.Use(middleware.RequestID())
+	router.Use(middleware.EnhancedRequestLogger(app.logger, loggingConfig))
 	router.Use(middleware.Recovery(app.logger))
 	router.Use(middleware.CORS())
 	router.Use(middleware.SecurityHeaders())
@@ -209,29 +218,32 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 			admin.GET(constants.PathAdminUsersID, handlers.User.Get)
 			admin.PUT(constants.PathAdminUsersID, handlers.User.Update)
 			admin.DELETE(constants.PathAdminUsersID, handlers.User.Delete)
-			admin.GET(constants.PathRoles, handlers.Role.List)
-			admin.POST(constants.PathRoles, handlers.Role.Create)
-			admin.GET(constants.PathAdminRolesID, handlers.Role.Get)
-			admin.PUT(constants.PathAdminRolesID, handlers.Role.Update)
-			admin.DELETE(constants.PathAdminRolesID, handlers.Role.Delete)
 		}
 
 		tenantScoped := protected.Group("/")
-		tenantScoped.Use(middleware.TenantContextRequired())
+		tenantScoped.Use(middleware.RealmContextRequired())
 		{
 			tenantScoped.GET(constants.PathUsers, handlers.User.List)
 			tenantScoped.POST(constants.PathUsers, handlers.User.Create)
 			tenantScoped.GET(constants.PathUsersID, handlers.User.Get)
 			tenantScoped.PUT(constants.PathUsersID, handlers.User.Update)
 			tenantScoped.DELETE(constants.PathUsersID, handlers.User.Delete)
-			tenantScoped.POST(constants.PathUsersBulkCreate, handlers.User.BulkCreate)
-			tenantScoped.POST(constants.PathUsersImportCSV, handlers.User.ImportCSV)
+			// Bulk operations with enhanced security
+			bulkOps := tenantScoped.Group("/")
+			bulkOps.Use(middleware.BulkOperationRateLimit(app.logger))
+			bulkOps.Use(middleware.BulkOperationHeaders())
+			{
+				bulkOps.POST(constants.PathUsersBulkCreate, handlers.User.BulkCreate)
+			}
+			
+			// CSV import with strictest rate limiting
+			csvOps := tenantScoped.Group("/")
+			csvOps.Use(middleware.CSVImportRateLimit(app.logger))
+			csvOps.Use(middleware.BulkOperationHeaders())
+			{
+				csvOps.POST(constants.PathUsersImportCSV, handlers.User.ImportCSV)
+			}
 
-			tenantScoped.GET(constants.PathRoles, handlers.Role.List)
-			tenantScoped.POST(constants.PathRoles, handlers.Role.Create)
-			tenantScoped.GET(constants.PathRolesID, handlers.Role.Get)
-			tenantScoped.PUT(constants.PathRolesID, handlers.Role.Update)
-			tenantScoped.DELETE(constants.PathRolesID, handlers.Role.Delete)
 
 			tenantScoped.GET(constants.PathSSOProviders, handlers.SSO.ListProviders)
 			tenantScoped.POST(constants.PathSSOProviders, handlers.SSO.CreateProvider)

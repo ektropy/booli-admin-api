@@ -5,204 +5,134 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/keycloak"
 	"github.com/booli/booli-admin-api/internal/models"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 type TenantService struct {
-	db            *gorm.DB
-	redis         *redis.Client
 	keycloakAdmin *keycloak.AdminClient
 	logger        *zap.Logger
-	config        *config.Config
 }
 
-func NewTenantService(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.AdminClient, logger *zap.Logger, cfg *config.Config) *TenantService {
+func NewTenantService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *TenantService {
 	return &TenantService{
-		db:            db,
-		redis:         redis,
 		keycloakAdmin: keycloakAdmin,
 		logger:        logger,
-		config:        cfg,
 	}
 }
 
-func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTenantRequest, mspTenantID *uuid.UUID) (*models.Tenant, error) {
+func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTenantRequest, parentRealmName string) (*models.Tenant, error) {
 	s.logger.Info("Starting tenant creation",
 		zap.String("name", req.Name),
 		zap.String("domain", req.Domain),
 		zap.String("type", string(req.Type)),
-		zap.Bool("has_msp_parent", mspTenantID != nil))
+		zap.String("parent_realm", parentRealmName))
 
 	if req.Name == "" {
 		s.logger.Error("Tenant creation failed: name is required")
 		return nil, fmt.Errorf("tenant name is required")
 	}
 
-	tenant := &models.Tenant{
-		Name:     req.Name,
-		Domain:   req.Domain,
-		Type:     req.Type,
-		Settings: req.Settings,
-	}
-
-	if tenant.Type == "" {
-		tenant.Type = models.TenantTypeClient
-		s.logger.Info("Defaulting tenant type to client")
-	}
-
-	if tenant.Type == models.TenantTypeClient && mspTenantID != nil {
-		tenant.ParentTenantID = mspTenantID
-		s.logger.Info("Setting parent tenant ID for client tenant", zap.String("parent_id", mspTenantID.String()))
-	}
-
-	if tenant.ParentTenantID != nil {
-		s.logger.Info("Validating parent tenant", zap.String("parent_id", tenant.ParentTenantID.String()))
-		var parentTenant models.Tenant
-		if err := s.db.WithContext(ctx).Where("id = ? AND type = ?", *tenant.ParentTenantID, models.TenantTypeMSP).First(&parentTenant).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				s.logger.Error("Parent MSP tenant not found", zap.String("parent_id", tenant.ParentTenantID.String()))
-				return nil, fmt.Errorf("parent MSP tenant not found")
-			}
-			s.logger.Error("Failed to validate parent tenant", zap.Error(err))
-			return nil, fmt.Errorf("failed to validate parent tenant: %w", err)
-		}
-
-		if !parentTenant.CanManageChildTenants() {
-			s.logger.Error("Parent MSP tenant cannot manage child tenants",
-				zap.String("parent_id", parentTenant.ID.String()),
-				zap.String("parent_status", string(parentTenant.Status)))
-			return nil, fmt.Errorf("parent MSP tenant cannot manage child tenants")
-		}
-		s.logger.Info("Parent tenant validation successful")
-	}
-
-	if s.db == nil {
-		s.logger.Error("Database connection is nil")
-		return nil, fmt.Errorf("database connection not available")
-	}
 	if s.keycloakAdmin == nil {
 		s.logger.Error("Keycloak admin client is nil")
 		return nil, fmt.Errorf("keycloak admin client not available")
 	}
 
-	s.logger.Info("Starting database transaction")
-	tx := s.db.Begin()
-	if tx.Error != nil {
-		s.logger.Error("Failed to start database transaction", zap.Error(tx.Error))
-		return nil, fmt.Errorf("failed to start transaction: %w", tx.Error)
+	tenantType := req.Type
+	if tenantType == "" {
+		tenantType = models.TenantTypeClient
+		s.logger.Info("Defaulting tenant type to client")
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			s.logger.Error("Panic occurred during tenant creation, rolling back", zap.Any("panic", r))
-			tx.Rollback()
-		}
-	}()
 
-	s.logger.Info("Creating tenant record in database")
-	if err := tx.WithContext(ctx).Create(tenant).Error; err != nil {
-		s.logger.Error("Failed to create tenant record", zap.Error(err))
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to create tenant: %w", err)
+	realmName, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, parentRealmName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
-	s.logger.Info("Tenant record created successfully", zap.String("tenant_id", tenant.ID.String()))
 
-	s.logger.Info("Creating default roles for tenant", zap.String("tenant_type", string(tenant.Type)))
-	if err := s.createDefaultRoles(ctx, tx, tenant.ID, tenant.Type); err != nil {
-		s.logger.Error("Failed to create default roles", zap.Error(err))
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to create default roles: %w", err)
+	tenant := &models.Tenant{
+		Name:          req.Name,
+		Domain:        req.Domain,
+		Type:          tenantType,
+		KeycloakRealm: realmName,
+		Status:        models.TenantStatusActive,
 	}
-	s.logger.Info("Default roles created successfully")
-
-	s.logger.Info("Committing database transaction")
-	if err := tx.Commit().Error; err != nil {
-		s.logger.Error("Failed to commit database transaction", zap.Error(err))
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	s.logger.Info("Database transaction committed successfully")
-
-	s.logger.Info("Creating Keycloak organization")
-	if err := s.createKeycloakOrganization(ctx, tenant); err != nil {
-		s.logger.Error("Failed to create Keycloak organization, manual cleanup may be required",
-			zap.String("tenant_id", tenant.ID.String()),
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to create Keycloak organization: %w", err)
-	}
-	s.logger.Info("Keycloak organization created successfully")
 
 	s.logger.Info("Tenant created successfully",
-		zap.String("tenant_id", tenant.ID.String()),
+		zap.String("realm_name", realmName),
 		zap.String("name", tenant.Name),
 		zap.String("type", string(tenant.Type)))
 
 	return tenant, nil
 }
 
-func (s *TenantService) GetTenant(ctx context.Context, tenantID uuid.UUID, includeCounts bool) (*models.Tenant, error) {
-	var tenant models.Tenant
-	query := s.db.WithContext(ctx).Where("id = ?", tenantID)
-
-	if includeCounts {
-		query = query.Preload("Roles").Preload("SSOProviders").Preload("ChildTenants")
-	}
-
-	if err := query.First(&tenant).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("tenant not found")
-		}
-		return nil, fmt.Errorf("failed to get tenant: %w", err)
-	}
-
-	return &tenant, nil
-}
-
-func (s *TenantService) GetUserCount(ctx context.Context, tenantID uuid.UUID) (int, error) {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		return 0, fmt.Errorf("tenant not found: %w", err)
-	}
-
-	if tenant.KeycloakOrganizationID == "" {
-		return 0, nil
-	}
-
-	organizationID := tenant.KeycloakOrganizationID
-	members, err := s.keycloakAdmin.ListOrganizationMembers(ctx, s.config.Keycloak.MSPRealm, organizationID)
+func (s *TenantService) GetTenant(ctx context.Context, realmName string) (*models.Tenant, error) {
+	realm, err := s.keycloakAdmin.GetRealm(ctx, realmName)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get organization members from Keycloak: %w", err)
+		return nil, fmt.Errorf("realm not found: %w", err)
 	}
-	return len(members), nil
+
+	tenant := &models.Tenant{
+		Name:          realm.DisplayName,
+		Domain:        realm.Attributes["domain"],
+		Type:          models.TenantType(realm.Attributes["tenant_type"]),
+		KeycloakRealm: realm.Realm,
+		Status:        models.TenantStatusActive,
+	}
+
+	return tenant, nil
 }
 
-func (s *TenantService) ListTenants(ctx context.Context, mspTenantID *uuid.UUID, page, pageSize int) (*models.TenantListResponse, error) {
+func (s *TenantService) GetUserCount(ctx context.Context, realmName string) (int, error) {
+	users, err := s.keycloakAdmin.GetUsers(ctx, realmName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get users from Keycloak realm: %w", err)
+	}
+	return len(users), nil
+}
+
+func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string, page, pageSize int) (*models.TenantListResponse, error) {
+	realms, err := s.keycloakAdmin.GetRealms(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get realms from Keycloak: %w", err)
+	}
+
 	var tenants []models.Tenant
-	var total int64
+	for _, realm := range realms {
+		if realm.Realm == "master" {
+			continue
+		}
+		
+		if parentRealmName != "" && realm.Attributes["parent_realm"] != parentRealmName {
+			continue
+		}
 
-	query := s.db.WithContext(ctx).Model(&models.Tenant{})
-
-	if mspTenantID != nil {
-		query = query.Where("parent_tenant_id = ?", *mspTenantID)
+		tenant := models.Tenant{
+			Name:          realm.DisplayName,
+			Domain:        realm.Attributes["domain"],
+			Type:          models.TenantType(realm.Attributes["tenant_type"]),
+			KeycloakRealm: realm.Realm,
+			Status:        models.TenantStatusActive,
+		}
+		tenants = append(tenants, tenant)
 	}
 
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count tenants: %w", err)
+	total := int64(len(tenants))
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if end > len(tenants) {
+		end = len(tenants)
 	}
 
-	offset := (page - 1) * pageSize
-	if err := query.Offset(offset).Limit(pageSize).Find(&tenants).Error; err != nil {
-		return nil, fmt.Errorf("failed to list tenants: %w", err)
+	if start > len(tenants) {
+		start = len(tenants)
 	}
 
-	responses := make([]models.TenantResponse, len(tenants))
-	for i, tenant := range tenants {
+	paginatedTenants := tenants[start:end]
+	responses := make([]models.TenantResponse, len(paginatedTenants))
+	for i, tenant := range paginatedTenants {
 		responses[i] = *tenant.ToResponse()
 	}
 
@@ -218,392 +148,332 @@ func (s *TenantService) ListTenants(ctx context.Context, mspTenantID *uuid.UUID,
 }
 
 func (s *TenantService) GetTenantByName(ctx context.Context, name string) (*models.Tenant, error) {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&tenant).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get tenant by name: %w", err)
-	}
-	return &tenant, nil
+	sanitizedName := strings.ToLower(name)
+	sanitizedName = strings.ReplaceAll(sanitizedName, " ", "-")
+	sanitizedName = strings.ReplaceAll(sanitizedName, "_", "-")
+	realmName := fmt.Sprintf("tenant-%s", sanitizedName)
+
+	return s.GetTenant(ctx, realmName)
 }
 
 func (s *TenantService) GetTenantByDomain(ctx context.Context, domain string) (*models.Tenant, error) {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("domain = ?", domain).First(&tenant).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get tenant by domain: %w", err)
+	realms, err := s.keycloakAdmin.GetRealms(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get realms from Keycloak: %w", err)
 	}
-	return &tenant, nil
+
+	for _, realm := range realms {
+		if realm.Attributes["domain"] == domain {
+			return &models.Tenant{
+				Name:          realm.DisplayName,
+				Domain:        realm.Attributes["domain"],
+				Type:          models.TenantType(realm.Attributes["tenant_type"]),
+				KeycloakRealm: realm.Realm,
+				Status:        models.TenantStatusActive,
+			}, nil
+		}
+	}
+
+	return nil, nil
 }
 
-func (s *TenantService) UpdateTenant(ctx context.Context, tenantID uuid.UUID, req *models.UpdateTenantRequest) (*models.Tenant, error) {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("tenant not found")
-		}
-		return nil, fmt.Errorf("failed to get tenant: %w", err)
+func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req *models.UpdateTenantRequest) (*models.Tenant, error) {
+	realm, err := s.keycloakAdmin.GetRealm(ctx, realmName)
+	if err != nil {
+		return nil, fmt.Errorf("realm not found: %w", err)
+	}
+
+	updateRealm := &keycloak.RealmRepresentation{
+		Realm:       realm.Realm,
+		DisplayName: realm.DisplayName,
+		Enabled:     realm.Enabled,
+		Attributes:  realm.Attributes,
 	}
 
 	if req.Name != nil {
-		tenant.Name = *req.Name
-		if tenant.KeycloakOrganizationID != "" {
-			org := &keycloak.OrganizationRepresentation{
-				Name:    tenant.Name,
-				Enabled: true,
-			}
-			if err := s.keycloakAdmin.UpdateOrganization(ctx, s.config.Keycloak.MSPRealm, tenant.KeycloakOrganizationID, org); err != nil {
-				s.logger.Warn("Failed to update Keycloak organization name", zap.Error(err))
-			}
-		}
+		updateRealm.DisplayName = *req.Name
+		updateRealm.Attributes["tenant_name"] = *req.Name
 	}
 	if req.Domain != nil {
-		tenant.Domain = *req.Domain
-	}
-	if req.Status != nil {
-		tenant.Status = *req.Status
+		updateRealm.Attributes["domain"] = *req.Domain
 	}
 	if req.Settings != nil {
 		var newSettings models.TenantSettings
 		if err := json.Unmarshal(*req.Settings, &newSettings); err != nil {
 			return nil, fmt.Errorf("invalid settings format: %w", err)
 		}
-		if err := s.validateTenantSettings(newSettings, tenant.Type); err != nil {
-			return nil, fmt.Errorf("invalid settings: %w", err)
-		}
-
-		var currentSettings models.TenantSettings
-		if len(tenant.Settings) > 0 {
-			_ = json.Unmarshal(tenant.Settings, &currentSettings)
-		}
-
-		tenant.Settings = *req.Settings
-		s.logTenantSettingsChanges(currentSettings, newSettings, tenant.ID, ctx)
-	}
-	if req.ParentTenantID != nil {
-		tenant.ParentTenantID = req.ParentTenantID
+		
+		settingsJSON, _ := json.Marshal(newSettings)
+		updateRealm.Attributes["settings"] = string(settingsJSON)
 	}
 
-	if err := s.db.WithContext(ctx).Save(&tenant).Error; err != nil {
-		return nil, fmt.Errorf("failed to update tenant: %w", err)
+	if err := s.keycloakAdmin.UpdateRealm(ctx, realmName, updateRealm); err != nil {
+		return nil, fmt.Errorf("failed to update realm: %w", err)
+	}
+
+	updatedTenant := &models.Tenant{
+		Name:          updateRealm.DisplayName,
+		Domain:        updateRealm.Attributes["domain"],
+		Type:          models.TenantType(updateRealm.Attributes["tenant_type"]),
+		KeycloakRealm: updateRealm.Realm,
+		Status:        models.TenantStatusActive,
 	}
 
 	s.logger.Info("Tenant updated successfully",
-		zap.String("tenant_id", tenant.ID.String()),
-		zap.String("name", tenant.Name))
+		zap.String("realm_name", realmName),
+		zap.String("name", updatedTenant.Name))
 
-	return &tenant, nil
+	return updatedTenant, nil
 }
 
-func (s *TenantService) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return fmt.Errorf("tenant not found")
-		}
-		return fmt.Errorf("failed to get tenant: %w", err)
+func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) error {
+	realms, err := s.keycloakAdmin.GetRealms(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get realms: %w", err)
 	}
 
-	var childCount int64
-	if err := s.db.WithContext(ctx).Model(&models.Tenant{}).Where("parent_tenant_id = ?", tenantID).Count(&childCount).Error; err != nil {
-		return fmt.Errorf("failed to check child tenants: %w", err)
+	childCount := 0
+	for _, realm := range realms {
+		if realm.Attributes["parent_realm"] == realmName {
+			childCount++
+		}
 	}
 
 	if childCount > 0 {
-		return fmt.Errorf("cannot delete tenant with child tenants")
+		return fmt.Errorf("cannot delete tenant with %d child tenants", childCount)
 	}
 
-	if tenant.KeycloakOrganizationID != "" {
-		if err := s.keycloakAdmin.DeleteOrganization(ctx, s.config.Keycloak.MSPRealm, tenant.KeycloakOrganizationID); err != nil {
-			s.logger.Warn("Failed to delete Keycloak organization",
-				zap.String("tenant_id", tenantID.String()),
-				zap.String("organization_id", tenant.KeycloakOrganizationID),
-				zap.Error(err))
-		}
-	}
-
-	if err := s.db.WithContext(ctx).Delete(&models.Tenant{}, tenantID).Error; err != nil {
-		return fmt.Errorf("failed to delete tenant: %w", err)
+	if err := s.keycloakAdmin.DeleteRealm(ctx, realmName); err != nil {
+		return fmt.Errorf("failed to delete Keycloak realm: %w", err)
 	}
 
 	s.logger.Info("Tenant deleted successfully",
-		zap.String("tenant_id", tenantID.String()),
-		zap.String("organization_id", tenant.KeycloakOrganizationID))
+		zap.String("realm_name", realmName))
 	return nil
 }
 
-func (s *TenantService) createDefaultRoles(ctx context.Context, tx *gorm.DB, tenantID uuid.UUID, tenantType models.TenantType) error {
-	s.logger.Info("Creating default roles for tenant",
-		zap.String("tenant_id", tenantID.String()),
+
+func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (string, error) {
+	s.logger.Info("Starting Keycloak realm creation",
+		zap.String("tenant_name", name),
+		zap.String("domain", domain),
+		zap.String("type", string(tenantType)))
+
+	sanitizedName := strings.ToLower(name)
+	sanitizedName = strings.ReplaceAll(sanitizedName, " ", "-")
+	sanitizedName = strings.ReplaceAll(sanitizedName, "_", "-")
+	realmName := fmt.Sprintf("tenant-%s", sanitizedName)
+	s.logger.Info("Generated realm name",
+		zap.String("tenant_name", name),
+		zap.String("realm_name", realmName))
+
+	realm := &keycloak.RealmRepresentation{
+		Realm:                 realmName,
+		DisplayName:           name,
+		Enabled:               true,
+		LoginWithEmailAllowed: true,
+		RegistrationAllowed:   false,
+		ResetPasswordAllowed:  true,
+		RememberMe:            true,
+		VerifyEmail:           false,
+		LoginTheme:            "keycloak",
+		AccountTheme:          "keycloak",
+		AdminTheme:            "keycloak",
+		EmailTheme:            "keycloak",
+		Attributes: map[string]string{
+			"tenant_name":  name,
+			"tenant_type":  string(tenantType),
+			"domain":       domain,
+			"parent_realm": parentRealmName,
+			"created_at":   time.Now().Format(time.RFC3339),
+		},
+	}
+
+	s.logger.Info("Calling Keycloak API to create realm",
+		zap.String("realm_name", realmName))
+
+	if err := s.keycloakAdmin.CreateRealm(ctx, realm); err != nil {
+		s.logger.Error("Keycloak realm creation failed",
+			zap.String("realm_name", realmName),
+			zap.Error(err))
+		return "", fmt.Errorf("failed to create Keycloak realm: %w", err)
+	}
+
+	s.logger.Info("Keycloak realm created successfully", zap.String("realm_name", realmName))
+
+	if err := s.createRealmDefaultRoles(ctx, realmName, tenantType); err != nil {
+		s.logger.Error("Failed to create default roles, cleaning up realm",
+			zap.String("realm_name", realmName),
+			zap.Error(err))
+		if deleteErr := s.keycloakAdmin.DeleteRealm(ctx, realmName); deleteErr != nil {
+			s.logger.Error("Failed to cleanup realm after role creation failure",
+				zap.String("realm_name", realmName),
+				zap.Error(deleteErr))
+		}
+		return "", fmt.Errorf("failed to create default realm roles: %w", err)
+	}
+
+	adminUser, err := s.createRealmAdminUser(ctx, realmName, name, domain)
+	if err != nil {
+		s.logger.Error("Failed to create admin user, cleaning up realm",
+			zap.String("realm_name", realmName),
+			zap.Error(err))
+		if deleteErr := s.keycloakAdmin.DeleteRealm(ctx, realmName); deleteErr != nil {
+			s.logger.Error("Failed to cleanup realm after admin user creation failure",
+				zap.String("realm_name", realmName),
+				zap.Error(deleteErr))
+		}
+		return "", fmt.Errorf("failed to create realm admin user: %w", err)
+	}
+
+	s.logger.Info("Created Keycloak realm successfully",
+		zap.String("realm_name", realmName),
+		zap.String("admin_user_id", adminUser.ID))
+
+	return realmName, nil
+}
+
+func (s *TenantService) createRealmDefaultRoles(ctx context.Context, realmName string, tenantType models.TenantType) error {
+	s.logger.Info("Creating default realm roles",
+		zap.String("realm", realmName),
 		zap.String("tenant_type", string(tenantType)))
 
-	var rolesToCreate map[string]models.Permissions
-
+	var rolesToCreate []string
 	switch tenantType {
 	case models.TenantTypeMSP:
-		rolesToCreate = models.MSPRoles
-		s.logger.Info("Using MSP roles template", zap.Int("role_count", len(rolesToCreate)))
+		rolesToCreate = []string{"admin", "user", "viewer", "tenant-manager"}
 	case models.TenantTypeClient:
-		rolesToCreate = models.DefaultRoles
-		s.logger.Info("Using default client roles template", zap.Int("role_count", len(rolesToCreate)))
+		rolesToCreate = []string{"admin", "user", "viewer"}
 	default:
-		rolesToCreate = models.DefaultRoles
-		s.logger.Info("Using default roles template for unknown tenant type",
-			zap.String("tenant_type", string(tenantType)),
-			zap.Int("role_count", len(rolesToCreate)))
+		rolesToCreate = []string{"admin", "user", "viewer"}
 	}
 
-	if len(rolesToCreate) == 0 {
-		s.logger.Warn("No roles to create for tenant type", zap.String("tenant_type", string(tenantType)))
-		return nil
-	}
-
-	for roleName, permissions := range rolesToCreate {
-		s.logger.Info("Creating role",
-			zap.String("role_name", roleName),
-			zap.String("tenant_id", tenantID.String()))
-
-		permissionsJSON, err := json.Marshal(permissions)
-		if err != nil {
-			s.logger.Error("Failed to marshal permissions for role",
-				zap.String("role_name", roleName),
-				zap.Error(err))
-			return fmt.Errorf("failed to marshal permissions for role %s: %w", roleName, err)
-		}
-
-		role := &models.Role{
-			TenantID:    tenantID,
-			Name:        roleName,
-			Description: fmt.Sprintf("Default %s role", roleName),
-			Permissions: datatypes.JSON(permissionsJSON),
-			IsSystem:    true,
-		}
-
-		if err := tx.WithContext(ctx).Create(role).Error; err != nil {
-			s.logger.Error("Failed to create role in database",
-				zap.String("role_name", roleName),
-				zap.String("tenant_id", tenantID.String()),
+	for _, roleName := range rolesToCreate {
+		description := fmt.Sprintf("Default %s role for tenant", roleName)
+		if err := s.keycloakAdmin.CreateRealmRole(ctx, realmName, roleName, description); err != nil {
+			s.logger.Error("Failed to create realm role",
+				zap.String("realm", realmName),
+				zap.String("role", roleName),
 				zap.Error(err))
 			return fmt.Errorf("failed to create role %s: %w", roleName, err)
 		}
-
-		s.logger.Info("Role created successfully",
-			zap.String("role_name", roleName),
-			zap.String("role_id", role.ID.String()))
+		s.logger.Info("Created realm role",
+			zap.String("realm", realmName),
+			zap.String("role", roleName))
 	}
 
-	s.logger.Info("All default roles created successfully",
-		zap.String("tenant_id", tenantID.String()),
+	s.logger.Info("All default realm roles created successfully",
+		zap.String("realm", realmName),
 		zap.Int("roles_created", len(rolesToCreate)))
 	return nil
 }
 
-func (s *TenantService) createKeycloakOrganization(ctx context.Context, tenant *models.Tenant) error {
-	s.logger.Info("Starting Keycloak organization creation",
-		zap.String("tenant_id", tenant.ID.String()),
-		zap.String("tenant_name", tenant.Name))
+func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, tenantName, domain string) (*keycloak.UserRepresentation, error) {
+	s.logger.Info("Creating realm admin user",
+		zap.String("realm", realmName),
+		zap.String("tenant_name", tenantName))
 
-	var domains []keycloak.OrganizationDomainRepresentation
-	if tenant.Domain != "" {
-		s.logger.Info("Using provided tenant domain", zap.String("domain", tenant.Domain))
-		domains = []keycloak.OrganizationDomainRepresentation{
-			{
-				Name:     tenant.Domain,
-				Verified: false, // Set to false initially, can be verified later
-			},
-		}
-	} else {
-		defaultDomain := fmt.Sprintf("%s.internal", strings.ToLower(strings.ReplaceAll(tenant.Name, " ", "-")))
-		s.logger.Info("Generated default domain for tenant", zap.String("default_domain", defaultDomain))
-		domains = []keycloak.OrganizationDomainRepresentation{
-			{
-				Name:     defaultDomain,
-				Verified: false,
-			},
-		}
+	adminEmail := fmt.Sprintf("admin@%s", domain)
+	if domain == "" {
+		adminEmail = fmt.Sprintf("admin@%s.local", strings.ToLower(strings.ReplaceAll(tenantName, " ", "-")))
 	}
 
-	orgName := strings.ToLower(strings.ReplaceAll(tenant.Name, " ", "-"))
-	s.logger.Info("Sanitized organization name",
-		zap.String("original_name", tenant.Name),
-		zap.String("sanitized_name", orgName))
-
-	org := &keycloak.OrganizationRepresentation{
-		Name:        orgName,
-		Enabled:     true,
-		Description: fmt.Sprintf("Organization for %s (%s)", tenant.Name, tenant.Type),
-		Domains:     domains,
+	adminUser := &keycloak.UserRepresentation{
+		Username:      "admin",
+		Email:         adminEmail,
+		FirstName:     "Tenant",
+		LastName:      "Administrator",
+		Enabled:       true,
+		EmailVerified: false,
+		Credentials: []keycloak.CredentialRepresentation{
+			{
+				Type:      "password",
+				Value:     "ChangeMe123!",
+				Temporary: true,
+			},
+		},
 	}
 
-	s.logger.Info("Calling Keycloak API to create organization",
-		zap.String("realm", s.config.Keycloak.MSPRealm),
-		zap.String("org_name", orgName))
+	s.logger.Info("Creating admin user in realm",
+		zap.String("realm", realmName),
+		zap.String("username", adminUser.Username),
+		zap.String("email", adminUser.Email))
 
-	createdOrg, err := s.keycloakAdmin.CreateOrganization(ctx, s.config.Keycloak.MSPRealm, org)
+	createdUser, err := s.keycloakAdmin.CreateUser(ctx, realmName, adminUser)
 	if err != nil {
-		s.logger.Error("Keycloak organization creation failed",
-			zap.String("org_name", orgName),
-			zap.String("realm", s.config.Keycloak.MSPRealm),
+		s.logger.Error("Failed to create admin user",
+			zap.String("realm", realmName),
+			zap.String("username", adminUser.Username),
 			zap.Error(err))
-		return fmt.Errorf("failed to create Keycloak organization: %w", err)
+		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
 
-	s.logger.Info("Keycloak organization created successfully",
-		zap.String("organization_id", createdOrg.ID),
-		zap.String("org_name", orgName))
-
-	tenant.KeycloakOrganizationID = createdOrg.ID
-	tenant.Status = models.TenantStatusActive
-
-	s.logger.Info("Updating tenant with organization ID",
-		zap.String("tenant_id", tenant.ID.String()),
-		zap.String("organization_id", createdOrg.ID))
-
-	if err := s.db.WithContext(ctx).Save(tenant).Error; err != nil {
-		s.logger.Error("Failed to update tenant with organization ID, cleaning up Keycloak organization",
-			zap.String("tenant_id", tenant.ID.String()),
-			zap.String("organization_id", createdOrg.ID),
+	adminRole, err := s.keycloakAdmin.GetRealmRole(ctx, realmName, "admin")
+	if err != nil {
+		s.logger.Error("Failed to get admin role",
+			zap.String("realm", realmName),
 			zap.Error(err))
-
-		if deleteErr := s.keycloakAdmin.DeleteOrganization(ctx, s.config.Keycloak.MSPRealm, createdOrg.ID); deleteErr != nil {
-			s.logger.Error("Failed to cleanup Keycloak organization after tenant update failure",
-				zap.String("organization_id", createdOrg.ID),
-				zap.Error(deleteErr))
-		}
-		return fmt.Errorf("failed to update tenant with organization ID: %w", err)
+		return nil, fmt.Errorf("failed to get admin role: %w", err)
 	}
 
-	s.logger.Info("Created Keycloak organization successfully",
-		zap.String("organization_id", createdOrg.ID),
-		zap.String("tenant_id", tenant.ID.String()))
+	if err := s.keycloakAdmin.AssignRealmRolesToUser(ctx, realmName, createdUser.ID, []keycloak.RoleRepresentation{*adminRole}); err != nil {
+		s.logger.Error("Failed to assign admin role to user",
+			zap.String("realm", realmName),
+			zap.String("user_id", createdUser.ID),
+			zap.Error(err))
+		return nil, fmt.Errorf("failed to assign admin role: %w", err)
+	}
 
-	return nil
+	s.logger.Info("Created realm admin user successfully",
+		zap.String("realm", realmName),
+		zap.String("user_id", createdUser.ID),
+		zap.String("username", createdUser.Username),
+		zap.String("email", createdUser.Email))
+
+	return createdUser, nil
 }
 
-func (s *TenantService) ProvisionTenant(ctx context.Context, tenant *models.Tenant) error {
-	if tenant.KeycloakOrganizationID != "" {
-		return fmt.Errorf("organization already provisioned for tenant %s", tenant.ID.String())
+func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (*models.Tenant, error) {
+	realmName, err := s.createKeycloakRealm(ctx, name, domain, tenantType, parentRealmName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
 
-	tenant.Status = models.TenantStatusProvisioning
-	if err := s.db.WithContext(ctx).Save(tenant).Error; err != nil {
-		return fmt.Errorf("failed to update tenant status: %w", err)
+	tenant := &models.Tenant{
+		Name:          name,
+		Domain:        domain,
+		Type:          tenantType,
+		KeycloakRealm: realmName,
+		Status:        models.TenantStatusActive,
 	}
 
-	if err := s.createKeycloakOrganization(ctx, tenant); err != nil {
-		tenant.Status = models.TenantStatusActive
-		s.db.WithContext(ctx).Save(tenant)
-		return fmt.Errorf("failed to create Keycloak organization: %w", err)
-	}
-
-	return nil
+	return tenant, nil
 }
 
-func (s *TenantService) AddUserToTenant(ctx context.Context, tenantID uuid.UUID, userID string) error {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		return fmt.Errorf("tenant not found: %w", err)
+func (s *TenantService) AddUserToTenant(ctx context.Context, realmName, userID string) error {
+	user, err := s.keycloakAdmin.GetUser(ctx, realmName, userID)
+	if err != nil {
+		return fmt.Errorf("user not found in realm: %w", err)
 	}
 
-	if tenant.KeycloakOrganizationID == "" {
-		return fmt.Errorf("tenant has no Keycloak organization")
-	}
-
-	if err := s.keycloakAdmin.AddOrganizationMember(ctx, s.config.Keycloak.MSPRealm, tenant.KeycloakOrganizationID, userID); err != nil {
-		return fmt.Errorf("failed to add user to organization: %w", err)
-	}
-
-	s.logger.Info("Added user to organization",
-		zap.String("tenant_id", tenantID.String()),
+	s.logger.Info("User already exists in tenant realm",
 		zap.String("user_id", userID),
-		zap.String("organization_id", tenant.KeycloakOrganizationID))
+		zap.String("realm", realmName),
+		zap.String("username", user.Username))
 
 	return nil
 }
 
-func (s *TenantService) RemoveUserFromTenant(ctx context.Context, tenantID uuid.UUID, userID string) error {
-	var tenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		return fmt.Errorf("tenant not found: %w", err)
+func (s *TenantService) RemoveUserFromTenant(ctx context.Context, realmName, userID string) error {
+	if err := s.keycloakAdmin.DeleteUser(ctx, realmName, userID); err != nil {
+		return fmt.Errorf("failed to remove user from realm: %w", err)
 	}
 
-	if tenant.KeycloakOrganizationID == "" {
-		return fmt.Errorf("tenant has no Keycloak organization")
-	}
-
-	if err := s.keycloakAdmin.RemoveOrganizationMember(ctx, s.config.Keycloak.MSPRealm, tenant.KeycloakOrganizationID, userID); err != nil {
-		return fmt.Errorf("failed to remove user from organization: %w", err)
-	}
-
-	s.logger.Info("Removed user from organization",
-		zap.String("tenant_id", tenantID.String()),
+	s.logger.Info("Removed user from tenant realm",
 		zap.String("user_id", userID),
-		zap.String("organization_id", tenant.KeycloakOrganizationID))
+		zap.String("realm", realmName))
 
 	return nil
 }
 
-func (s *TenantService) validateTenantSettings(settings models.TenantSettings, tenantType models.TenantType) error {
-	if tenantType == models.TenantTypeClient {
-		if settings.MSPSSOEnabled {
-			return fmt.Errorf("client tenants cannot enable MSP SSO")
-		}
-	}
 
-	if settings.MaxUsers < 0 {
-		return fmt.Errorf("max users cannot be negative")
-	}
-	if settings.MaxRoles < 0 {
-		return fmt.Errorf("max roles cannot be negative")
-	}
-	if settings.MaxSSOProviders < 0 {
-		return fmt.Errorf("max SSO providers cannot be negative")
-	}
-
-	if settings.DataRetentionDays < 0 {
-		return fmt.Errorf("data retention days cannot be negative")
-	}
-
-	return nil
-}
-
-func (s *TenantService) logTenantSettingsChanges(oldSettings, newSettings models.TenantSettings, tenantID uuid.UUID, ctx context.Context) {
-	changes := make(map[string]interface{})
-
-	if oldSettings.EnableSSO != newSettings.EnableSSO {
-		changes["enable_sso"] = newSettings.EnableSSO
-	}
-	if oldSettings.EnableMFA != newSettings.EnableMFA {
-		changes["enable_mfa"] = newSettings.EnableMFA
-	}
-	if oldSettings.EnableAudit != newSettings.EnableAudit {
-		changes["enable_audit"] = newSettings.EnableAudit
-	}
-	if oldSettings.MSPSSOEnabled != newSettings.MSPSSOEnabled {
-		changes["msp_sso_enabled"] = newSettings.MSPSSOEnabled
-	}
-	if oldSettings.MSPSSOProvider != newSettings.MSPSSOProvider {
-		changes["msp_sso_provider"] = newSettings.MSPSSOProvider
-	}
-	if oldSettings.MaxUsers != newSettings.MaxUsers {
-		changes["max_users"] = newSettings.MaxUsers
-	}
-	if oldSettings.MaxRoles != newSettings.MaxRoles {
-		changes["max_roles"] = newSettings.MaxRoles
-	}
-	if oldSettings.MaxSSOProviders != newSettings.MaxSSOProviders {
-		changes["max_sso_providers"] = newSettings.MaxSSOProviders
-	}
-	if oldSettings.DataRetentionDays != newSettings.DataRetentionDays {
-		changes["data_retention_days"] = newSettings.DataRetentionDays
-	}
-
-	if len(changes) > 0 {
-		s.logger.Info("Tenant settings updated",
-			zap.String("tenant_id", tenantID.String()),
-			zap.Any("changes", changes))
-	}
-}
