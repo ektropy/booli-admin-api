@@ -336,10 +336,10 @@ func (suite *EnvironmentTestSuite) createTestTenant() *models.Tenant {
 	}
 	suite.NoError(err)
 
-	suite.T().Logf("Decoded tenant ID: %s, Name: %s", tenantResp.ID, tenantResp.Name)
+	suite.T().Logf("Decoded tenant realm: %s, Name: %s", tenantResp.Realm, tenantResp.Name)
 
 	tenant := &models.Tenant{
-		ID:     tenantResp.ID,
+		KeycloakRealm: tenantResp.Realm,
 		Name:   tenantResp.Name,
 		Domain: tenantResp.Domain,
 		Type:   tenantResp.Type,

@@ -61,9 +61,9 @@ func (suite *OrganizationsSSOTestSuite) TestTenantCreationAsOrganization() {
 		err = json.Unmarshal(body, &tenantResp)
 		require.NoError(suite.T(), err)
 
-		suite.testTenantID = tenantResp["id"].(string)
+		suite.testTenantID = tenantResp["realm"].(string)
 
-		assert.Contains(suite.T(), tenantResp, "id")
+		assert.Contains(suite.T(), tenantResp, "realm")
 		assert.Equal(suite.T(), "Test-SSO-Organization", tenantResp["name"])
 
 		suite.T().Log("Tenant created successfully as organization in MSP realm")
@@ -119,7 +119,7 @@ func (suite *OrganizationsSSOTestSuite) verifyTenantExists(tenantID string) {
 		err = json.Unmarshal(body, &tenant)
 		require.NoError(suite.T(), err)
 
-		assert.Equal(suite.T(), tenantID, tenant["id"])
+		assert.Equal(suite.T(), tenantID, tenant["realm"])
 		suite.T().Log("Tenant verification successful")
 	}
 }

@@ -188,7 +188,7 @@ type UpdateTenantRequest struct {
 }
 
 type TenantResponse struct {
-	ID               uuid.UUID      `json:"id"`
+	Realm            string         `json:"realm"`
 	Name             string         `json:"name"`
 	Domain           string         `json:"domain"`
 	Type             TenantType     `json:"type"`
@@ -218,7 +218,7 @@ func (t *Tenant) ToResponse() *TenantResponse {
 	}
 
 	return &TenantResponse{
-		ID:             t.ID,
+		Realm:          t.KeycloakRealm,
 		Name:           t.Name,
 		Domain:         t.Domain,
 		Type:           t.Type,

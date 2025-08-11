@@ -9,7 +9,6 @@ import (
 
 	"github.com/booli/booli-admin-api/internal/keycloak"
 	"github.com/booli/booli-admin-api/internal/models"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -48,7 +47,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		s.logger.Info("Defaulting tenant type to client")
 	}
 
-	realmName, tenantID, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, parentRealmName)
+	realmName, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, parentRealmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -62,12 +61,8 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
-	// Set the ID from the tenant_id we generated
-	if parsedID, err := uuid.Parse(tenantID); err == nil {
-		tenant.ID = parsedID
-	} else {
-		tenant.BeforeCreate(nil)
-	}
+	// Generate ID for internal consistency (not used as primary identifier)
+	tenant.BeforeCreate(nil)
 
 	s.logger.Info("Tenant created successfully",
 		zap.String("realm_name", realmName),
@@ -99,57 +94,10 @@ func (s *TenantService) GetTenant(ctx context.Context, realmName string) (*model
 		CreatedAt:     createdAt,
 		UpdatedAt:     time.Now(),
 	}
-	// Set the ID from tenant_id attribute if available
-	if tenantIDStr, ok := realm.Attributes["tenant_id"]; ok {
-		if parsedID, err := uuid.Parse(tenantIDStr); err == nil {
-			tenant.ID = parsedID
-		} else {
-			tenant.BeforeCreate(nil)
-		}
-	} else {
-		tenant.BeforeCreate(nil)
-	}
+	// Generate ID for internal consistency
+	tenant.BeforeCreate(nil)
 
 	return tenant, nil
-}
-
-func (s *TenantService) GetTenantByID(ctx context.Context, id string) (*models.Tenant, error) {
-	// In Keycloak-first architecture, we need to search through all realms
-	// to find one with matching tenant_id attribute
-	realms, err := s.keycloakAdmin.GetRealms(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get realms from Keycloak: %w", err)
-	}
-
-	for _, realm := range realms {
-		if realm.Realm == "master" {
-			continue
-		}
-		
-		// Check if this realm belongs to the tenant with the given ID
-		if tenantID, exists := realm.Attributes["tenant_id"]; exists && tenantID == id {
-			createdAt := time.Now()
-			if createdAtStr, ok := realm.Attributes["created_at"]; ok {
-				if parsedTime, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
-					createdAt = parsedTime
-				}
-			}
-
-			tenant := &models.Tenant{
-				Name:          realm.DisplayName,
-				Domain:        realm.Attributes["domain"],
-				Type:          models.TenantType(realm.Attributes["tenant_type"]),
-				KeycloakRealm: realm.Realm,
-				Status:        models.TenantStatusActive,
-				CreatedAt:     createdAt,
-				UpdatedAt:     time.Now(),
-			}
-			tenant.BeforeCreate(nil)
-			return tenant, nil
-		}
-	}
-
-	return nil, fmt.Errorf("tenant with ID %s not found", id)
 }
 
 func (s *TenantService) GetUserCount(ctx context.Context, realmName string) (int, error) {
@@ -192,16 +140,8 @@ func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string,
 			CreatedAt:     createdAt,
 			UpdatedAt:     time.Now(),
 		}
-		// Set the ID from tenant_id attribute if available
-		if tenantIDStr, ok := realm.Attributes["tenant_id"]; ok {
-			if parsedID, err := uuid.Parse(tenantIDStr); err == nil {
-				tenant.ID = parsedID
-			} else {
-				tenant.BeforeCreate(nil)
-			}
-		} else {
-			tenant.BeforeCreate(nil)
-		}
+		// Generate ID for internal consistency
+		tenant.BeforeCreate(nil)
 		tenants = append(tenants, tenant)
 	}
 
@@ -266,16 +206,8 @@ func (s *TenantService) GetTenantByDomain(ctx context.Context, domain string) (*
 				CreatedAt:     createdAt,
 				UpdatedAt:     time.Now(),
 			}
-			// Set the ID from tenant_id attribute if available
-			if tenantIDStr, ok := realm.Attributes["tenant_id"]; ok {
-				if parsedID, err := uuid.Parse(tenantIDStr); err == nil {
-					tenant.ID = parsedID
-				} else {
-					tenant.BeforeCreate(nil)
-				}
-			} else {
-				tenant.BeforeCreate(nil)
-			}
+			// Generate ID for internal consistency
+			tenant.BeforeCreate(nil)
 			return tenant, nil
 		}
 	}
@@ -333,6 +265,7 @@ func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req 
 		CreatedAt:     createdAt,
 		UpdatedAt:     time.Now(),
 	}
+	// Generate ID for internal consistency
 	updatedTenant.BeforeCreate(nil)
 
 	s.logger.Info("Tenant updated successfully",
@@ -369,7 +302,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 }
 
 
-func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (string, string, error) {
+func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (string, error) {
 	s.logger.Info("Starting Keycloak realm creation",
 		zap.String("tenant_name", name),
 		zap.String("domain", domain),
@@ -382,9 +315,6 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 	s.logger.Info("Generated realm name",
 		zap.String("tenant_name", name),
 		zap.String("realm_name", realmName))
-
-	// Generate a UUID for the tenant that will be stored as an attribute
-	tenantID := uuid.New().String()
 
 	realm := &keycloak.RealmRepresentation{
 		Realm:                 realmName,
@@ -400,7 +330,6 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 		AdminTheme:            "keycloak",
 		EmailTheme:            "keycloak",
 		Attributes: map[string]string{
-			"tenant_id":    tenantID,
 			"tenant_name":  name,
 			"tenant_type":  string(tenantType),
 			"domain":       domain,
@@ -416,7 +345,7 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 		s.logger.Error("Keycloak realm creation failed",
 			zap.String("realm_name", realmName),
 			zap.Error(err))
-		return "", "", fmt.Errorf("failed to create Keycloak realm: %w", err)
+		return "", fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
 
 	s.logger.Info("Keycloak realm created successfully", zap.String("realm_name", realmName))
@@ -430,7 +359,7 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 				zap.String("realm_name", realmName),
 				zap.Error(deleteErr))
 		}
-		return "", "", fmt.Errorf("failed to create default realm roles: %w", err)
+		return "", fmt.Errorf("failed to create default realm roles: %w", err)
 	}
 
 	adminUser, err := s.createRealmAdminUser(ctx, realmName, name, domain)
@@ -443,14 +372,14 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 				zap.String("realm_name", realmName),
 				zap.Error(deleteErr))
 		}
-		return "", "", fmt.Errorf("failed to create realm admin user: %w", err)
+		return "", fmt.Errorf("failed to create realm admin user: %w", err)
 	}
 
 	s.logger.Info("Created Keycloak realm successfully",
 		zap.String("realm_name", realmName),
 		zap.String("admin_user_id", adminUser.ID))
 
-	return realmName, tenantID, nil
+	return realmName, nil
 }
 
 func (s *TenantService) createRealmDefaultRoles(ctx context.Context, realmName string, tenantType models.TenantType) error {
@@ -554,7 +483,7 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 }
 
 func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (*models.Tenant, error) {
-	realmName, tenantID, err := s.createKeycloakRealm(ctx, name, domain, tenantType, parentRealmName)
+	realmName, err := s.createKeycloakRealm(ctx, name, domain, tenantType, parentRealmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -568,12 +497,8 @@ func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
-	// Set the ID from the tenant_id we generated
-	if parsedID, err := uuid.Parse(tenantID); err == nil {
-		tenant.ID = parsedID
-	} else {
-		tenant.BeforeCreate(nil)
-	}
+	// Generate ID for internal consistency
+	tenant.BeforeCreate(nil)
 
 	return tenant, nil
 }
