@@ -5,73 +5,28 @@ import (
 	"testing"
 
 	"github.com/booli/booli-admin-api/internal/models"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
-type MockDB struct {
-	mock.Mock
-}
-
-func (m *MockDB) WithContext(ctx context.Context) *gorm.DB {
-	args := m.Called(ctx)
-	return args.Get(0).(*gorm.DB)
-}
-
-func (m *MockDB) Where(query interface{}, args ...interface{}) *gorm.DB {
-	called := m.Called(query, args)
-	return called.Get(0).(*gorm.DB)
-}
-
-func (m *MockDB) First(dest interface{}, conds ...interface{}) *gorm.DB {
-	args := m.Called(dest, conds)
-	if tenant, ok := dest.(*models.Tenant); ok {
-		parentID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-		tenant.ID = uuid.MustParse("22222222-2222-2222-2222-222222222222")
-		tenant.ParentTenantID = &parentID
-		tenant.Type = models.TenantTypeClient
-	}
-	return args.Get(0).(*gorm.DB)
-}
-
-func TestEnvironmentService_ValidateTenantAccess_ParentChildRelationship(t *testing.T) {
+func TestEnvironmentService_ValidateTenantAccess_RealmBased(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
 	service := &EnvironmentService{
 		logger: logger,
 	}
 
-	mspTenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	clientTenantID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-
-	_ = context.Background()
-
-	mockDB := &struct {
-		*gorm.DB
-		mockTenant models.Tenant
-	}{
-		mockTenant: models.Tenant{
-			ID:             clientTenantID,
-			ParentTenantID: &mspTenantID,
-			Type:           models.TenantTypeClient,
-		},
-	}
-
-	service.db = &gorm.DB{
-		Config: &gorm.Config{},
-	}
+	mspTenantRealm := "master"
+	clientTenantRealm := "test-client-tenant"
 
 	t.Run("SameTenantAccess", func(t *testing.T) {
-		assert.True(t, mspTenantID == mspTenantID || clientTenantID == clientTenantID,
-			"Same tenant comparison should be true")
+		err := service.validateTenantAccess(context.Background(), clientTenantRealm, clientTenantRealm, models.AccessLevelRead)
+		assert.NoError(t, err, "Same tenant should have access")
 	})
 
-	t.Run("ParentChildAccess", func(t *testing.T) {
-		assert.Equal(t, mspTenantID, *mockDB.mockTenant.ParentTenantID,
-			"Client tenant should have MSP tenant as parent")
+	t.Run("MSPAdminAccess", func(t *testing.T) {
+		err := service.validateTenantAccess(context.Background(), mspTenantRealm, clientTenantRealm, models.AccessLevelFullAccess)
+		assert.NoError(t, err, "MSP admin should have access to all tenants")
 	})
 
 	t.Run("AccessLevelConstants", func(t *testing.T) {
@@ -79,22 +34,25 @@ func TestEnvironmentService_ValidateTenantAccess_ParentChildRelationship(t *test
 		assert.NotEmpty(t, models.AccessLevelReadWrite)
 		assert.NotEmpty(t, models.AccessLevelFullAccess)
 	})
+
+	t.Run("TenantTypes", func(t *testing.T) {
+		assert.Equal(t, models.TenantType("client"), models.TenantTypeClient)
+		assert.Equal(t, models.TenantType("msp"), models.TenantTypeMSP)
+	})
 }
 
-func TestSSOProviderValidation(t *testing.T) {
-	validTypes := []models.SSOProviderType{
-		models.SSOProviderTypeSAML,
-		models.SSOProviderTypeOIDC,
+func TestEnvironmentService_ClearEnvironmentCache(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+
+	tenantRealm := "test-tenant"
+	environmentID := "123e4567-e89b-12d3-a456-426614174000"
+
+	// Test with nil cache - should not panic
+	serviceNilCache := &EnvironmentService{
+		logger: logger,
+		cache:  nil,
 	}
 
-	t.Run("ValidProviderTypes", func(t *testing.T) {
-		assert.Equal(t, "saml", string(models.SSOProviderTypeSAML))
-		assert.Equal(t, "oidc", string(models.SSOProviderTypeOIDC))
-		assert.Len(t, validTypes, 2, "Should only have 2 valid SSO provider types")
-	})
-
-	t.Run("InvalidOAuth2Type", func(t *testing.T) {
-		oauth2 := models.SSOProviderType("oauth2")
-		assert.NotContains(t, validTypes, oauth2, "oauth2 should not be a valid SSO provider type")
-	})
+	// Should not panic with nil cache
+	serviceNilCache.clearEnvironmentCache(context.Background(), tenantRealm, environmentID)
 }

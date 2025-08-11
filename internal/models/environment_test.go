@@ -11,7 +11,7 @@ import (
 
 func TestTenantEnvironment_BeforeCreate(t *testing.T) {
 	env := &TenantEnvironment{
-		TenantID:    uuid.New(),
+		TenantRealm: "test-tenant",
 		Name:        "test-env",
 		Description: "Test environment",
 		Environment: "development",
@@ -27,12 +27,11 @@ func TestTenantEnvironment_BeforeCreate(t *testing.T) {
 
 func TestTenantEnvironment_Structure(t *testing.T) {
 	envID := uuid.New()
-	tenantID := uuid.New()
 	now := time.Now()
 	
 	env := &TenantEnvironment{
 		ID:          envID,
-		TenantID:    tenantID,
+		TenantRealm: "production-tenant",
 		Name:        "production",
 		Description: "Production environment",
 		Environment: "production",
@@ -42,7 +41,7 @@ func TestTenantEnvironment_Structure(t *testing.T) {
 	}
 	
 	assert.Equal(t, envID, env.ID)
-	assert.Equal(t, tenantID, env.TenantID)
+	assert.Equal(t, "production-tenant", env.TenantRealm)
 	assert.Equal(t, "production", env.Name)
 	assert.Equal(t, "Production environment", env.Description)
 	assert.Equal(t, "production", env.Environment)
@@ -52,7 +51,6 @@ func TestTenantEnvironment_Structure(t *testing.T) {
 }
 
 func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
-	tenantID := uuid.New()
 	
 	tests := []struct {
 		name    string
@@ -62,7 +60,7 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 		{
 			name: "Valid request",
 			request: CreateTenantEnvironmentRequest{
-				TenantID:    tenantID,
+				TenantRealm: "test-tenant",
 				Name:        "test-env",
 				Description: "Test environment",
 				Environment: "development",
@@ -72,7 +70,7 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 		{
 			name: "Missing name",
 			request: CreateTenantEnvironmentRequest{
-				TenantID:    tenantID,
+				TenantRealm: "test-tenant",
 				Description: "Test environment",
 				Environment: "development",
 			},
@@ -81,7 +79,7 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 		{
 			name: "Empty name",
 			request: CreateTenantEnvironmentRequest{
-				TenantID:    tenantID,
+				TenantRealm: "test-tenant",
 				Name:        "",
 				Description: "Test environment",
 				Environment: "development",
@@ -95,7 +93,7 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 			// Basic structure validation - would need actual validator for field validation
 			if tt.valid {
 				assert.NotEmpty(t, tt.request.Name)
-				assert.NotEqual(t, uuid.Nil, tt.request.TenantID)
+				assert.NotEmpty(t, tt.request.TenantRealm)
 			}
 		})
 	}
@@ -148,7 +146,7 @@ func TestTenantEnvironmentListResponse_Structure(t *testing.T) {
 func TestNetworkRange_BeforeCreate(t *testing.T) {
 	nr := &NetworkRange{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		Name:          "Internal Network",
 		CIDR:          "192.168.1.0/24",
 		NetworkType:   "internal",
@@ -163,12 +161,11 @@ func TestNetworkRange_BeforeCreate(t *testing.T) {
 
 func TestNetworkRange_Structure(t *testing.T) {
 	envID := uuid.New()
-	tenantID := uuid.New()
 	vlan := 100
 	
 	networkRange := NetworkRange{
 		EnvironmentID: envID,
-		TenantID:      tenantID,
+		TenantRealm:   "test-tenant",
 		Name:          "Internal Network",
 		CIDR:          "10.0.0.0/24",
 		NetworkType:   "internal",
@@ -178,7 +175,7 @@ func TestNetworkRange_Structure(t *testing.T) {
 	}
 	
 	assert.Equal(t, envID, networkRange.EnvironmentID)
-	assert.Equal(t, tenantID, networkRange.TenantID)
+	assert.Equal(t, "test-tenant", networkRange.TenantRealm)
 	assert.Equal(t, "10.0.0.0/24", networkRange.CIDR)
 	assert.Equal(t, "Internal network", networkRange.Description)
 	assert.Equal(t, "internal", networkRange.NetworkType)
@@ -190,7 +187,7 @@ func TestNetworkRange_Structure(t *testing.T) {
 func TestPublicIP_Structure(t *testing.T) {
 	publicIP := PublicIP{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		IPAddress:     "203.0.113.1",
 		IPType:        "ipv4",
 		Purpose:       "web",
@@ -210,7 +207,7 @@ func TestPublicIP_Structure(t *testing.T) {
 func TestEgressIP_Structure(t *testing.T) {
 	egressIP := EgressIP{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		IPAddress:     "203.0.113.2",
 		IPType:        "ipv4",
 		Purpose:       "api_calls",
@@ -230,7 +227,7 @@ func TestDomain_Structure(t *testing.T) {
 	
 	domain := Domain{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		DomainName:    "example.com",
 		DomainType:    "primary",
 		Purpose:       "website",
@@ -254,7 +251,7 @@ func TestInfrastructureIP_Structure(t *testing.T) {
 	
 	infraIP := InfrastructureIP{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		IPAddress:     "10.0.1.10",
 		ServiceType:   InfrastructureTypeDNS,
 		Hostname:      "dns-server-1",
@@ -277,7 +274,7 @@ func TestInfrastructureIP_Structure(t *testing.T) {
 func TestNamingConvention_Structure(t *testing.T) {
 	nc := NamingConvention{
 		EnvironmentID: uuid.New(),
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		Name:          "Server Naming",
 		Pattern:       "{location}-{env}-{service}-{number}",
 		ResourceType:  "server",
@@ -294,16 +291,15 @@ func TestNamingConvention_Structure(t *testing.T) {
 
 func TestTenantAccessGrant_Structure(t *testing.T) {
 	envID := uuid.New()
-	tenantID := uuid.New()
 	userID := uuid.New()
 	grantedBy := uuid.New()
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
 	
 	grant := TenantAccessGrant{
-		EnvironmentID:     envID,
-		TenantID:          tenantID,
-		GrantedToUserID:   userID,
-		GrantedToTenantID: tenantID,
+		EnvironmentID:         envID,
+		TenantRealm:           "test-tenant",
+		GrantedToUserID:       userID,
+		GrantedToTenantRealm:  "msp-tenant",
 		AccessLevel:       AccessLevelReadWrite,
 		GrantedBy:         grantedBy,
 		ExpiresAt:         &expiresAt,
@@ -311,7 +307,7 @@ func TestTenantAccessGrant_Structure(t *testing.T) {
 	}
 	
 	assert.Equal(t, envID, grant.EnvironmentID)
-	assert.Equal(t, tenantID, grant.TenantID)
+	assert.Equal(t, "test-tenant", grant.TenantRealm)
 	assert.Equal(t, userID, grant.GrantedToUserID)
 	assert.Equal(t, AccessLevelReadWrite, grant.AccessLevel)
 	assert.Equal(t, grantedBy, grant.GrantedBy)
@@ -322,14 +318,13 @@ func TestTenantAccessGrant_Structure(t *testing.T) {
 func TestCreateTenantAccessGrantRequest_Structure(t *testing.T) {
 	envID := uuid.New()
 	userID := uuid.New()
-	tenantID := uuid.New()
 	grantedBy := uuid.New()
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
 	
 	req := CreateTenantAccessGrantRequest{
-		EnvironmentID:     envID,
-		GrantedToUserID:   userID,
-		GrantedToTenantID: tenantID,
+		EnvironmentID:         envID,
+		GrantedToUserID:       userID,
+		GrantedToTenantRealm:  "msp-tenant",
 		AccessLevel:       AccessLevelRead,
 		GrantedBy:         grantedBy,
 		ExpiresAt:         &expiresAt,
@@ -337,7 +332,7 @@ func TestCreateTenantAccessGrantRequest_Structure(t *testing.T) {
 	
 	assert.Equal(t, envID, req.EnvironmentID)
 	assert.Equal(t, userID, req.GrantedToUserID)
-	assert.Equal(t, tenantID, req.GrantedToTenantID)
+	assert.Equal(t, "msp-tenant", req.GrantedToTenantRealm)
 	assert.Equal(t, AccessLevelRead, req.AccessLevel)
 	assert.Equal(t, grantedBy, req.GrantedBy)
 	assert.NotNil(t, req.ExpiresAt)
@@ -526,13 +521,13 @@ func TestValidateDomainName(t *testing.T) {
 
 func TestSIEMEnrichmentData_Structure(t *testing.T) {
 	enrichment := SIEMEnrichmentData{
-		TenantID:      uuid.New(),
+		TenantRealm:   "test-tenant",
 		NetworkRanges: []NetworkRange{{CIDR: "192.168.1.0/24"}},
 		PublicIPs:     []PublicIP{{IPAddress: "203.0.113.1"}},
 		LastUpdated:   time.Now(),
 	}
 	
-	assert.NotEqual(t, uuid.Nil, enrichment.TenantID)
+	assert.Equal(t, "test-tenant", enrichment.TenantRealm)
 	assert.Len(t, enrichment.NetworkRanges, 1)
 	assert.Len(t, enrichment.PublicIPs, 1)
 	assert.False(t, enrichment.LastUpdated.IsZero())
@@ -542,7 +537,7 @@ func TestEnrichmentLookupResult_Structure(t *testing.T) {
 	result := EnrichmentLookupResult{
 		Type:            "ip",
 		Value:           "192.168.1.1",
-		TenantID:        uuid.New(),
+		TenantRealm:     "test-tenant",
 		EnvironmentID:   uuid.New(),
 		EnvironmentName: "production",
 		Classification:  "internal",

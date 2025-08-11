@@ -16,12 +16,12 @@ import (
 )
 
 type TenantService interface {
-	CreateTenant(ctx context.Context, req *models.CreateTenantRequest, parentRealmName string) (*models.Tenant, error)
+	CreateTenant(ctx context.Context, req *models.CreateTenantRequest, mspRealm string) (*models.Tenant, error)
 	GetTenant(ctx context.Context, realmName string) (*models.Tenant, error)
-	ListTenants(ctx context.Context, parentRealmName string, page, pageSize int) (*models.TenantListResponse, error)
+	ListTenants(ctx context.Context, filterByMSP string, page, pageSize int) (*models.TenantListResponse, error)
 	UpdateTenant(ctx context.Context, realmName string, req *models.UpdateTenantRequest) (*models.Tenant, error)
 	DeleteTenant(ctx context.Context, realmName string) error
-	ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (*models.Tenant, error)
+	ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (*models.Tenant, error)
 	GetUserCount(ctx context.Context, realmName string) (int, error)
 	AddUserToTenant(ctx context.Context, realmName, userID string) error
 	RemoveUserFromTenant(ctx context.Context, realmName, userID string) error
@@ -61,25 +61,25 @@ func (h *TenantHandler) List(c *gin.Context) {
 		pageSize = constants.DefaultPageSize
 	}
 
-	var parentRealmName string
 	roles, _ := middleware.GetUserRoles(c)
 
 	isMSPAdmin := contains(roles, constants.RoleMSPAdmin)
 	isMSPUser := isMSPAdmin || contains(roles, constants.RoleMSPPower) || contains(roles, constants.RoleMSPBasic)
 
+	var filterByMSP string
 	if isMSPAdmin {
 		// MSP admins can see all tenants
-		parentRealmName = ""
+		filterByMSP = ""
 	} else if isMSPUser {
-		// MSP power users can see tenants under their MSP
-		parentRealmName = "master"
+		// MSP power users can see client tenants only
+		filterByMSP = "master"
 	} else {
 		// Regular users should not list tenants
 		utils.RespondWithError(c, http.StatusForbidden, utils.ErrCodeForbidden, "Access denied", nil)
 		return
 	}
 
-	tenants, err := h.tenantService.ListTenants(c.Request.Context(), parentRealmName, page, pageSize)
+	tenants, err := h.tenantService.ListTenants(c.Request.Context(), filterByMSP, page, pageSize)
 	if err != nil {
 		RespondListFailed(c, "tenants", err, h.logger)
 		return
@@ -113,10 +113,10 @@ func (h *TenantHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// For now, all tenant realms have master as parent (MSP realm)
-	parentRealmName := "master"
+	// All client tenant realms are managed from the master realm
+	mspRealm := "master"
 
-	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req, parentRealmName)
+	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req, mspRealm)
 	if err != nil {
 		h.logger.Error("Failed to create tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create tenant", nil)
@@ -407,7 +407,7 @@ func (h *TenantHandler) TestMSPSSO(c *gin.Context) {
 	}
 
 	result := gin.H{
-		"tenant_id":            tenant.ID,
+		"tenant_realm":         tenant.RealmName,
 		"tenant_name":          tenant.Name,
 		"msp_sso_enabled":      settings.MSPSSOEnabled,
 		"msp_sso_provider":     settings.MSPSSOProvider,

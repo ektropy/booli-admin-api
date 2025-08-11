@@ -4,7 +4,7 @@ import "time"
 
 const (
 	DefaultProvider   = "keycloak"
-	DefaultMSPRealm   = "msp"
+	DefaultMSPRealm   = "master"
 	BearerTokenPrefix = "Bearer "
 	TokenExpiryBuffer = 60 * time.Second
 

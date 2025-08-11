@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -18,21 +17,15 @@ const (
 )
 
 type Tenant struct {
-	ID               uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Name             string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
-	Domain           string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
-	Type             TenantType     `gorm:"default:'client'" json:"type"`
-	ParentTenantID   *uuid.UUID     `gorm:"type:uuid;index" json:"parent_tenant_id,omitempty"`
-	Status           TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
-	Settings         datatypes.JSON `gorm:"type:jsonb" json:"settings"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
-	DeletedAt        gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
-
-	RealmName        string         `gorm:"-" json:"-"`
-
-	ParentTenant *Tenant  `gorm:"foreignKey:ParentTenantID" json:"parent_tenant,omitempty"`
-	ChildTenants []Tenant `gorm:"foreignKey:ParentTenantID" json:"child_tenants,omitempty"`
+	RealmName string         `gorm:"primaryKey;size:255" json:"realm"`
+	Name      string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
+	Domain    string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
+	Type      TenantType     `gorm:"default:'client'" json:"type"`
+	Status    TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
+	Settings  datatypes.JSON `gorm:"type:jsonb" json:"settings"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 type TenantStatus string
@@ -70,13 +63,6 @@ type TenantSettings struct {
 	ComplianceFlags   []string `json:"compliance_flags,omitempty"`
 }
 
-func (t *Tenant) BeforeCreate(tx *gorm.DB) error {
-	if t.ID == uuid.Nil {
-		t.ID = uuid.New()
-	}
-
-	return nil
-}
 
 func (t *Tenant) IsActive() bool {
 	return t.Status == TenantStatusActive
@@ -124,7 +110,7 @@ func (t *Tenant) IsClientTenant() bool {
 }
 
 func (t *Tenant) HasParentMSP() bool {
-	return t.ParentTenantID != nil
+	return t.Type == TenantTypeClient
 }
 
 func (t *Tenant) CanManageChildTenants() bool {
@@ -173,19 +159,17 @@ func (t *Tenant) IsEmailDomainAllowed(email string) bool {
 }
 
 type CreateTenantRequest struct {
-	Name           string         `json:"name" validate:"required,min=1,max=255"`
-	Domain         string         `json:"domain" validate:"omitempty,fqdn"`
-	Type           TenantType     `json:"type" validate:"omitempty,oneof=client msp"`
-	ParentTenantID *uuid.UUID     `json:"parent_tenant_id,omitempty"`
-	Settings       datatypes.JSON `json:"settings"`
+	Name     string         `json:"name" validate:"required,min=1,max=255"`
+	Domain   string         `json:"domain" validate:"omitempty,fqdn"`
+	Type     TenantType     `json:"type" validate:"omitempty,oneof=client msp"`
+	Settings datatypes.JSON `json:"settings"`
 }
 
 type UpdateTenantRequest struct {
-	Name           *string         `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
-	Domain         *string         `json:"domain,omitempty" validate:"omitempty,fqdn"`
-	Status         *TenantStatus   `json:"status,omitempty"`
-	ParentTenantID *uuid.UUID      `json:"parent_tenant_id,omitempty"`
-	Settings       *datatypes.JSON `json:"settings,omitempty"`
+	Name     *string         `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
+	Domain   *string         `json:"domain,omitempty" validate:"omitempty,fqdn"`
+	Status   *TenantStatus   `json:"status,omitempty"`
+	Settings *datatypes.JSON `json:"settings,omitempty"`
 }
 
 type TenantResponse struct {
@@ -193,7 +177,6 @@ type TenantResponse struct {
 	Name             string         `json:"name"`
 	Domain           string         `json:"domain"`
 	Type             TenantType     `json:"type"`
-	ParentTenantID   *uuid.UUID     `json:"parent_tenant_id,omitempty"`
 	Status           TenantStatus   `json:"status"`
 	Settings         TenantSettings `json:"settings"`
 	UserCount        int            `json:"user_count,omitempty"`
@@ -219,14 +202,13 @@ func (t *Tenant) ToResponse() *TenantResponse {
 	}
 
 	return &TenantResponse{
-		Realm:          t.RealmName,
-		Name:           t.Name,
-		Domain:         t.Domain,
-		Type:           t.Type,
-		ParentTenantID: t.ParentTenantID,
-		Status:         t.Status,
-		Settings:       settings,
-		CreatedAt:      t.CreatedAt,
-		UpdatedAt:      t.UpdatedAt,
+		Realm:     t.RealmName,
+		Name:      t.Name,
+		Domain:    t.Domain,
+		Type:      t.Type,
+		Status:    t.Status,
+		Settings:  settings,
+		CreatedAt: t.CreatedAt,
+		UpdatedAt: t.UpdatedAt,
 	}
 }

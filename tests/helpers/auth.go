@@ -16,7 +16,7 @@ func SetupTestOIDCProviders(oidcService *auth.OIDCService, keycloakURL, callback
 	mspProvider := auth.CreateKeycloakProvider(
 		"keycloak",
 		keycloakURL,
-		"msp",
+		"master",
 		"msp-client",
 		"msp-secret",
 		callbackURL,

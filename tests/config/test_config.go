@@ -52,7 +52,7 @@ func GetTestConfig() *TestConfig {
 		KeycloakAdminUser:     getEnvOrDefault("TEST_KEYCLOAK_ADMIN_USER", "admin"),
 		KeycloakAdminPassword: getEnvOrDefault("TEST_KEYCLOAK_ADMIN_PASSWORD", "admin"),
 		KeycloakMasterRealm:   "master",
-		KeycloakMSPRealm:      getEnvOrDefault("TEST_KEYCLOAK_MSP_REALM", "msp"),
+		KeycloakMSPRealm:      getEnvOrDefault("TEST_KEYCLOAK_MSP_REALM", "master"),
 		KeycloakClientID:      getEnvOrDefault("TEST_KEYCLOAK_CLIENT_ID", "msp-client"),
 		KeycloakClientSecret:  getEnvOrDefault("TEST_KEYCLOAK_CLIENT_SECRET", "msp-secret"),
 
@@ -71,10 +71,10 @@ func GetTestConfig() *TestConfig {
 
 		DefaultTestUsers: []TestUser{
 			{
-				Username:  "admin",
+				Username:  "msp-admin",
 				Password:  "admin123",
-				Email:     "admin@test.com",
-				FirstName: "Admin",
+				Email:     "msp-admin@test.com",
+				FirstName: "MSP Admin",
 				LastName:  "User",
 				Roles:     []string{"msp-admin"},
 			},

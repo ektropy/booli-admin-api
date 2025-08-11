@@ -46,6 +46,7 @@ type OIDCService struct {
 
 type OIDCClaims struct {
 	Subject           string `json:"sub"`
+	Issuer            string `json:"iss"`
 	Email             string `json:"email"`
 	EmailVerified     bool   `json:"email_verified"`
 	Name              string `json:"name"`
@@ -100,8 +101,8 @@ func (s *OIDCService) addStandardOIDCProvider(ctx context.Context, config *OIDCP
 
 	accessTokenVerifier := provider.Verifier(&oidc.Config{
 		ClientID:          config.APIAudience,
-		SkipIssuerCheck:   true, // Skip issuer check for testing with dynamic URLs
-		SkipClientIDCheck: true, // Skip client ID check since access tokens may have multiple audiences
+		SkipIssuerCheck:   true,
+		SkipClientIDCheck: true,
 	})
 
 	config.provider = provider
@@ -142,14 +143,14 @@ func (s *OIDCService) addAzureADProvider(ctx context.Context, config *OIDCProvid
 
 	verifier := provider.Verifier(&oidc.Config{
 		ClientID:          config.ClientID,
-		SkipIssuerCheck:   true, // Skip issuer check for testing with dynamic URLs
-		SkipClientIDCheck: true, // Skip client ID check since access tokens may have multiple audiences
+		SkipIssuerCheck:   true,
+		SkipClientIDCheck: true,
 	})
 
 	accessTokenVerifier := provider.Verifier(&oidc.Config{
 		ClientID:          config.APIAudience,
-		SkipIssuerCheck:   true, // Skip issuer check for testing with dynamic URLs
-		SkipClientIDCheck: true, // Skip client ID check since access tokens may have multiple audiences
+		SkipIssuerCheck:   true,
+		SkipClientIDCheck: true,
 	})
 
 	config.provider = provider

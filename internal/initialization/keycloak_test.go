@@ -44,7 +44,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, config)
 		assert.Len(t, config.Realms, 1)
-		assert.Equal(t, "msp", config.Realms[0].Name)
+		assert.Equal(t, "master", config.Realms[0].Name)
 		assert.Len(t, config.Clients, 1)
 		assert.Equal(t, "msp-client", config.Clients[0].ClientID)
 		assert.Len(t, config.Roles, 3)
@@ -55,7 +55,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("MSP realm configuration", func(t *testing.T) {
-		os.Setenv("KEYCLOAK_MSP_REALM", "msp")
+		os.Setenv("KEYCLOAK_MSP_REALM", "master")
 		os.Setenv("KEYCLOAK_MSP_REALM_ENABLED", "true")
 		os.Setenv("KEYCLOAK_MSP_REALM_DISPLAY_NAME", "MSP Realm")
 		os.Setenv("KEYCLOAK_MSP_CLIENT_ID", "msp-client")
@@ -73,13 +73,13 @@ func TestParseConfigFromEnv(t *testing.T) {
 
 		assert.Len(t, config.Realms, 1)
 		realm := config.Realms[0]
-		assert.Equal(t, "msp", realm.Name)
+		assert.Equal(t, "master", realm.Name)
 		assert.Equal(t, "MSP Realm", realm.DisplayName)
 		assert.True(t, realm.Enabled)
 
 		assert.Len(t, config.Clients, 1)
 		client := config.Clients[0]
-		assert.Equal(t, "msp", client.RealmName)
+		assert.Equal(t, "master", client.RealmName)
 		assert.Equal(t, "msp-client", client.ClientID)
 		assert.Equal(t, "test-secret", client.Secret)
 		assert.Equal(t, "booli-admin-api", client.APIAudience)
@@ -88,7 +88,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		roleNames := make([]string, len(config.Roles))
 		for i, role := range config.Roles {
 			roleNames[i] = role.Name
-			assert.Equal(t, "msp", role.RealmName)
+			assert.Equal(t, "master", role.RealmName)
 		}
 		assert.Contains(t, roleNames, "msp-admin")
 		assert.Contains(t, roleNames, "msp-power")
@@ -96,7 +96,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 	})
 
 	t.Run("MSP realm disabled", func(t *testing.T) {
-		os.Setenv("KEYCLOAK_MSP_REALM", "msp")
+		os.Setenv("KEYCLOAK_MSP_REALM", "master")
 		os.Setenv("KEYCLOAK_MSP_REALM_ENABLED", "false")
 		os.Setenv("KEYCLOAK_MSP_CLIENT_ID", "msp-client")
 
@@ -131,7 +131,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 
 		assert.Len(t, config.Clients, 1)
 		client := config.Clients[0]
-		assert.Equal(t, "msp", client.RealmName)
+		assert.Equal(t, "master", client.RealmName)
 		assert.Equal(t, "test-client", client.ClientID)
 	})
 }
@@ -150,7 +150,7 @@ func TestRealmConfig(t *testing.T) {
 
 func TestClientConfig(t *testing.T) {
 	config := ClientConfig{
-		RealmName:                 "msp",
+		RealmName:                 "master",
 		ClientID:                  "msp-client",
 		Secret:                    "secret123",
 		RedirectURIs:              []string{"https://app.example.com/callback"},
@@ -163,7 +163,7 @@ func TestClientConfig(t *testing.T) {
 		APIAudience:               "api-audience",
 	}
 
-	assert.Equal(t, "msp", config.RealmName)
+	assert.Equal(t, "master", config.RealmName)
 	assert.Equal(t, "msp-client", config.ClientID)
 	assert.Equal(t, "secret123", config.Secret)
 	assert.True(t, config.StandardFlowEnabled)
@@ -175,12 +175,12 @@ func TestClientConfig(t *testing.T) {
 
 func TestRoleConfig(t *testing.T) {
 	config := RoleConfig{
-		RealmName:   "msp",
+		RealmName:   "master",
 		Name:        "msp-admin",
 		Description: "MSP Administrator",
 	}
 
-	assert.Equal(t, "msp", config.RealmName)
+	assert.Equal(t, "master", config.RealmName)
 	assert.Equal(t, "msp-admin", config.Name)
 	assert.Equal(t, "MSP Administrator", config.Description)
 }
@@ -188,14 +188,14 @@ func TestRoleConfig(t *testing.T) {
 func TestOIDCProviderConfig(t *testing.T) {
 	config := OIDCProviderConfig{
 		Name:         "keycloak",
-		RealmName:    "msp",
+		RealmName:    "master",
 		ClientID:     "msp-client",
 		ClientSecret: "secret",
 		CallbackURL:  "https://app.example.com/callback",
 	}
 
 	assert.Equal(t, "keycloak", config.Name)
-	assert.Equal(t, "msp", config.RealmName)
+	assert.Equal(t, "master", config.RealmName)
 	assert.Equal(t, "msp-client", config.ClientID)
 	assert.Equal(t, "secret", config.ClientSecret)
 	assert.Equal(t, "https://app.example.com/callback", config.CallbackURL)
@@ -258,13 +258,13 @@ func TestGetDefaultTestConfig(t *testing.T) {
 
 	assert.Len(t, config.Realms, 1)
 	realm := config.Realms[0]
-	assert.Equal(t, "msp", realm.Name)
+	assert.Equal(t, "master", realm.Name)
 	assert.Equal(t, "MSP Realm", realm.DisplayName)
 	assert.True(t, realm.Enabled)
 
 	assert.Len(t, config.Clients, 1)
 	client := config.Clients[0]
-	assert.Equal(t, "msp", client.RealmName)
+	assert.Equal(t, "master", client.RealmName)
 	assert.Equal(t, "msp-client", client.ClientID)
 	assert.Equal(t, "msp-secret", client.Secret)
 	assert.Equal(t, "booli-admin-api", client.APIAudience)
@@ -272,7 +272,7 @@ func TestGetDefaultTestConfig(t *testing.T) {
 	assert.Len(t, config.OIDCProviders, 1)
 	provider := config.OIDCProviders[0]
 	assert.Equal(t, "keycloak-msp", provider.Name)
-	assert.Equal(t, "msp", provider.RealmName)
+	assert.Equal(t, "master", provider.RealmName)
 	assert.Equal(t, callbackURL, provider.CallbackURL)
 }
 
@@ -320,7 +320,7 @@ func TestMSPRoleDefinitions(t *testing.T) {
 
 func TestOrganizationsArchitecture_SingleRealmConfig(t *testing.T) {
 
-	os.Setenv("KEYCLOAK_MSP_REALM", "msp")
+	os.Setenv("KEYCLOAK_MSP_REALM", "master")
 	os.Setenv("KEYCLOAK_MSP_REALM_ENABLED", "true")
 	os.Setenv("KEYCLOAK_MSP_CLIENT_ID", "msp-client")
 
@@ -335,14 +335,14 @@ func TestOrganizationsArchitecture_SingleRealmConfig(t *testing.T) {
 	require.NotNil(t, config)
 
 	assert.Len(t, config.Realms, 1)
-	assert.Equal(t, "msp", config.Realms[0].Name)
+	assert.Equal(t, "master", config.Realms[0].Name)
 
 	assert.Len(t, config.Clients, 1)
-	assert.Equal(t, "msp", config.Clients[0].RealmName)
+	assert.Equal(t, "master", config.Clients[0].RealmName)
 	assert.Equal(t, "msp-client", config.Clients[0].ClientID)
 
 	assert.Len(t, config.Roles, 3)
 	for _, role := range config.Roles {
-		assert.Equal(t, "msp", role.RealmName)
+		assert.Equal(t, "master", role.RealmName)
 	}
 }

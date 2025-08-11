@@ -55,7 +55,6 @@ func (m *MockUserService) DeleteUser(ctx context.Context, realmName, userID stri
 	return args.Error(0)
 }
 
-// Bulk operations
 func (m *MockUserService) BulkCreateUsers(ctx context.Context, realmName string, users []models.CreateUserRequest) (*models.BulkCreateResult, error) {
 	args := m.Called(ctx, realmName, users)
 	return args.Get(0).(*models.BulkCreateResult), args.Error(1)
@@ -274,7 +273,7 @@ func TestUserHandler_BulkCreate_Success(t *testing.T) {
 		{
 			Username:  "user2",
 			Email:     "user2@example.com",
-			FirstName: "User", 
+			FirstName: "User",
 			LastName:  "Two",
 			Password:  "password456",
 			Enabled:   true,
@@ -343,15 +342,14 @@ user2@example.com,User,Two,user2,pass456,tenant-admin,true`
 
 	mockService.On("ImportUsersFromCSV", mock.Anything, realmName, expectedRecords).Return(expectedResult, nil)
 
-	// Create multipart form request
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "users.csv")
 	assert.NoError(t, err)
-	
+
 	_, err = part.Write([]byte(csvData))
 	assert.NoError(t, err)
-	
+
 	err = writer.Close()
 	assert.NoError(t, err)
 

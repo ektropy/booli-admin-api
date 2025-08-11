@@ -10,24 +10,21 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	// Clean environment
 	cleanEnv()
 	defer restoreEnv()
-	
+
 	cfg, err := Load()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	
-	// Verify defaults
+
 	assert.Equal(t, "production", cfg.Environment)
 	assert.Equal(t, "8080", cfg.Server.Port)
 }
 
 func TestLoadConfig(t *testing.T) {
-	// Clean environment
 	cleanEnv()
 	defer restoreEnv()
-	
+
 	cfg, err := LoadConfig("")
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -42,28 +39,25 @@ func TestLoadWithConfigFile_NonExistentFile(t *testing.T) {
 }
 
 func TestLoadWithConfigFile_EmptyFile(t *testing.T) {
-	// Clean environment first
 	cleanEnv()
 	defer restoreEnv()
-	
+
 	cfg, err := LoadWithConfigFile("")
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 }
 
 func TestSetDefaults(t *testing.T) {
-	// Reset viper
 	viper.Reset()
-	
+
 	setDefaults()
-	
-	// Test all defaults are set
+
 	assert.Equal(t, "production", viper.GetString("environment"))
 	assert.Equal(t, "8080", viper.GetString("server.port"))
 	assert.Equal(t, 30, viper.GetInt("server.read_timeout"))
 	assert.Equal(t, 30, viper.GetInt("server.write_timeout"))
 	assert.Equal(t, 120, viper.GetInt("server.idle_timeout"))
-	
+
 	assert.Equal(t, "", viper.GetString("database.host"))
 	assert.Equal(t, 5432, viper.GetInt("database.port"))
 	assert.Equal(t, "", viper.GetString("database.user"))
@@ -75,7 +69,7 @@ func TestSetDefaults(t *testing.T) {
 	assert.Equal(t, 10, viper.GetInt("database.connect_timeout"))
 	assert.Equal(t, 3600, viper.GetInt("database.max_lifetime"))
 	assert.Equal(t, 300, viper.GetInt("database.max_idle_time"))
-	
+
 	assert.Equal(t, "", viper.GetString("redis.host"))
 	assert.Equal(t, 6379, viper.GetInt("redis.port"))
 	assert.Equal(t, "", viper.GetString("redis.password"))
@@ -83,14 +77,14 @@ func TestSetDefaults(t *testing.T) {
 	assert.Equal(t, 10, viper.GetInt("redis.dial_timeout"))
 	assert.Equal(t, 10, viper.GetInt("redis.read_timeout"))
 	assert.Equal(t, 10, viper.GetInt("redis.write_timeout"))
-	
-	assert.Equal(t, "", viper.GetString("keycloak.url"))
-	assert.Equal(t, "", viper.GetString("keycloak.admin_user"))
-	assert.Equal(t, "", viper.GetString("keycloak.admin_password"))
+
+	assert.Equal(t, "http://localhost:8083", viper.GetString("keycloak.url"))
+	assert.Equal(t, "admin", viper.GetString("keycloak.admin_user"))
+	assert.Equal(t, "admin", viper.GetString("keycloak.admin_password"))
 	assert.Equal(t, "master", viper.GetString("keycloak.master_realm"))
-	assert.Equal(t, "msp", viper.GetString("keycloak.msp_realm"))
-	assert.Equal(t, "", viper.GetString("keycloak.client_id"))
-	assert.Equal(t, "", viper.GetString("keycloak.client_secret"))
+	assert.Equal(t, "master", viper.GetString("keycloak.msp_realm"))
+	assert.Equal(t, "msp-client", viper.GetString("keycloak.client_id"))
+	assert.Equal(t, "test-secret", viper.GetString("keycloak.client_secret"))
 	assert.Equal(t, "", viper.GetString("keycloak.callback_url"))
 	assert.Equal(t, "booli-admin-api", viper.GetString("keycloak.api_audience"))
 	assert.False(t, viper.GetBool("keycloak.skip_tls_verify"))
@@ -101,8 +95,7 @@ func TestNewLogger_Development(t *testing.T) {
 	logger, err := NewLogger("development")
 	assert.NoError(t, err)
 	assert.NotNil(t, logger)
-	
-	// Clean up
+
 	logger.Sync()
 }
 
@@ -110,8 +103,7 @@ func TestNewLogger_Production(t *testing.T) {
 	logger, err := NewLogger("production")
 	assert.NoError(t, err)
 	assert.NotNil(t, logger)
-	
-	// Clean up
+
 	logger.Sync()
 }
 
@@ -119,17 +111,15 @@ func TestNewLogger_Testing(t *testing.T) {
 	logger, err := NewLogger("testing")
 	assert.NoError(t, err)
 	assert.NotNil(t, logger)
-	
-	// Clean up
+
 	logger.Sync()
 }
 
 func TestNewLogger_InvalidEnvironment(t *testing.T) {
 	logger, err := NewLogger("invalid-env")
-	assert.NoError(t, err) // Should not error, just use production config
+	assert.NoError(t, err)
 	assert.NotNil(t, logger)
-	
-	// Clean up
+
 	logger.Sync()
 }
 
@@ -146,10 +136,9 @@ func TestGetLogLevel(t *testing.T) {
 		{"unknown", "unknown", zapcore.InfoLevel},
 		{"empty", "", zapcore.InfoLevel},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset viper to avoid LOG_LEVEL env var interference
 			viper.Reset()
 			level := getLogLevel(tt.environment)
 			assert.Equal(t, tt.expected, level)
@@ -166,7 +155,7 @@ func TestGetLogLevel_WithExplicitLogLevel(t *testing.T) {
 			os.Unsetenv("LOG_LEVEL")
 		}
 	}()
-	
+
 	tests := []struct {
 		logLevel    string
 		expected    zapcore.Level
@@ -178,9 +167,9 @@ func TestGetLogLevel_WithExplicitLogLevel(t *testing.T) {
 		{"warning", zapcore.WarnLevel, "development"},
 		{"error", zapcore.ErrorLevel, "development"},
 		{"fatal", zapcore.FatalLevel, "development"},
-		{"invalid", zapcore.InfoLevel, "production"}, // Should fall back to env default
+		{"invalid", zapcore.InfoLevel, "production"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.logLevel, func(t *testing.T) {
 			viper.Reset()
@@ -198,7 +187,7 @@ func TestConfigStruct_ServerConfig(t *testing.T) {
 		WriteTimeout: 30,
 		IdleTimeout:  120,
 	}
-	
+
 	assert.Equal(t, "8080", server.Port)
 	assert.Equal(t, 30, server.ReadTimeout)
 	assert.Equal(t, 30, server.WriteTimeout)
@@ -219,7 +208,7 @@ func TestConfigStruct_DatabaseConfig(t *testing.T) {
 		MaxLifetime:    3600,
 		MaxIdleTime:    300,
 	}
-	
+
 	assert.Equal(t, "localhost", db.Host)
 	assert.Equal(t, 5432, db.Port)
 	assert.Equal(t, "postgres", db.User)
@@ -244,7 +233,7 @@ func TestConfigStruct_RedisConfig(t *testing.T) {
 		ReadTimeout:  10,
 		WriteTimeout: 10,
 	}
-	
+
 	assert.Equal(t, "redis", redis.Host)
 	assert.Equal(t, 6379, redis.Port)
 	assert.Equal(t, "redis-pass", redis.Password)
@@ -269,7 +258,7 @@ func TestConfigStruct_KeycloakConfig(t *testing.T) {
 		SkipTLSVerify: true,
 		CACertPath:    "/path/to/ca.crt",
 	}
-	
+
 	assert.Equal(t, "https://keycloak.example.com", keycloak.URL)
 	assert.Equal(t, "admin", keycloak.AdminUser)
 	assert.Equal(t, "admin-pass", keycloak.AdminPass)
@@ -302,7 +291,7 @@ func TestConfigStruct_CompleteConfig(t *testing.T) {
 			MasterRealm: "master",
 		},
 	}
-	
+
 	assert.Equal(t, "production", config.Environment)
 	assert.Equal(t, "8080", config.Server.Port)
 	assert.Equal(t, "localhost", config.Database.Host)
@@ -316,30 +305,29 @@ func TestConfigStruct_CompleteConfig(t *testing.T) {
 func TestEnvironmentVariableLoading(t *testing.T) {
 	cleanEnv()
 	defer restoreEnv()
-	
-	// Set test environment variables
+
 	testEnvs := map[string]string{
-		"BOOLI_SERVER_PORT":        "9090",
-		"BOOLI_ENVIRONMENT":        "test",
-		"BOOLI_DATABASE_HOST":      "testhost",
-		"BOOLI_DATABASE_PORT":      "3306",
-		"BOOLI_DATABASE_USER":      "testuser",
-		"BOOLI_DATABASE_PASSWORD":  "testpass",
-		"BOOLI_DATABASE_DBNAME":    "testdb",
-		"BOOLI_DATABASE_SSLMODE":   "require",
-		"BOOLI_KEYCLOAK_URL":       "http://test-keycloak:8080",
-		"BOOLI_REDIS_HOST":         "test-redis",
-		"BOOLI_REDIS_PORT":         "6380",
+		"BOOLI_SERVER_PORT":       "9090",
+		"BOOLI_ENVIRONMENT":       "test",
+		"BOOLI_DATABASE_HOST":     "testhost",
+		"BOOLI_DATABASE_PORT":     "3306",
+		"BOOLI_DATABASE_USER":     "testuser",
+		"BOOLI_DATABASE_PASSWORD": "testpass",
+		"BOOLI_DATABASE_DBNAME":   "testdb",
+		"BOOLI_DATABASE_SSLMODE":  "require",
+		"BOOLI_KEYCLOAK_URL":      "http://test-keycloak:8080",
+		"BOOLI_REDIS_HOST":        "test-redis",
+		"BOOLI_REDIS_PORT":        "6380",
 	}
-	
+
 	for key, value := range testEnvs {
 		os.Setenv(key, value)
 	}
-	
+
 	cfg, err := LoadConfig("")
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	
+
 	assert.Equal(t, "9090", cfg.Server.Port)
 	assert.Equal(t, "test", cfg.Environment)
 	assert.Equal(t, "testhost", cfg.Database.Host)
@@ -353,7 +341,6 @@ func TestEnvironmentVariableLoading(t *testing.T) {
 	assert.Equal(t, 6380, cfg.Redis.Port)
 }
 
-// Helper functions
 func cleanEnv() {
 	envVars := []string{
 		"BOOLI_SERVER_PORT", "BOOLI_ENVIRONMENT", "BOOLI_DATABASE_HOST",
@@ -361,11 +348,11 @@ func cleanEnv() {
 		"BOOLI_DATABASE_DBNAME", "BOOLI_DATABASE_SSLMODE", "BOOLI_KEYCLOAK_URL",
 		"BOOLI_REDIS_HOST", "BOOLI_REDIS_PORT", "LOG_LEVEL",
 	}
-	
+
 	for _, envVar := range envVars {
 		os.Unsetenv(envVar)
 	}
-	
+
 	viper.Reset()
 }
 

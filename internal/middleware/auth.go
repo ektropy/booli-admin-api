@@ -74,6 +74,15 @@ func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string
 		return strings.TrimPrefix(providerName, "keycloak-")
 	}
 	
+	// For default "keycloak" provider, extract realm from the token's issuer
+	if providerName == "keycloak" && claims.Issuer != "" {
+		// Extract realm from issuer URL like "http://localhost:8083/realms/msp"
+		parts := strings.Split(claims.Issuer, "/realms/")
+		if len(parts) == 2 {
+			return parts[1]
+		}
+	}
+	
 	// For Azure AD and other providers, use tenant context or create a default realm name
 	if claims.TenantContext != "" {
 		return claims.TenantContext

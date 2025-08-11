@@ -59,7 +59,7 @@ func (suite *KeycloakAuthTestSuite) authenticateUsers() {
 		suite.Config.KeycloakMSPRealm,
 		suite.Config.KeycloakClientID,
 		suite.Config.KeycloakClientSecret,
-		"admin", "admin123")
+		"msp-admin", "admin123")
 
 	suite.regularUserToken = suite.AuthenticateUser(
 		suite.Config.KeycloakMSPRealm,

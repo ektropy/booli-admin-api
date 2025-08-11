@@ -17,6 +17,9 @@ assert {
 }
 
 script:post-response {
+  if (res.getStatus() === 204) {
+    return;
+  }
 }
 
 tests {

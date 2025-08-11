@@ -13,7 +13,7 @@ import (
 
 type TenantEnvironment struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	TenantID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name        string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
 	Description string         `gorm:"size:1000" json:"description"`
 	Environment string         `gorm:"size:100" json:"environment"` // production, staging, development, etc.
@@ -22,7 +22,7 @@ type TenantEnvironment struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
-	Tenant            Tenant              `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+	Tenant            Tenant              `gorm:"foreignKey:TenantRealm;references:RealmName" json:"tenant,omitempty"`
 	NetworkRanges     []NetworkRange      `gorm:"foreignKey:EnvironmentID" json:"network_ranges,omitempty"`
 	PublicIPs         []PublicIP          `gorm:"foreignKey:EnvironmentID" json:"public_ips,omitempty"`
 	EgressIPs         []EgressIP          `gorm:"foreignKey:EnvironmentID" json:"egress_ips,omitempty"`
@@ -35,7 +35,7 @@ type TenantEnvironment struct {
 type NetworkRange struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name          string         `gorm:"not null;size:255" json:"name"`
 	CIDR          string         `gorm:"not null;size:50" json:"cidr" validate:"required,cidr"`
 	NetworkType   string         `gorm:"size:50" json:"network_type"` // internal, dmz, management, guest, etc.
@@ -51,7 +51,7 @@ type NetworkRange struct {
 type PublicIP struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	IPAddress     string         `gorm:"not null;size:45" json:"ip_address" validate:"required,ip"`
 	IPType        string         `gorm:"size:20" json:"ip_type"`   // ipv4, ipv6
 	Purpose       string         `gorm:"size:100" json:"purpose"`  // web, mail, dns, vpn, etc.
@@ -67,7 +67,7 @@ type PublicIP struct {
 type EgressIP struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	IPAddress     string         `gorm:"not null;size:45" json:"ip_address" validate:"required,ip"`
 	IPType        string         `gorm:"size:20" json:"ip_type"`   // ipv4, ipv6
 	Purpose       string         `gorm:"size:100" json:"purpose"`  // general, api_calls, email, etc.
@@ -82,7 +82,7 @@ type EgressIP struct {
 type Domain struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	DomainName    string         `gorm:"not null;size:255" json:"domain_name" validate:"required,fqdn"`
 	DomainType    string         `gorm:"size:50" json:"domain_type"` // primary, subdomain, wildcard
 	Purpose       string         `gorm:"size:100" json:"purpose"`    // website, email, api, internal, etc.
@@ -99,7 +99,7 @@ type Domain struct {
 type NamingConvention struct {
 	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name          string         `gorm:"not null;size:255" json:"name"`
 	Pattern       string         `gorm:"not null;size:500" json:"pattern"` // e.g., "{location}-{env}-{service}-{number}"
 	ResourceType  string         `gorm:"size:100" json:"resource_type"`    // server, vm, container, service, etc.
@@ -114,7 +114,7 @@ type NamingConvention struct {
 type InfrastructureIP struct {
 	ID            uuid.UUID          `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID uuid.UUID          `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID      uuid.UUID          `gorm:"type:uuid;not null;index" json:"tenant_id"`
+	TenantRealm   string             `gorm:"not null;size:255;index" json:"tenant_realm"`
 	IPAddress     string             `gorm:"not null;size:45" json:"ip_address" validate:"required,ip"`
 	ServiceType   InfrastructureType `gorm:"not null;size:50" json:"service_type"`
 	Hostname      string             `gorm:"size:255" json:"hostname"`
@@ -129,11 +129,11 @@ type InfrastructureIP struct {
 }
 
 type TenantAccessGrant struct {
-	ID                uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	EnvironmentID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantID          uuid.UUID      `gorm:"type:uuid;not null;index" json:"tenant_id"` // Target tenant
-	GrantedToUserID   uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_user_id"`
-	GrantedToTenantID uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_tenant_id"` // MSP tenant
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EnvironmentID       uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
+	TenantRealm         string         `gorm:"not null;size:255;index" json:"tenant_realm"` // Target tenant realm
+	GrantedToUserID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_user_id"`
+	GrantedToTenantRealm string        `gorm:"not null;size:255;index" json:"granted_to_tenant_realm"` // MSP tenant realm
 	AccessLevel       AccessLevel    `gorm:"not null;size:50" json:"access_level"`
 	GrantedBy         uuid.UUID      `gorm:"type:uuid;not null" json:"granted_by"`
 	ExpiresAt         *time.Time     `json:"expires_at,omitempty"`
@@ -143,7 +143,7 @@ type TenantAccessGrant struct {
 	DeletedAt         gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	GrantedToUser   User   `gorm:"-" json:"granted_to_user,omitempty"`
-	GrantedToTenant Tenant `gorm:"foreignKey:GrantedToTenantID" json:"granted_to_tenant,omitempty"`
+	GrantedToTenant Tenant `gorm:"foreignKey:GrantedToTenantRealm;references:RealmName" json:"granted_to_tenant,omitempty"`
 }
 
 type InfrastructureType string
@@ -344,7 +344,7 @@ func ValidateDomainName(domain string) error {
 }
 
 type CreateTenantEnvironmentRequest struct {
-	TenantID          uuid.UUID          `json:"tenant_id,omitempty"`
+	TenantRealm       string             `json:"tenant_realm,omitempty"`
 	TenantName        string             `json:"tenant_name,omitempty"`
 	TenantDomain      string             `json:"tenant_domain,omitempty"`
 	Name              string             `json:"name" validate:"required,min=1,max=255"`
@@ -374,16 +374,16 @@ type TenantEnvironmentListResponse struct {
 }
 
 type CreateTenantAccessGrantRequest struct {
-	EnvironmentID     uuid.UUID   `json:"environment_id" validate:"required"`
-	GrantedToUserID   uuid.UUID   `json:"granted_to_user_id" validate:"required"`
-	GrantedToTenantID uuid.UUID   `json:"granted_to_tenant_id" validate:"required"`
-	AccessLevel       AccessLevel `json:"access_level" validate:"required,oneof=read read_write full_access"`
-	GrantedBy         uuid.UUID   `json:"granted_by" validate:"required"`
-	ExpiresAt         *time.Time  `json:"expires_at,omitempty"`
+	EnvironmentID         uuid.UUID   `json:"environment_id" validate:"required"`
+	GrantedToUserID       uuid.UUID   `json:"granted_to_user_id" validate:"required"`
+	GrantedToTenantRealm  string      `json:"granted_to_tenant_realm" validate:"required"`
+	AccessLevel           AccessLevel `json:"access_level" validate:"required,oneof=read read_write full_access"`
+	GrantedBy             uuid.UUID   `json:"granted_by" validate:"required"`
+	ExpiresAt             *time.Time  `json:"expires_at,omitempty"`
 }
 
 type SIEMEnrichmentData struct {
-	TenantID          uuid.UUID          `json:"tenant_id"`
+	TenantRealm       string             `json:"tenant_realm"`
 	NetworkRanges     []NetworkRange     `json:"network_ranges"`
 	PublicIPs         []PublicIP         `json:"public_ips"`
 	EgressIPs         []EgressIP         `json:"egress_ips"`
@@ -395,7 +395,7 @@ type SIEMEnrichmentData struct {
 type EnrichmentLookupResult struct {
 	Type            string                 `json:"type"` // ip, domain, network
 	Value           string                 `json:"value"`
-	TenantID        uuid.UUID              `json:"tenant_id"`
+	TenantRealm     string                 `json:"tenant_realm"`
 	EnvironmentID   uuid.UUID              `json:"environment_id"`
 	EnvironmentName string                 `json:"environment_name"`
 	Classification  string                 `json:"classification"` // internal, external, public, egress, infrastructure

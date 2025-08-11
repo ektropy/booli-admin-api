@@ -25,17 +25,17 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host            string `mapstructure:"host"`
-	Port            int    `mapstructure:"port"`
-	User            string `mapstructure:"user"`
-	Password        string `mapstructure:"password"`
-	DBName          string `mapstructure:"dbname"`
-	SSLMode         string `mapstructure:"sslmode"`
-	MaxConns        int    `mapstructure:"max_connections"`
-	MaxIdle         int    `mapstructure:"max_idle"`
-	ConnectTimeout  int    `mapstructure:"connect_timeout"`
-	MaxLifetime     int    `mapstructure:"max_lifetime"`
-	MaxIdleTime     int    `mapstructure:"max_idle_time"`
+	Host           string `mapstructure:"host"`
+	Port           int    `mapstructure:"port"`
+	User           string `mapstructure:"user"`
+	Password       string `mapstructure:"password"`
+	DBName         string `mapstructure:"dbname"`
+	SSLMode        string `mapstructure:"sslmode"`
+	MaxConns       int    `mapstructure:"max_connections"`
+	MaxIdle        int    `mapstructure:"max_idle"`
+	ConnectTimeout int    `mapstructure:"connect_timeout"`
+	MaxLifetime    int    `mapstructure:"max_lifetime"`
+	MaxIdleTime    int    `mapstructure:"max_idle_time"`
 }
 
 type RedisConfig struct {
@@ -112,7 +112,6 @@ func LoadWithConfigFile(configFile string) (*Config, error) {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
-	// Handle legacy environment variable names for backward compatibility
 	if config.Keycloak.URL == "" {
 		if baseURL := viper.GetString("KEYCLOAK_BASE_URL"); baseURL != "" {
 			config.Keycloak.URL = baseURL
@@ -152,7 +151,7 @@ func setDefaults() {
 	viper.SetDefault("keycloak.admin_user", "admin")
 	viper.SetDefault("keycloak.admin_password", "admin")
 	viper.SetDefault("keycloak.master_realm", "master")
-	viper.SetDefault("keycloak.msp_realm", "msp")
+	viper.SetDefault("keycloak.msp_realm", "master")
 	viper.SetDefault("keycloak.client_id", "msp-client")
 	viper.SetDefault("keycloak.client_secret", "test-secret")
 	viper.SetDefault("keycloak.callback_url", "")
@@ -164,7 +163,6 @@ func setDefaults() {
 func NewLogger(environment string) (*zap.Logger, error) {
 	var config zap.Config
 
-	// Get log level from environment variable or use defaults
 	logLevel := getLogLevel(environment)
 
 	if environment == "development" {
@@ -185,8 +183,7 @@ func NewLogger(environment string) (*zap.Logger, error) {
 		config.EncoderConfig.CallerKey = "caller"
 		config.EncoderConfig.StacktraceKey = "stacktrace"
 		config.Development = false
-		
-		// Only show stacktraces for errors and above in production
+
 		if logLevel <= zapcore.WarnLevel {
 			config.DisableStacktrace = false
 		} else {
@@ -205,9 +202,7 @@ func NewLogger(environment string) (*zap.Logger, error) {
 	return logger, nil
 }
 
-// getLogLevel determines the appropriate log level based on environment and env vars
 func getLogLevel(environment string) zapcore.Level {
-	// Check for explicit log level environment variable
 	if levelStr := viper.GetString("LOG_LEVEL"); levelStr != "" {
 		switch strings.ToLower(levelStr) {
 		case "debug":
@@ -223,7 +218,6 @@ func getLogLevel(environment string) zapcore.Level {
 		}
 	}
 
-	// Default levels based on environment
 	switch environment {
 	case "development":
 		return zapcore.DebugLevel

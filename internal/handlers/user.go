@@ -24,8 +24,7 @@ type UserServiceInterface interface {
 	GetUser(ctx context.Context, realmName, userID string) (*models.User, error)
 	UpdateUser(ctx context.Context, realmName, userID string, req *models.UpdateUserRequest) (*models.User, error)
 	DeleteUser(ctx context.Context, realmName, userID string) error
-	
-	// Bulk operations
+
 	BulkCreateUsers(ctx context.Context, realmName string, users []models.CreateUserRequest) (*models.BulkCreateResult, error)
 	ImportUsersFromCSV(ctx context.Context, realmName string, csvRecords [][]string) (*models.CSVImportResult, error)
 }

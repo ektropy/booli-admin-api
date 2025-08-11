@@ -24,8 +24,7 @@ func New(logger *zap.Logger) *CLI {
 	return &CLI{logger: logger}
 }
 
-// ShowUsageQuiet shows usage without logging (for --help)
-func ShowUsageQuiet() {
+func ShowUsage() {
 	fmt.Println("Booli Admin API - Multi-tenant admin portal with Keycloak authentication")
 	fmt.Println()
 	fmt.Println("Usage:")
@@ -53,8 +52,7 @@ func ShowUsageQuiet() {
 	fmt.Println("  ./booli-admin-api -config config.yaml      # Use specific config file")
 }
 
-// ShowVersionInfoQuiet shows version without logging (for --version)
-func ShowVersionInfoQuiet(version, commit, buildTime string) {
+func ShowVersion(version, commit, buildTime string) {
 	fmt.Printf("Booli Admin API\n")
 	fmt.Printf("Version: %s\n", version)
 	fmt.Printf("Commit:  %s\n", commit)

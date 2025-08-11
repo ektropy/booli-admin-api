@@ -41,7 +41,7 @@ func (app *Application) Initialize() error {
 		zap.String("host", app.config.Database.Host),
 		zap.Int("port", app.config.Database.Port),
 		zap.String("database", app.config.Database.DBName))
-	
+
 	db, err := database.Connect(app.config.Database)
 	if err != nil {
 		app.logger.Error("Failed to connect to database",
@@ -76,7 +76,7 @@ func (app *Application) Initialize() error {
 	app.logger.Info("Redis connected successfully")
 
 	if app.config.Keycloak.URL == "" {
-		app.logger.Error("Keycloak URL is not configured - application cannot start", 
+		app.logger.Error("Keycloak URL is not configured - application cannot start",
 			zap.String("required_env_var", "BOOLI_KEYCLOAK_URL"))
 		return fmt.Errorf("keycloak URL is required")
 	}
@@ -161,7 +161,6 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 
 	router := gin.New()
 
-	// Request logging configuration based on environment
 	var loggingConfig middleware.RequestLoggingConfig
 	if app.config.Environment == "development" {
 		loggingConfig = middleware.DevelopmentRequestLoggingConfig()
@@ -234,22 +233,19 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 			tenantScoped.GET(constants.PathUsersID, handlers.User.Get)
 			tenantScoped.PUT(constants.PathUsersID, handlers.User.Update)
 			tenantScoped.DELETE(constants.PathUsersID, handlers.User.Delete)
-			// Bulk operations with enhanced security
 			bulkOps := tenantScoped.Group("/")
 			bulkOps.Use(middleware.BulkOperationRateLimit(app.logger))
 			bulkOps.Use(middleware.BulkOperationHeaders())
 			{
 				bulkOps.POST(constants.PathUsersBulkCreate, handlers.User.BulkCreate)
 			}
-			
-			// CSV import with strictest rate limiting
+
 			csvOps := tenantScoped.Group("/")
 			csvOps.Use(middleware.CSVImportRateLimit(app.logger))
 			csvOps.Use(middleware.BulkOperationHeaders())
 			{
 				csvOps.POST(constants.PathUsersImportCSV, handlers.User.ImportCSV)
 			}
-
 
 			tenantScoped.GET(constants.PathSSOProviders, handlers.SSO.ListProviders)
 			tenantScoped.POST(constants.PathSSOProviders, handlers.SSO.CreateProvider)
@@ -279,10 +275,10 @@ func (app *Application) Start() error {
 		zap.String("address", app.server.Addr),
 		zap.String("version", app.version),
 		zap.String("environment", app.config.Environment))
-	
+
 	app.logger.Info("Server is now listening for requests",
 		zap.String("url", "http://0.0.0.0"+app.server.Addr+"/health"))
-	
+
 	if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		app.logger.Error("Server failed to start", zap.Error(err))
 		return err

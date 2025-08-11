@@ -245,11 +245,7 @@ func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
 	keycloakInit := initialization.NewKeycloakInitializer(adminClient, nil, cfg, logger)
 
 	setupConfig := initialization.InitializationConfig{
-		Realms: []initialization.RealmConfig{{
-			Name:        suite.Config.KeycloakMSPRealm,
-			DisplayName: "MSP",
-			Enabled:     true,
-		}},
+		Realms: []initialization.RealmConfig{},
 		Clients: []initialization.ClientConfig{{
 			RealmName:                 suite.Config.KeycloakMSPRealm,
 			ClientID:                  suite.Config.KeycloakClientID,
@@ -261,6 +257,15 @@ func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
 		}},
 		Roles: []initialization.RoleConfig{},
 		Users: []initialization.UserConfig{},
+	}
+
+	// Only create realm if it's not the master realm
+	if suite.Config.KeycloakMSPRealm != "master" {
+		setupConfig.Realms = append(setupConfig.Realms, initialization.RealmConfig{
+			Name:        suite.Config.KeycloakMSPRealm,
+			DisplayName: "MSP",
+			Enabled:     true,
+		})
 	}
 
 	for _, role := range suite.Config.DefaultRoles {
@@ -331,13 +336,13 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 		fmt.Sprintf("BOOLI_KEYCLOAK_CLIENT_SECRET=%s", suite.Config.KeycloakClientSecret),
 		fmt.Sprintf("BOOLI_KEYCLOAK_API_AUDIENCE=%s", suite.Config.APIAudience),
 
-		"KEYCLOAK_MSP_REALM=msp",
+		"KEYCLOAK_MSP_REALM=master",
 		"KEYCLOAK_MSP_REALM_ENABLED=true",
 		"KEYCLOAK_MSP_REALM_DISPLAY_NAME=MSP Realm",
 		fmt.Sprintf("KEYCLOAK_MSP_CLIENT_ID=%s", suite.Config.KeycloakClientID),
 		fmt.Sprintf("KEYCLOAK_MSP_CLIENT_SECRET=%s", suite.Config.KeycloakClientSecret),
 		fmt.Sprintf("KEYCLOAK_MSP_API_AUDIENCE=%s", suite.Config.APIAudience),
-		"KEYCLOAK_MSP_DEFAULT_USER_USERNAME=admin",
+		"KEYCLOAK_MSP_DEFAULT_USER_USERNAME=msp-admin",
 		"KEYCLOAK_MSP_DEFAULT_USER_PASSWORD=admin123",
 		"KEYCLOAK_MSP_DEFAULT_USER_ROLES=msp-admin",
 	}

@@ -51,14 +51,13 @@ func main() {
 	)
 	flag.Parse()
 
-	// Handle help and version without any logging
 	if *showHelp {
-		cli.ShowUsageQuiet()
+		cli.ShowUsage()
 		return
 	}
 
 	if *showVersion {
-		cli.ShowVersionInfoQuiet(version, commit, date)
+		cli.ShowVersion(version, commit, date)
 		return
 	}
 

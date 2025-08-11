@@ -62,7 +62,7 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ConnectTimeout)*time.Second)
 	defer cancel()
-	
+
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -74,10 +74,10 @@ func ConnectRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	if cfg.Host == "" {
 		return nil, fmt.Errorf("redis host is required")
 	}
-	
+
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	fmt.Printf("Attempting Redis connection: %s (db: %d, timeout: %ds)\n", addr, cfg.DB, cfg.DialTimeout)
-	
+
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
 		Password:     cfg.Password,
@@ -145,7 +145,6 @@ func CreateIndexes(db *gorm.DB) error {
 
 	for _, index := range indexes {
 		if err := db.Exec(index).Error; err != nil {
-			// Silently ignore index creation errors as they're often due to concurrent attempts
 		}
 	}
 

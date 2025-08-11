@@ -24,12 +24,11 @@ func NewTenantService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *
 	}
 }
 
-func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTenantRequest, parentRealmName string) (*models.Tenant, error) {
+func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTenantRequest, mspRealm string) (*models.Tenant, error) {
 	s.logger.Info("Starting tenant creation",
 		zap.String("name", req.Name),
 		zap.String("domain", req.Domain),
-		zap.String("type", string(req.Type)),
-		zap.String("parent_realm", parentRealmName))
+		zap.String("type", string(req.Type)))
 
 	if req.Name == "" {
 		s.logger.Error("Tenant creation failed: name is required")
@@ -47,7 +46,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		s.logger.Info("Defaulting tenant type to client")
 	}
 
-	realmName, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, parentRealmName)
+	realmName, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -61,8 +60,6 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	// Generate ID for internal consistency (not used as primary identifier)
-	tenant.BeforeCreate(nil)
 
 	s.logger.Info("Tenant created successfully",
 		zap.String("realm_name", realmName),
@@ -94,8 +91,6 @@ func (s *TenantService) GetTenant(ctx context.Context, realmName string) (*model
 		CreatedAt: createdAt,
 		UpdatedAt: time.Now(),
 	}
-	// Generate ID for internal consistency
-	tenant.BeforeCreate(nil)
 
 	return tenant, nil
 }
@@ -108,7 +103,7 @@ func (s *TenantService) GetUserCount(ctx context.Context, realmName string) (int
 	return len(users), nil
 }
 
-func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string, page, pageSize int) (*models.TenantListResponse, error) {
+func (s *TenantService) ListTenants(ctx context.Context, filterByMSP string, page, pageSize int) (*models.TenantListResponse, error) {
 	realms, err := s.keycloakAdmin.GetRealms(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get realms from Keycloak: %w", err)
@@ -120,8 +115,12 @@ func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string,
 			continue
 		}
 		
-		if parentRealmName != "" && realm.Attributes["parent_realm"] != parentRealmName {
-			continue
+		// Filter tenants based on MSP access
+		if filterByMSP != "" {
+			// Show only client tenants for MSP users
+			if realm.Attributes["tenant_type"] != string(models.TenantTypeClient) {
+				continue
+			}
 		}
 
 		createdAt := time.Now()
@@ -140,8 +139,6 @@ func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string,
 			CreatedAt: createdAt,
 			UpdatedAt: time.Now(),
 		}
-		// Generate ID for internal consistency
-		tenant.BeforeCreate(nil)
 		tenants = append(tenants, tenant)
 	}
 
@@ -206,8 +203,6 @@ func (s *TenantService) GetTenantByDomain(ctx context.Context, domain string) (*
 				CreatedAt: createdAt,
 				UpdatedAt: time.Now(),
 			}
-			// Generate ID for internal consistency
-			tenant.BeforeCreate(nil)
 			return tenant, nil
 		}
 	}
@@ -265,8 +260,6 @@ func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req 
 		CreatedAt: createdAt,
 		UpdatedAt: time.Now(),
 	}
-	// Generate ID for internal consistency
-	updatedTenant.BeforeCreate(nil)
 
 	s.logger.Info("Tenant updated successfully",
 		zap.String("realm_name", realmName),
@@ -283,7 +276,8 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 
 	childCount := 0
 	for _, realm := range realms {
-		if realm.Attributes["parent_realm"] == realmName {
+		// Count client tenants as children
+		if realm.Attributes["tenant_type"] == string(models.TenantTypeClient) {
 			childCount++
 		}
 	}
@@ -302,7 +296,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 }
 
 
-func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (string, error) {
+func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (string, error) {
 	s.logger.Info("Starting Keycloak realm creation",
 		zap.String("tenant_name", name),
 		zap.String("domain", domain),
@@ -330,11 +324,10 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 		AdminTheme:            "keycloak",
 		EmailTheme:            "keycloak",
 		Attributes: map[string]string{
-			"tenant_name":  name,
-			"tenant_type":  string(tenantType),
-			"domain":       domain,
-			"parent_realm": parentRealmName,
-			"created_at":   time.Now().Format(time.RFC3339),
+			"tenant_name": name,
+			"tenant_type": string(tenantType),
+			"domain":      domain,
+			"created_at":  time.Now().Format(time.RFC3339),
 		},
 	}
 
@@ -482,8 +475,8 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 	return createdUser, nil
 }
 
-func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, parentRealmName string) (*models.Tenant, error) {
-	realmName, err := s.createKeycloakRealm(ctx, name, domain, tenantType, parentRealmName)
+func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (*models.Tenant, error) {
+	realmName, err := s.createKeycloakRealm(ctx, name, domain, tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -497,8 +490,6 @@ func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	// Generate ID for internal consistency
-	tenant.BeforeCreate(nil)
 
 	return tenant, nil
 }

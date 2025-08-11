@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,14 +15,14 @@ import (
 )
 
 type EnvironmentService interface {
-	CreateTenantEnvironment(ctx context.Context, req *models.CreateTenantEnvironmentRequest, userTenantID uuid.UUID) (*models.TenantEnvironment, error)
-	GetTenantEnvironment(ctx context.Context, environmentID uuid.UUID, userTenantID uuid.UUID) (*models.TenantEnvironment, error)
-	ListTenantEnvironments(ctx context.Context, tenantID, userTenantID uuid.UUID, page, pageSize int) (*models.TenantEnvironmentListResponse, error)
-	UpdateTenantEnvironment(ctx context.Context, environmentID uuid.UUID, req *models.UpdateTenantEnvironmentRequest, userTenantID uuid.UUID) (*models.TenantEnvironment, error)
-	DeleteTenantEnvironment(ctx context.Context, environmentID uuid.UUID, userTenantID uuid.UUID) error
-	GrantTenantAccess(ctx context.Context, req *models.CreateTenantAccessGrantRequest, granterTenantID uuid.UUID) (*models.TenantAccessGrant, error)
-	RevokeAccess(ctx context.Context, grantID uuid.UUID, revokerTenantID uuid.UUID) error
-	GetSIEMEnrichmentData(ctx context.Context, tenantID, userTenantID uuid.UUID) (*models.SIEMEnrichmentData, error)
+	CreateTenantEnvironment(ctx context.Context, req *models.CreateTenantEnvironmentRequest, userTenantRealm string) (*models.TenantEnvironment, error)
+	GetTenantEnvironment(ctx context.Context, environmentID uuid.UUID, userTenantRealm string) (*models.TenantEnvironment, error)
+	ListTenantEnvironments(ctx context.Context, tenantRealm, userTenantRealm string, page, pageSize int) (*models.TenantEnvironmentListResponse, error)
+	UpdateTenantEnvironment(ctx context.Context, environmentID uuid.UUID, req *models.UpdateTenantEnvironmentRequest, userTenantRealm string) (*models.TenantEnvironment, error)
+	DeleteTenantEnvironment(ctx context.Context, environmentID uuid.UUID, userTenantRealm string) error
+	GrantTenantAccess(ctx context.Context, req *models.CreateTenantAccessGrantRequest, granterTenantRealm string) (*models.TenantAccessGrant, error)
+	RevokeAccess(ctx context.Context, grantID uuid.UUID, revokerTenantRealm string) error
+	GetSIEMEnrichmentData(ctx context.Context, tenantRealm, userTenantRealm string) (*models.SIEMEnrichmentData, error)
 }
 
 type EnvironmentHandler struct {
@@ -38,18 +37,6 @@ func NewEnvironmentHandler(environmentService EnvironmentService, logger *zap.Lo
 	}
 }
 
-// realmNameToUUID creates a deterministic UUID from a realm name for backward compatibility
-// This is a temporary solution during the architectural transition
-func (h *EnvironmentHandler) realmNameToUUID(realmName string) uuid.UUID {
-	hash := sha256.Sum256([]byte(realmName))
-	// Use the first 16 bytes of the hash to create a UUID
-	var bytes [16]byte
-	copy(bytes[:], hash[:16])
-	// Set version (4) and variant bits to make it a valid UUID
-	bytes[6] = (bytes[6] & 0x0f) | 0x40 // Version 4
-	bytes[8] = (bytes[8] & 0x3f) | 0x80 // Variant 10
-	return uuid.UUID(bytes)
-}
 
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	var req models.CreateTenantEnvironmentRequest
@@ -64,10 +51,7 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-
-	environment, err := h.environmentService.CreateTenantEnvironment(c.Request.Context(), &req, userTenantID)
+	environment, err := h.environmentService.CreateTenantEnvironment(c.Request.Context(), &req, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to create environment",
 			zap.String("realm_name", userRealmName),
@@ -98,10 +82,7 @@ func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-
-	environment, err := h.environmentService.GetTenantEnvironment(c.Request.Context(), environmentID, userTenantID)
+	environment, err := h.environmentService.GetTenantEnvironment(c.Request.Context(), environmentID, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to get environment",
 			zap.String("environment_id", environmentID.String()),
@@ -131,10 +112,7 @@ func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
 		pageSize = 20
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-
-	environments, err := h.environmentService.ListTenantEnvironments(c.Request.Context(), userTenantID, userTenantID, page, pageSize)
+	environments, err := h.environmentService.ListTenantEnvironments(c.Request.Context(), userRealmName, userRealmName, page, pageSize)
 	if err != nil {
 		h.logger.Error("Failed to list environments",
 			zap.String("user_realm_name", userRealmName),
@@ -171,10 +149,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-
-	environment, err := h.environmentService.UpdateTenantEnvironment(c.Request.Context(), environmentID, &req, userTenantID)
+	environment, err := h.environmentService.UpdateTenantEnvironment(c.Request.Context(), environmentID, &req, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to update environment",
 			zap.String("environment_id", environmentID.String()),
@@ -206,10 +181,7 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-
-	err = h.environmentService.DeleteTenantEnvironment(c.Request.Context(), environmentID, userTenantID)
+	err = h.environmentService.DeleteTenantEnvironment(c.Request.Context(), environmentID, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to delete environment",
 			zap.String("environment_id", environmentID.String()),
@@ -245,10 +217,7 @@ func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 		req.GrantedBy = uuid.New() // fallback for non-UUID user IDs
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	granterTenantID := h.realmNameToUUID(granterRealmName)
-
-	grant, err := h.environmentService.GrantTenantAccess(c.Request.Context(), &req, granterTenantID)
+	grant, err := h.environmentService.GrantTenantAccess(c.Request.Context(), &req, granterRealmName)
 	if err != nil {
 		h.logger.Error("Failed to grant access",
 			zap.String("granter_realm_name", granterRealmName),
@@ -280,10 +249,7 @@ func (h *EnvironmentHandler) RevokeAccess(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	revokerTenantID := h.realmNameToUUID(revokerRealmName)
-
-	err = h.environmentService.RevokeAccess(c.Request.Context(), grantID, revokerTenantID)
+	err = h.environmentService.RevokeAccess(c.Request.Context(), grantID, revokerRealmName)
 	if err != nil {
 		h.logger.Error("Failed to revoke access",
 			zap.String("grant_id", grantID.String()),
@@ -305,9 +271,7 @@ func (h *EnvironmentHandler) GetSIEMEnrichmentData(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userTenantID, userTenantID)
+	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userRealmName, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to get SIEM enrichment data",
 			zap.String("user_realm_name", userRealmName),
@@ -353,9 +317,7 @@ func (h *EnvironmentHandler) GetNetworkRanges(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userTenantID, userTenantID)
+	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userRealmName, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to get network ranges",
 			zap.String("user_realm_name", userRealmName),
@@ -379,9 +341,7 @@ func (h *EnvironmentHandler) GetInfrastructureIPs(c *gin.Context) {
 		return
 	}
 
-	// Convert realm name to UUID for environment service compatibility
-	userTenantID := h.realmNameToUUID(userRealmName)
-	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userTenantID, userTenantID)
+	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(c.Request.Context(), userRealmName, userRealmName)
 	if err != nil {
 		h.logger.Error("Failed to get infrastructure IPs",
 			zap.String("user_realm_name", userRealmName),
@@ -399,9 +359,7 @@ func (h *EnvironmentHandler) GetInfrastructureIPs(c *gin.Context) {
 }
 
 func (h *EnvironmentHandler) lookupEnrichmentData(ctx context.Context, query string, realmName string) (*models.EnrichmentLookupResult, bool, error) {
-
-	tenantID := h.realmNameToUUID(realmName)
-	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(ctx, tenantID, tenantID)
+	enrichmentData, err := h.environmentService.GetSIEMEnrichmentData(ctx, realmName, realmName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -411,7 +369,7 @@ func (h *EnvironmentHandler) lookupEnrichmentData(ctx context.Context, query str
 			return &models.EnrichmentLookupResult{
 				Type:            "network",
 				Value:           query,
-				TenantID:        uuid.New(), // Legacy field, use RealmName instead
+				TenantRealm:     realmName,
 				EnvironmentID:   networkRange.EnvironmentID,
 				EnvironmentName: networkRange.Name,
 				Classification:  networkRange.NetworkType,
@@ -432,7 +390,7 @@ func (h *EnvironmentHandler) lookupEnrichmentData(ctx context.Context, query str
 			return &models.EnrichmentLookupResult{
 				Type:            "ip",
 				Value:           query,
-				TenantID:        uuid.New(), // Legacy field, use RealmName instead
+				TenantRealm:     realmName,
 				EnvironmentID:   ip.EnvironmentID,
 				EnvironmentName: ip.Hostname,
 				Classification:  string(ip.ServiceType),
@@ -453,7 +411,7 @@ func (h *EnvironmentHandler) lookupEnrichmentData(ctx context.Context, query str
 			return &models.EnrichmentLookupResult{
 				Type:            "domain",
 				Value:           query,
-				TenantID:        uuid.New(), // Legacy field, use RealmName instead
+				TenantRealm:     realmName,
 				EnvironmentID:   domain.EnvironmentID,
 				EnvironmentName: domain.DomainName,
 				Classification:  domain.DomainType,
@@ -471,7 +429,7 @@ func (h *EnvironmentHandler) lookupEnrichmentData(ctx context.Context, query str
 	return &models.EnrichmentLookupResult{
 		Type:           "unknown",
 		Value:          query,
-		TenantID:       uuid.New(), // Legacy field, use RealmName instead
+		TenantRealm:    realmName,
 		Classification: "unknown",
 		AdditionalInfo: map[string]interface{}{
 			"status": "not_found",

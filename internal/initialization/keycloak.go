@@ -541,14 +541,14 @@ func GetDefaultTestConfig(keycloakURL, callbackURL string) *InitializationConfig
 	return &InitializationConfig{
 		Realms: []RealmConfig{
 			{
-				Name:        "msp",
+				Name:        "master",
 				DisplayName: "MSP Realm",
 				Enabled:     true,
 			},
 		},
 		Clients: []ClientConfig{
 			{
-				RealmName:                 "msp",
+				RealmName:                 "master",
 				ClientID:                  "msp-client",
 				Secret:                    "msp-secret",
 				RedirectURIs:              []string{"*"},
@@ -564,7 +564,7 @@ func GetDefaultTestConfig(keycloakURL, callbackURL string) *InitializationConfig
 		OIDCProviders: []OIDCProviderConfig{
 			{
 				Name:         "keycloak-msp",
-				RealmName:    "msp",
+				RealmName:    "master",
 				ClientID:     "msp-client",
 				ClientSecret: "msp-secret",
 				CallbackURL:  callbackURL,
@@ -602,7 +602,7 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 
 	realmName := os.Getenv("KEYCLOAK_MSP_REALM")
 	if realmName == "" {
-		realmName = "msp"
+		realmName = "master"
 	}
 
 	enabled := true
