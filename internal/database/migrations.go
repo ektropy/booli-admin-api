@@ -14,7 +14,6 @@ func Initialize(db *gorm.DB) error {
 
 	if err := db.AutoMigrate(
 		&models.Tenant{},
-		&models.SSOProvider{},
 		&models.AuditLog{},
 		&models.TenantEnvironment{},
 		&models.NetworkRange{},
@@ -60,7 +59,6 @@ func DropAllTables(db *gorm.DB) error {
 		&models.NetworkRange{},
 		&models.TenantEnvironment{},
 		&models.AuditLog{},
-		&models.SSOProvider{},
 		&models.Tenant{},
 	)
 }

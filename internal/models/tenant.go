@@ -30,9 +30,8 @@ type Tenant struct {
 	UpdatedAt        time.Time      `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
-	ParentTenant *Tenant    `gorm:"foreignKey:ParentTenantID" json:"parent_tenant,omitempty"`
-	ChildTenants []Tenant   `gorm:"foreignKey:ParentTenantID" json:"child_tenants,omitempty"`
-	AuditLogs    []AuditLog `gorm:"foreignKey:TenantID" json:"audit_logs,omitempty"`
+	ParentTenant *Tenant  `gorm:"foreignKey:ParentTenantID" json:"parent_tenant,omitempty"`
+	ChildTenants []Tenant `gorm:"foreignKey:ParentTenantID" json:"child_tenants,omitempty"`
 }
 
 type TenantStatus string
