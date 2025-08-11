@@ -329,7 +329,6 @@ func (cli *CLI) migrateDatabaseTables(cfg *config.Config) error {
 
 	if err := db.AutoMigrate(
 		&models.Tenant{},
-		&models.SSOProvider{},
 		&models.AuditLog{},
 		&models.TenantEnvironment{},
 		&models.NetworkRange{},
