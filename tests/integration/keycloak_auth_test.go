@@ -242,7 +242,7 @@ func (suite *KeycloakAuthTestSuite) TestConcurrentTokenValidation() {
 }
 
 func (suite *KeycloakAuthTestSuite) TestTokenRefresh() {
-	refreshToken := suite.getRefreshToken("admin", "admin123")
+	refreshToken := suite.getRefreshToken("msp-admin", "admin123")
 	if refreshToken == "" {
 		suite.T().Skip("Refresh token not available")
 	}

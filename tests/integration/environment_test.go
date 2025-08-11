@@ -29,7 +29,7 @@ func (suite *EnvironmentTestSuite) SetupTest() {
 		suite.Config.KeycloakMSPRealm,
 		suite.Config.KeycloakClientID,
 		suite.Config.KeycloakClientSecret,
-		"admin", "admin123")
+		"msp-admin", "admin123")
 	suite.T().Logf("MSP Admin token: %v", suite.mspAdminToken != "")
 
 	if suite.mspAdminToken == "" {
