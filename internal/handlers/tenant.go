@@ -11,6 +11,7 @@ import (
 	"github.com/booli/booli-admin-api/internal/models"
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
 )
@@ -18,6 +19,7 @@ import (
 type TenantService interface {
 	CreateTenant(ctx context.Context, req *models.CreateTenantRequest, parentRealmName string) (*models.Tenant, error)
 	GetTenant(ctx context.Context, realmName string) (*models.Tenant, error)
+	GetTenantByID(ctx context.Context, id string) (*models.Tenant, error)
 	ListTenants(ctx context.Context, parentRealmName string, page, pageSize int) (*models.TenantListResponse, error)
 	UpdateTenant(ctx context.Context, realmName string, req *models.UpdateTenantRequest) (*models.Tenant, error)
 	DeleteTenant(ctx context.Context, realmName string) error
@@ -138,13 +140,24 @@ func (h *TenantHandler) Create(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{}
 // @Router /admin/tenants/{id} [get]
 func (h *TenantHandler) Get(c *gin.Context) {
-	realmName := c.Param("id")
-	if realmName == "" {
-		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid realm name", nil)
+	idParam := c.Param("id")
+	if idParam == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid ID parameter", nil)
 		return
 	}
 
-	tenant, err := h.tenantService.GetTenant(c.Request.Context(), realmName)
+	var tenant *models.Tenant
+	var err error
+
+	// Try to parse as UUID first, then fall back to realm name
+	if _, uuidErr := uuid.Parse(idParam); uuidErr == nil {
+		// It's a UUID, need to find tenant by UUID
+		tenant, err = h.tenantService.GetTenantByID(c.Request.Context(), idParam)
+	} else {
+		// It's a realm name
+		tenant, err = h.tenantService.GetTenant(c.Request.Context(), idParam)
+	}
+
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
 		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
