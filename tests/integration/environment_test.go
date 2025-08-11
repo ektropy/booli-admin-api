@@ -345,6 +345,8 @@ func (suite *EnvironmentTestSuite) createTestTenant() *models.Tenant {
 		Type:   tenantResp.Type,
 		Status: tenantResp.Status,
 	}
+	// Generate ID for internal consistency
+	tenant.BeforeCreate(nil)
 	return tenant
 }
 

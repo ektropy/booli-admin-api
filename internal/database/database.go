@@ -134,7 +134,6 @@ func CreateIndexes(db *gorm.DB) error {
 	indexes := []string{
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);`,
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);`,
 
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenants_domain ON tenants(domain);`,
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenants_status ON tenants(status);`,
