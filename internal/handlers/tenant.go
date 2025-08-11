@@ -156,8 +156,8 @@ func (h *TenantHandler) Get(c *gin.Context) {
 	includeCounts := c.Query("include_counts") == "true"
 	if includeCounts {
 		userCount := 0
-		if tenant.KeycloakRealm != "" {
-			count, err := h.tenantService.GetUserCount(c.Request.Context(), tenant.KeycloakRealm)
+		if tenant.RealmName != "" {
+			count, err := h.tenantService.GetUserCount(c.Request.Context(), tenant.RealmName)
 			if err != nil {
 				h.logger.Warn("Failed to get user count", zap.Error(err))
 			} else {
@@ -268,11 +268,9 @@ func (h *TenantHandler) ProvisionTenant(c *gin.Context) {
 		return
 	}
 
-	// In the new architecture, tenants are automatically provisioned when created
-	// This endpoint now just checks if the realm exists
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Tenant is already provisioned",
-		"realm":   tenant.KeycloakRealm,
+		"realm":   tenant.RealmName,
 	})
 }
 

@@ -71,6 +71,10 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 }
 
 func ConnectRedis(cfg config.RedisConfig) (*redis.Client, error) {
+	if cfg.Host == "" {
+		return nil, fmt.Errorf("redis host is required")
+	}
+	
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	fmt.Printf("Attempting Redis connection: %s (db: %d, timeout: %ds)\n", addr, cfg.DB, cfg.DialTimeout)
 	

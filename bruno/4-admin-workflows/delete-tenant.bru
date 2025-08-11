@@ -5,7 +5,7 @@ meta {
 }
 
 delete {
-  url: {{baseUrl}}/api/v1/admin/tenants/{{tenantId}}
+  url: {{baseUrl}}/api/v1/admin/tenants/{{tenantRealm}}
 }
 
 headers {
@@ -14,32 +14,26 @@ headers {
 }
 
 assert {
-  res.status: in [200, 204, 404]
+  res.status: in [200, 204]
 }
 
 script:post-response {
   const status = res.getStatus();
   
   if (status === 200 || status === 204) {
-    console.log("Tenant deleted successfully");
-    bru.setEnvVar("tenantId", ""); // Clear the tenant ID
-  } else if (status === 404) {
-    console.log("Tenant not found");
+    bru.setEnvVar("tenantRealm", "");
   }
 }
 
 tests {
   test("Tenant deletion returns expected status", function() {
-    expect(res.getStatus()).to.be.oneOf([200, 204, 404]);
+    expect(res.getStatus()).to.be.oneOf([200, 204]);
   });
   
   test("If successful, tenant is removed", function() {
     const status = res.getStatus();
-    if (status === 200 || status === 204) {
-      // Tenant deletion was successful
-      expect(status).to.satisfy(function(s) {
-        return s === 200 || s === 204;
-      });
-    }
+    expect(status).to.satisfy(function(s) {
+      return s === 200 || s === 204;
+    });
   });
 }

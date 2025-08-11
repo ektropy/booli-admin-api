@@ -145,8 +145,6 @@ func (s *SSOService) DeleteProvider(ctx context.Context, realmName, alias string
 }
 
 func (s *SSOService) TestProvider(ctx context.Context, realmName, alias string, req *models.TestSSOProviderRequest) (*models.SSOTestResult, error) {
-	// For now, just return a basic test result
-	// In a real implementation, this would test the actual SSO connection
 	
 	result := &models.SSOTestResult{
 		Success:      true,

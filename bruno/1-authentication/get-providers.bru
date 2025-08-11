@@ -9,12 +9,12 @@ get {
 }
 
 assert {
-  res.status: in [200, 500]
+  res.status: eq 200
 }
 
 tests {
   test("Auth providers endpoint is accessible", function() {
-    expect([200, 500]).to.include(res.getStatus());
+    expect(res.getStatus()).to.equal(200);
   });
   
   test("If successful, response contains providers", function() {

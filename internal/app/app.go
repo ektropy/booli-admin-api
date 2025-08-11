@@ -75,6 +75,12 @@ func (app *Application) Initialize() error {
 
 	app.logger.Info("Redis connected successfully")
 
+	if app.config.Keycloak.URL == "" {
+		app.logger.Error("Keycloak URL is not configured - application cannot start", 
+			zap.String("required_env_var", "BOOLI_KEYCLOAK_URL"))
+		return fmt.Errorf("keycloak URL is required")
+	}
+
 	keycloakAdmin := keycloak.NewAdminClient(
 		app.config.Keycloak.URL,
 		app.config.Keycloak.MasterRealm,

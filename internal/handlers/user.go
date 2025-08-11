@@ -141,10 +141,16 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	realmName, err := middleware.GetRealmName(c)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
-		return
+	var realmName string
+	if req.TenantRealm != "" {
+		realmName = req.TenantRealm
+	} else {
+		var err error
+		realmName, err = middleware.GetRealmName(c)
+		if err != nil {
+			utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
+			return
+		}
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
@@ -280,13 +286,19 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	realmName, err := middleware.GetRealmName(c)
-	if err != nil {
-		utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
-		return
+	var realmName string
+	if tenantRealm := c.Query("tenant_realm"); tenantRealm != "" {
+		realmName = tenantRealm
+	} else {
+		var err error
+		realmName, err = middleware.GetRealmName(c)
+		if err != nil {
+			utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeUnauthorized, "Realm context required", nil)
+			return
+		}
 	}
 
-	err = h.userService.DeleteUser(c.Request.Context(), realmName, userID)
+	err := h.userService.DeleteUser(c.Request.Context(), realmName, userID)
 
 	if err != nil {
 		h.logger.Error("Failed to delete user", zap.Error(err))

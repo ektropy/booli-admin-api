@@ -201,6 +201,13 @@ func (k *KeycloakInitializer) waitForKeycloak(ctx context.Context, timeout time.
 }
 
 func (k *KeycloakInitializer) isKeycloakReady(ctx context.Context) bool {
+	if k.config.Keycloak.URL == "" {
+		k.logger.Error("Keycloak URL is not configured - application cannot start", 
+			zap.String("keycloak_url", k.config.Keycloak.URL),
+			zap.String("required_env_var", "BOOLI_KEYCLOAK_URL"))
+		os.Exit(1)
+	}
+	
 	url := fmt.Sprintf("%s/realms/master/.well-known/openid-configuration", k.config.Keycloak.URL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

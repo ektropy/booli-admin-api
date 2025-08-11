@@ -44,7 +44,7 @@ assert {
 script:post-response {
   if (res.getStatus() === 201) {
     const body = res.getBody();
-    bru.setEnvVar("tenantId", body.id);
+    bru.setEnvVar("tenantRealm", body.realm);
   }
 }
 
@@ -53,9 +53,9 @@ tests {
     expect(res.getStatus()).to.equal(201);
   });
   
-  test("Response contains tenant ID", function() {
+  test("Response contains tenant realm", function() {
     const body = res.getBody();
-    expect(body).to.have.property("id");
+    expect(body).to.have.property("realm");
     expect(body.name).to.contain("Test Tenant");
   });
 }

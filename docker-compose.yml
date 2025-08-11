@@ -12,6 +12,7 @@ services:
       POSTGRES_DB: ${BOOLI_DATABASE_DBNAME:-booli_admin}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -28,6 +29,45 @@ services:
       - valkey_data:/data
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    image: booli-admin-api:latest
+    container_name: booli-admin-backend
+    ports:
+      - "8081:8080"
+    restart: on-failure
+    environment:
+      BOOLI_DATABASE_HOST: postgres
+      BOOLI_DATABASE_PORT: 5432
+      BOOLI_DATABASE_USER: ${BOOLI_DATABASE_USER:-postgres}
+      BOOLI_DATABASE_PASSWORD: ${BOOLI_DATABASE_PASSWORD:-postgres}
+      BOOLI_DATABASE_DBNAME: ${BOOLI_DATABASE_DBNAME:-booli_admin}
+      BOOLI_DATABASE_SSLMODE: disable
+      BOOLI_REDIS_HOST: valkey
+      BOOLI_REDIS_PORT: 6379
+      BOOLI_KEYCLOAK_URL: http://keycloak:8083
+      BOOLI_KEYCLOAK_ADMIN_REALM: master
+      BOOLI_KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      BOOLI_KEYCLOAK_ADMIN_USERNAME: ${BOOLI_KEYCLOAK_ADMIN_USER:-admin}
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: ${BOOLI_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      BOOLI_KEYCLOAK_MSP_REALM: msp
+      BOOLI_KEYCLOAK_CLIENT_ID: msp-client
+      BOOLI_KEYCLOAK_CLIENT_SECRET: test-secret
+      BOOLI_KEYCLOAK_INIT_TIMEOUT: 60
+      BOOLI_LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,6 +97,12 @@ services:
     volumes:
       - keycloak_data:/opt/keycloak/data
     command: ["start-dev"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8083 && echo -e 'GET /admin/ HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'HTTP/1.1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   pgadmin:
     image: dpage/pgadmin4:latest

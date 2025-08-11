@@ -20,6 +20,6 @@ tests {
   test("Returns authentication error", function() {
     const body = res.getBody();
     expect(body).to.have.property("error");
-    expect(body.error).to.include("Authentication required");
+    expect(body.error.message).to.include("Authentication required");
   });
 }

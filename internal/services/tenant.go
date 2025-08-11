@@ -53,13 +53,13 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 	}
 
 	tenant := &models.Tenant{
-		Name:          req.Name,
-		Domain:        req.Domain,
-		Type:          tenantType,
-		KeycloakRealm: realmName,
-		Status:        models.TenantStatusActive,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		Name:      req.Name,
+		Domain:    req.Domain,
+		Type:      tenantType,
+		Status:    models.TenantStatusActive,
+		RealmName: realmName,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 	// Generate ID for internal consistency (not used as primary identifier)
 	tenant.BeforeCreate(nil)
@@ -86,13 +86,13 @@ func (s *TenantService) GetTenant(ctx context.Context, realmName string) (*model
 	}
 
 	tenant := &models.Tenant{
-		Name:          realm.DisplayName,
-		Domain:        realm.Attributes["domain"],
-		Type:          models.TenantType(realm.Attributes["tenant_type"]),
-		KeycloakRealm: realm.Realm,
-		Status:        models.TenantStatusActive,
-		CreatedAt:     createdAt,
-		UpdatedAt:     time.Now(),
+		Name:      realm.DisplayName,
+		Domain:    realm.Attributes["domain"],
+		Type:      models.TenantType(realm.Attributes["tenant_type"]),
+		Status:    models.TenantStatusActive,
+		RealmName: realm.Realm,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now(),
 	}
 	// Generate ID for internal consistency
 	tenant.BeforeCreate(nil)
@@ -132,13 +132,13 @@ func (s *TenantService) ListTenants(ctx context.Context, parentRealmName string,
 		}
 
 		tenant := models.Tenant{
-			Name:          realm.DisplayName,
-			Domain:        realm.Attributes["domain"],
-			Type:          models.TenantType(realm.Attributes["tenant_type"]),
-			KeycloakRealm: realm.Realm,
-			Status:        models.TenantStatusActive,
-			CreatedAt:     createdAt,
-			UpdatedAt:     time.Now(),
+			Name:      realm.DisplayName,
+			Domain:    realm.Attributes["domain"],
+			Type:      models.TenantType(realm.Attributes["tenant_type"]),
+			Status:    models.TenantStatusActive,
+			RealmName: realm.Realm,
+			CreatedAt: createdAt,
+			UpdatedAt: time.Now(),
 		}
 		// Generate ID for internal consistency
 		tenant.BeforeCreate(nil)
@@ -198,13 +198,13 @@ func (s *TenantService) GetTenantByDomain(ctx context.Context, domain string) (*
 			}
 
 			tenant := &models.Tenant{
-				Name:          realm.DisplayName,
-				Domain:        realm.Attributes["domain"],
-				Type:          models.TenantType(realm.Attributes["tenant_type"]),
-				KeycloakRealm: realm.Realm,
-				Status:        models.TenantStatusActive,
-				CreatedAt:     createdAt,
-				UpdatedAt:     time.Now(),
+				Name:      realm.DisplayName,
+				Domain:    realm.Attributes["domain"],
+				Type:      models.TenantType(realm.Attributes["tenant_type"]),
+				Status:    models.TenantStatusActive,
+				RealmName: realm.Realm,
+				CreatedAt: createdAt,
+				UpdatedAt: time.Now(),
 			}
 			// Generate ID for internal consistency
 			tenant.BeforeCreate(nil)
@@ -257,13 +257,13 @@ func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req 
 	}
 
 	updatedTenant := &models.Tenant{
-		Name:          updateRealm.DisplayName,
-		Domain:        updateRealm.Attributes["domain"],
-		Type:          models.TenantType(updateRealm.Attributes["tenant_type"]),
-		KeycloakRealm: updateRealm.Realm,
-		Status:        models.TenantStatusActive,
-		CreatedAt:     createdAt,
-		UpdatedAt:     time.Now(),
+		Name:      updateRealm.DisplayName,
+		Domain:    updateRealm.Attributes["domain"],
+		Type:      models.TenantType(updateRealm.Attributes["tenant_type"]),
+		Status:    models.TenantStatusActive,
+		RealmName: updateRealm.Realm,
+		CreatedAt: createdAt,
+		UpdatedAt: time.Now(),
 	}
 	// Generate ID for internal consistency
 	updatedTenant.BeforeCreate(nil)
@@ -489,13 +489,13 @@ func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string
 	}
 
 	tenant := &models.Tenant{
-		Name:          name,
-		Domain:        domain,
-		Type:          tenantType,
-		KeycloakRealm: realmName,
-		Status:        models.TenantStatusActive,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		Name:      name,
+		Domain:    domain,
+		Type:      tenantType,
+		Status:    models.TenantStatusActive,
+		RealmName: realmName,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 	// Generate ID for internal consistency
 	tenant.BeforeCreate(nil)

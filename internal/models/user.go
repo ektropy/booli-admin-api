@@ -18,6 +18,7 @@ type CreateUserRequest struct {
 	TenantID          uuid.UUID `json:"tenant_id,omitempty"`
 	TenantName        string    `json:"tenant_name,omitempty"`
 	TenantDomain      string    `json:"tenant_domain,omitempty"`
+	TenantRealm       string    `json:"tenant_realm,omitempty"`
 	Username          string    `json:"username" validate:"required,min=3,max=50"`
 	Email             string    `json:"email" validate:"required,email"`
 	FirstName         string    `json:"first_name" validate:"required,min=1,max=50"`

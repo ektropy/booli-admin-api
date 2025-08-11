@@ -181,7 +181,6 @@ func shouldLogBody(req *http.Request) bool {
 		return false
 	}
 
-	// Only log for POST, PUT, PATCH requests
 	method := req.Method
 	return method == "POST" || method == "PUT" || method == "PATCH"
 }

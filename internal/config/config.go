@@ -112,6 +112,13 @@ func LoadWithConfigFile(configFile string) (*Config, error) {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
+	// Handle legacy environment variable names for backward compatibility
+	if config.Keycloak.URL == "" {
+		if baseURL := viper.GetString("KEYCLOAK_BASE_URL"); baseURL != "" {
+			config.Keycloak.URL = baseURL
+		}
+	}
+
 	return &config, nil
 }
 
@@ -141,13 +148,13 @@ func setDefaults() {
 	viper.SetDefault("redis.read_timeout", 10)
 	viper.SetDefault("redis.write_timeout", 10)
 
-	viper.SetDefault("keycloak.url", "")
-	viper.SetDefault("keycloak.admin_user", "")
-	viper.SetDefault("keycloak.admin_password", "")
+	viper.SetDefault("keycloak.url", "http://localhost:8083")
+	viper.SetDefault("keycloak.admin_user", "admin")
+	viper.SetDefault("keycloak.admin_password", "admin")
 	viper.SetDefault("keycloak.master_realm", "master")
 	viper.SetDefault("keycloak.msp_realm", "msp")
-	viper.SetDefault("keycloak.client_id", "")
-	viper.SetDefault("keycloak.client_secret", "")
+	viper.SetDefault("keycloak.client_id", "msp-client")
+	viper.SetDefault("keycloak.client_secret", "test-secret")
 	viper.SetDefault("keycloak.callback_url", "")
 	viper.SetDefault("keycloak.api_audience", "booli-admin-api")
 	viper.SetDefault("keycloak.skip_tls_verify", false)

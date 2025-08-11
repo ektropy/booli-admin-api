@@ -34,8 +34,4 @@ tests {
     expect(body).to.have.property("page_size");
   });
   
-  test("Debug tenant data", function() {
-    const body = res.getBody();
-    console.log("Tenants:", JSON.stringify(body, null, 2));
-  });
 }
