@@ -115,25 +115,7 @@ func SetupRowLevelSecurity(db *gorm.DB) error {
 		}
 	}
 
-	policies := []string{
-		`ALTER TABLE roles ENABLE ROW LEVEL SECURITY;`,
-		`DROP POLICY IF EXISTS tenant_roles_isolation ON roles;`,
-		`CREATE POLICY tenant_roles_isolation ON roles
-		 FOR ALL TO application_role
-		 USING (tenant_id = current_setting('app.current_tenant')::UUID);`,
-
-		`ALTER TABLE sso_providers ENABLE ROW LEVEL SECURITY;`,
-		`DROP POLICY IF EXISTS tenant_sso_isolation ON sso_providers;`,
-		`CREATE POLICY tenant_sso_isolation ON sso_providers
-		 FOR ALL TO application_role
-		 USING (tenant_id = current_setting('app.current_tenant')::UUID);`,
-
-		`ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;`,
-		`DROP POLICY IF EXISTS tenant_audit_isolation ON audit_logs;`,
-		`CREATE POLICY tenant_audit_isolation ON audit_logs
-		 FOR ALL TO application_role
-		 USING (tenant_id = current_setting('app.current_tenant')::UUID);`,
-	}
+	policies := []string{}
 
 	for _, policy := range policies {
 		if err := db.Exec(policy).Error; err != nil {
@@ -150,18 +132,11 @@ func SetTenantContext(db *gorm.DB, tenantID string) error {
 
 func CreateIndexes(db *gorm.DB) error {
 	indexes := []string{
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_roles_tenant_name ON roles(tenant_id, name);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_roles_tenant_created ON roles(tenant_id, created_at DESC);`,
-
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sso_providers_tenant_type ON sso_providers(tenant_id, provider_type);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sso_providers_tenant_status ON sso_providers(tenant_id, status);`,
-
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_tenant_created ON audit_logs(tenant_id, created_at DESC);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_tenant_action ON audit_logs(tenant_id, action);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_tenant_user ON audit_logs(tenant_id, user_id);`,
+		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);`,
+		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);`,
+		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);`,
 
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenants_domain ON tenants(domain);`,
-		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenants_keycloak_organization_id ON tenants(keycloak_organization_id);`,
 		`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenants_status ON tenants(status);`,
 	}
 
