@@ -15,7 +15,6 @@ headers {
 }
 
 script:pre-request {
-  // Generate unique domain and name for each test run
   const timestamp = Date.now();
   bru.setEnvVar("testDomain", `test-${timestamp}.example.com`);
   bru.setEnvVar("testTenantName", `Test Tenant ${timestamp}`);
@@ -52,7 +51,7 @@ tests {
   test("Tenant creation returns 201", function() {
     expect(res.getStatus()).to.equal(201);
   });
-  
+
   test("Response contains tenant realm", function() {
     const body = res.getBody();
     expect(body).to.have.property("realm");
