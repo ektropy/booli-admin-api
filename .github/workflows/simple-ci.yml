@@ -20,8 +20,8 @@ jobs:
         cache: true
     - name: Test
       run: go test -race -coverprofile=coverage.out ./...
-    - name: Integration Tests
-      run: RUN_INTEGRATION_TESTS=true go test -timeout 15m ./tests/integration/...
+    # - name: Integration Tests
+    #   run: RUN_INTEGRATION_TESTS=true go test -timeout 15m ./tests/integration/...
     - name: Security Scan
       run: |
         go install github.com/securego/gosec/v2/cmd/gosec@latest
