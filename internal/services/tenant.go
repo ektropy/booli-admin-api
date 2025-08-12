@@ -269,23 +269,6 @@ func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req 
 }
 
 func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) error {
-	realms, err := s.keycloakAdmin.GetRealms(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get realms: %w", err)
-	}
-
-	childCount := 0
-	for _, realm := range realms {
-		// Count client tenants as children
-		if realm.Attributes["tenant_type"] == string(models.TenantTypeClient) {
-			childCount++
-		}
-	}
-
-	if childCount > 0 {
-		return fmt.Errorf("cannot delete tenant with %d child tenants", childCount)
-	}
-
 	if err := s.keycloakAdmin.DeleteRealm(ctx, realmName); err != nil {
 		return fmt.Errorf("failed to delete Keycloak realm: %w", err)
 	}
