@@ -22,7 +22,7 @@ type TenantEnvironment struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
-	Tenant            Tenant              `gorm:"foreignKey:TenantRealm;references:RealmName" json:"tenant,omitempty"`
+	// Tenant relationship removed since tenants are stored in Keycloak, not the database
 	NetworkRanges     []NetworkRange      `gorm:"foreignKey:EnvironmentID" json:"network_ranges,omitempty"`
 	PublicIPs         []PublicIP          `gorm:"foreignKey:EnvironmentID" json:"public_ips,omitempty"`
 	EgressIPs         []EgressIP          `gorm:"foreignKey:EnvironmentID" json:"egress_ips,omitempty"`

@@ -384,14 +384,13 @@ func (s *EnvironmentService) GetSIEMEnrichmentData(ctx context.Context, tenantRe
 
 	// Check if user is MSP admin (from master realm)
 	if userTenantRealm == "master" {
-		var tenantWithEnvironments models.Tenant
+		// For MSP admins, try to find any environment to get data from
+		var environment models.TenantEnvironment
 		if err := s.db.WithContext(ctx).
-			Select("tenants.realm_name").
-			Joins("JOIN tenant_environments ON tenants.realm_name = tenant_environments.tenant_realm").
-			Where("tenant_environments.is_active = ? AND tenant_environments.deleted_at IS NULL", true).
-			Order("tenant_environments.created_at DESC").
-			First(&tenantWithEnvironments).Error; err == nil {
-			actualTenantRealm = tenantWithEnvironments.RealmName
+			Where("is_active = ? AND deleted_at IS NULL", true).
+			Order("created_at DESC").
+			First(&environment).Error; err == nil {
+			actualTenantRealm = environment.TenantRealm
 		}
 	}
 
@@ -451,13 +450,9 @@ func (s *EnvironmentService) validateTenantAccess(ctx context.Context, userTenan
 		return nil
 	}
 
-	var targetTenant models.Tenant
-	if err := s.db.WithContext(ctx).Where("realm_name = ?", targetTenantRealm).First(&targetTenant).Error; err == nil {
-		// Check if user is MSP admin trying to access client tenant
-		if targetTenant.Type == models.TenantTypeClient && userTenantRealm == "master" {
-			return nil
-		}
-	}
+	// Since tenants are in Keycloak, not database, we can't check tenant type here
+	// MSP admins from master realm have access to all client tenants
+	// This is already handled by the first check above
 
 	var grant models.TenantAccessGrant
 	err := s.db.WithContext(ctx).
