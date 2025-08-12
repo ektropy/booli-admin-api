@@ -2,8 +2,9 @@ package services
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"strings"
 
 	"github.com/booli/booli-admin-api/internal/keycloak"
@@ -418,7 +419,11 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		if password := getColumnValue(row, columnMap, "password"); password != "" {
 			user.Password = password
 		} else {
-			user.Password = generateRandomPassword()
+			generatedPassword, err := generateRandomPassword()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate password for user %s: %w", user.Email, err)
+			}
+			user.Password = generatedPassword
 		}
 		
 		if role := getColumnValue(row, columnMap, "role"); role != "" {
@@ -492,13 +497,17 @@ func getColumnValue(row []string, columnMap map[string]int, columnName string) s
 	return ""
 }
 
-func generateRandomPassword() string {
+func generateRandomPassword() (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
 	const length = 12
 	
 	password := make([]byte, length)
 	for i := range password {
-		password[i] = charset[rand.Intn(len(charset))]
+		n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", fmt.Errorf("failed to generate secure random password: %w", err)
+		}
+		password[i] = charset[n.Int64()]
 	}
-	return string(password)
+	return string(password), nil
 }
