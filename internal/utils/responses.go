@@ -6,17 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ErrorResponse represents an API error response
+// swagger:model
 type ErrorResponse struct {
 	Error     ErrorDetail `json:"error"`
-	Status    int         `json:"status"`
-	Path      string      `json:"path"`
-	Timestamp string      `json:"timestamp"`
-	RequestID string      `json:"request_id,omitempty"`
+	Status    int         `json:"status" example:"400"`
+	Path      string      `json:"path" example:"/api/v1/environments"`
+	Timestamp string      `json:"timestamp" example:"2024-01-01T12:00:00Z"`
+	RequestID string      `json:"request_id,omitempty" example:"req-123456789"`
 }
 
+// ErrorDetail represents detailed error information
+// swagger:model
 type ErrorDetail struct {
-	Code    string      `json:"code"`
-	Message string      `json:"message"`
+	Code    string      `json:"code" example:"BAD_REQUEST"`
+	Message string      `json:"message" example:"Invalid request body"`
 	Details interface{} `json:"details,omitempty"`
 }
 

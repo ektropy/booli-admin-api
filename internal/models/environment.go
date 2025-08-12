@@ -11,6 +11,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// SwaggerJSONType represents JSON data type for swagger docs
+// swagger:ignore
+type SwaggerJSONType map[string]interface{}
+
+// SwaggerDeletedAt represents soft delete timestamp for swagger docs
+// swagger:ignore
+type SwaggerDeletedAt *time.Time
+
 type TenantEnvironment struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	TenantRealm string         `gorm:"not null;size:255;index" json:"tenant_realm"`

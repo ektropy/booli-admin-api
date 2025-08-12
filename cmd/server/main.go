@@ -6,6 +6,8 @@
 // @license.name CC BY-NC-ND 4.0
 // @license.url https://creativecommons.org/licenses/by-nc-nd/4.0/
 // @host localhost:8081
+// @schemes http https
+// @x-servers ["http://localhost:8081/api/v1","https://api.booli.local/api/v1"]
 // @BasePath /api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in header

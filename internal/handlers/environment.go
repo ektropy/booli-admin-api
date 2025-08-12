@@ -38,6 +38,19 @@ func NewEnvironmentHandler(environmentService EnvironmentService, logger *zap.Lo
 }
 
 
+// CreateEnvironment creates a new tenant environment
+// @Summary Create environment
+// @Description Create a new tenant environment with network ranges, IPs, domains, and infrastructure
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body models.CreateTenantEnvironmentRequestSwagger true "Environment creation request"
+// @Success 201 {object} models.TenantEnvironmentSwagger
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments [post]
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	var req models.CreateTenantEnvironmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,6 +76,19 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	c.JSON(http.StatusCreated, environment)
 }
 
+// GetEnvironment retrieves a specific environment by ID
+// @Summary Get environment
+// @Description Get tenant environment by ID
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Environment ID (UUID)"
+// @Success 200 {object} models.TenantEnvironmentSwagger
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 404 {object} models.ErrorResponseSwagger
+// @Router /environments/{id} [get]
 func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	environmentIDStr := c.Param("id")
 	if environmentIDStr == "" {
@@ -95,6 +121,19 @@ func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, environment)
 }
 
+// ListEnvironments retrieves a paginated list of environments
+// @Summary List environments
+// @Description Get paginated list of tenant environments
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query integer false "Page number" default(1)
+// @Param page_size query integer false "Page size" default(20) minimum(1) maximum(100)
+// @Success 200 {object} models.TenantEnvironmentListResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments [get]
 func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
 	userRealmName, err := middleware.GetRealmName(c)
 	if err != nil {
@@ -124,6 +163,21 @@ func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
 	c.JSON(http.StatusOK, environments)
 }
 
+// UpdateEnvironment updates an existing environment
+// @Summary Update environment
+// @Description Update tenant environment by ID
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Environment ID (UUID)"
+// @Param request body models.UpdateTenantEnvironmentRequestSwagger true "Environment update request"
+// @Success 200 {object} models.TenantEnvironmentSwagger
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 404 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/{id} [put]
 func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	environmentIDStr := c.Param("id")
 	if environmentIDStr == "" {
@@ -162,6 +216,20 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, environment)
 }
 
+// DeleteEnvironment deletes an environment by ID
+// @Summary Delete environment
+// @Description Delete tenant environment by ID
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Environment ID (UUID)"
+// @Success 204 "No Content"
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 404 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/{id} [delete]
 func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	environmentIDStr := c.Param("id")
 	if environmentIDStr == "" {
@@ -196,6 +264,19 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	})
 }
 
+// GrantAccess grants access to an environment for another user/tenant
+// @Summary Grant environment access
+// @Description Grant access to an environment for another user or tenant
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body models.CreateTenantAccessGrantRequestSwagger true "Access grant request"
+// @Success 201 {object} models.TenantAccessGrantSwagger
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/access [post]
 func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 	var req models.CreateTenantAccessGrantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -230,6 +311,20 @@ func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 	c.JSON(http.StatusCreated, grant)
 }
 
+// RevokeAccess revokes access grant to an environment
+// @Summary Revoke environment access
+// @Description Revoke access grant to an environment
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param grant_id path string true "Access Grant ID (UUID)"
+// @Success 200 {object} map[string]string "Access revoked successfully"
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 404 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/access/{grant_id} [delete]
 func (h *EnvironmentHandler) RevokeAccess(c *gin.Context) {
 	grantIDStr := c.Param("grant_id")
 	if grantIDStr == "" {
@@ -264,6 +359,17 @@ func (h *EnvironmentHandler) RevokeAccess(c *gin.Context) {
 	})
 }
 
+// GetSIEMEnrichmentData retrieves SIEM enrichment data for environments
+// @Summary Get SIEM enrichment data
+// @Description Get security information and event management (SIEM) enrichment data including network ranges, IPs, domains, and infrastructure
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.SIEMEnrichmentDataSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/security-data [get]
 func (h *EnvironmentHandler) GetSIEMEnrichmentData(c *gin.Context) {
 	userRealmName, err := middleware.GetRealmName(c)
 	if err != nil {
@@ -283,6 +389,19 @@ func (h *EnvironmentHandler) GetSIEMEnrichmentData(c *gin.Context) {
 	c.JSON(http.StatusOK, enrichmentData)
 }
 
+// LookupEnrichment looks up enrichment data for a specific IP or domain
+// @Summary Lookup enrichment data
+// @Description Lookup enrichment data for a specific IP address or domain
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param q query string true "Query string (IP address or domain)"
+// @Success 200 {object} map[string]interface{} "Enrichment lookup result"
+// @Failure 400 {object} models.ErrorResponseSwagger
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/lookup [get]
 func (h *EnvironmentHandler) LookupEnrichment(c *gin.Context) {
 	query := c.Query("q")
 	if query == "" {
@@ -310,6 +429,17 @@ func (h *EnvironmentHandler) LookupEnrichment(c *gin.Context) {
 	})
 }
 
+// GetNetworkRanges retrieves network ranges for the tenant
+// @Summary Get network ranges
+// @Description Get all network ranges for the tenant's environments
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "Network ranges with metadata"
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/networks [get]
 func (h *EnvironmentHandler) GetNetworkRanges(c *gin.Context) {
 	userRealmName, err := middleware.GetRealmName(c)
 	if err != nil {
@@ -334,6 +464,17 @@ func (h *EnvironmentHandler) GetNetworkRanges(c *gin.Context) {
 	})
 }
 
+// GetInfrastructureIPs retrieves infrastructure IPs for the tenant
+// @Summary Get infrastructure IPs
+// @Description Get all infrastructure IPs for the tenant's environments
+// @Tags environments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "Infrastructure IPs with metadata"
+// @Failure 401 {object} models.ErrorResponseSwagger
+// @Failure 500 {object} models.ErrorResponseSwagger
+// @Router /environments/infrastructure [get]
 func (h *EnvironmentHandler) GetInfrastructureIPs(c *gin.Context) {
 	userRealmName, err := middleware.GetRealmName(c)
 	if err != nil {
