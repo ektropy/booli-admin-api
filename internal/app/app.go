@@ -185,6 +185,7 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Container, oidcService *auth.OIDCService) {
 	router.GET(constants.PathHealth, handlers.Health.Check)
 	router.GET(constants.PathHealthKeycloak, handlers.Health.ValidateKeycloak)
+	router.GET("/version", handlers.Health.GetVersionInfo)
 	router.GET(constants.PathSwagger+"*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	v1 := router.Group(constants.APIBasePath)

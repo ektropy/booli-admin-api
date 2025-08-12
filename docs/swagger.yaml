@@ -1,10 +1,10 @@
-basePath: /api/v1
+basePath: /api/2025-08-01
 definitions:
-  models.BulkCreateResult:
+  github_com_booli_booli-admin-api_internal_models.BulkCreateResult:
     properties:
       failed:
         items:
-          $ref: '#/definitions/models.BulkError'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.BulkError'
         type: array
       failure_count:
         type: integer
@@ -12,12 +12,12 @@ definitions:
         type: integer
       successful:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         type: array
       total_processed:
         type: integer
     type: object
-  models.BulkCreateUserRequest:
+  github_com_booli_booli-admin-api_internal_models.BulkCreateUserRequest:
     properties:
       default_role_names:
         items:
@@ -27,14 +27,14 @@ definitions:
         type: boolean
       users:
         items:
-          $ref: '#/definitions/models.CreateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest'
         maxItems: 100
         minItems: 1
         type: array
     required:
     - users
     type: object
-  models.BulkError:
+  github_com_booli_booli-admin-api_internal_models.BulkError:
     properties:
       email:
         type: string
@@ -43,7 +43,7 @@ definitions:
       row:
         type: integer
     type: object
-  models.CSVError:
+  github_com_booli_booli-admin-api_internal_models.CSVError:
     properties:
       email:
         type: string
@@ -52,28 +52,28 @@ definitions:
       row:
         type: integer
     type: object
-  models.CSVImportResult:
+  github_com_booli_booli-admin-api_internal_models.CSVImportResult:
     properties:
       error_count:
         type: integer
       failed_users:
         items:
-          $ref: '#/definitions/models.CSVError'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CSVError'
         type: array
       parse_errors:
         items:
-          $ref: '#/definitions/models.CSVError'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CSVError'
         type: array
       success_count:
         type: integer
       successful_users:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         type: array
       total_processed:
         type: integer
     type: object
-  models.CreateTenantAccessGrantRequestSwagger:
+  github_com_booli_booli-admin-api_internal_models.CreateTenantAccessGrantRequestSwagger:
     properties:
       access_level:
         enum:
@@ -98,40 +98,40 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440008
         type: string
     type: object
-  models.CreateTenantEnvironmentRequestSwagger:
+  github_com_booli_booli-admin-api_internal_models.CreateTenantEnvironmentRequestSwagger:
     properties:
       description:
         example: Main production environment
         type: string
       domains:
         items:
-          $ref: '#/definitions/models.DomainSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger'
         type: array
       egress_ips:
         items:
-          $ref: '#/definitions/models.EgressIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger'
         type: array
       environment:
         example: production
         type: string
       infrastructure_ips:
         items:
-          $ref: '#/definitions/models.InfrastructureIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger'
         type: array
       name:
         example: Production Environment
         type: string
       naming_conventions:
         items:
-          $ref: '#/definitions/models.NamingConventionSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger'
         type: array
       network_ranges:
         items:
-          $ref: '#/definitions/models.NetworkRangeSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger'
         type: array
       public_ips:
         items:
-          $ref: '#/definitions/models.PublicIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger'
         type: array
       tenant_domain:
         example: acme.com
@@ -143,7 +143,7 @@ definitions:
         example: client-tenant
         type: string
     type: object
-  models.CreateUserRequest:
+  github_com_booli_booli-admin-api_internal_models.CreateUserRequest:
     properties:
       attributes:
         additionalProperties:
@@ -193,7 +193,7 @@ definitions:
     - last_name
     - username
     type: object
-  models.DomainSwagger:
+  github_com_booli_booli-admin-api_internal_models.DomainSwagger:
     properties:
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -238,7 +238,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.EgressIPSwagger:
+  github_com_booli_booli-admin-api_internal_models.EgressIPSwagger:
     properties:
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -277,7 +277,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.ErrorDetailSwagger:
+  github_com_booli_booli-admin-api_internal_models.ErrorDetailSwagger:
     properties:
       code:
         example: BAD_REQUEST
@@ -289,10 +289,10 @@ definitions:
         example: Invalid request body
         type: string
     type: object
-  models.ErrorResponseSwagger:
+  github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger:
     properties:
       error:
-        $ref: '#/definitions/models.ErrorDetailSwagger'
+        $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorDetailSwagger'
       path:
         example: /api/v1/environments
         type: string
@@ -306,7 +306,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.InfrastructureIPSwagger:
+  github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger:
     properties:
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -351,7 +351,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.NamingConventionSwagger:
+  github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger:
     properties:
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -390,7 +390,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.NetworkRangeSwagger:
+  github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger:
     properties:
       cidr:
         example: 10.0.0.0/16
@@ -432,7 +432,7 @@ definitions:
         example: 100
         type: integer
     type: object
-  models.PublicIPSwagger:
+  github_com_booli_booli-admin-api_internal_models.PublicIPSwagger:
     properties:
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -474,36 +474,36 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.SIEMEnrichmentDataSwagger:
+  github_com_booli_booli-admin-api_internal_models.SIEMEnrichmentDataSwagger:
     properties:
       domains:
         items:
-          $ref: '#/definitions/models.DomainSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger'
         type: array
       egress_ips:
         items:
-          $ref: '#/definitions/models.EgressIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger'
         type: array
       infrastructure_ips:
         items:
-          $ref: '#/definitions/models.InfrastructureIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger'
         type: array
       last_updated:
         example: "2024-01-01T12:00:00Z"
         type: string
       network_ranges:
         items:
-          $ref: '#/definitions/models.NetworkRangeSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger'
         type: array
       public_ips:
         items:
-          $ref: '#/definitions/models.PublicIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger'
         type: array
       tenant_realm:
         example: client-tenant
         type: string
     type: object
-  models.TenantAccessGrantSwagger:
+  github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger:
     properties:
       access_level:
         example: read
@@ -542,11 +542,11 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.TenantEnvironmentListResponseSwagger:
+  github_com_booli_booli-admin-api_internal_models.TenantEnvironmentListResponseSwagger:
     properties:
       environments:
         items:
-          $ref: '#/definitions/models.TenantEnvironmentSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger'
         type: array
       page:
         example: 1
@@ -561,11 +561,11 @@ definitions:
         example: 2
         type: integer
     type: object
-  models.TenantEnvironmentSwagger:
+  github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger:
     properties:
       access_grants:
         items:
-          $ref: '#/definitions/models.TenantAccessGrantSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger'
         type: array
       created_at:
         example: "2024-01-01T12:00:00Z"
@@ -578,11 +578,11 @@ definitions:
         type: string
       domains:
         items:
-          $ref: '#/definitions/models.DomainSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger'
         type: array
       egress_ips:
         items:
-          $ref: '#/definitions/models.EgressIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger'
         type: array
       environment:
         example: production
@@ -592,7 +592,7 @@ definitions:
         type: string
       infrastructure_ips:
         items:
-          $ref: '#/definitions/models.InfrastructureIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger'
         type: array
       is_active:
         example: true
@@ -602,15 +602,15 @@ definitions:
         type: string
       naming_conventions:
         items:
-          $ref: '#/definitions/models.NamingConventionSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger'
         type: array
       network_ranges:
         items:
-          $ref: '#/definitions/models.NetworkRangeSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger'
         type: array
       public_ips:
         items:
-          $ref: '#/definitions/models.PublicIPSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger'
         type: array
       tenant_realm:
         example: client-tenant
@@ -619,7 +619,7 @@ definitions:
         example: "2024-01-01T12:00:00Z"
         type: string
     type: object
-  models.UpdateTenantEnvironmentRequestSwagger:
+  github_com_booli_booli-admin-api_internal_models.UpdateTenantEnvironmentRequestSwagger:
     properties:
       description:
         example: Updated main production environment
@@ -634,7 +634,7 @@ definitions:
         example: Production Environment Updated
         type: string
     type: object
-  models.UpdateUserRequest:
+  github_com_booli_booli-admin-api_internal_models.UpdateUserRequest:
     properties:
       email:
         type: string
@@ -657,7 +657,7 @@ definitions:
       temporary_password:
         type: boolean
     type: object
-  models.User:
+  github_com_booli_booli-admin-api_internal_models.User:
     properties:
       email:
         type: string
@@ -676,7 +676,7 @@ definitions:
       username:
         type: string
     type: object
-  models.UserListResponse:
+  github_com_booli_booli-admin-api_internal_models.UserListResponse:
     properties:
       page:
         type: integer
@@ -688,10 +688,10 @@ definitions:
         type: integer
       users:
         items:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         type: array
     type: object
-  utils.ErrorDetail:
+  github_com_booli_booli-admin-api_internal_utils.ErrorDetail:
     properties:
       code:
         example: BAD_REQUEST
@@ -701,10 +701,10 @@ definitions:
         example: Invalid request body
         type: string
     type: object
-  utils.ErrorResponse:
+  github_com_booli_booli-admin-api_internal_utils.ErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/utils.ErrorDetail'
+        $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorDetail'
       path:
         example: /api/v1/environments
         type: string
@@ -723,12 +723,14 @@ info:
   contact:
     email: support@booli.ai
     name: Booli Admin API Support
-  description: Multi-tenant admin portal with Keycloak authentication and MSP support
+  description: Multi-tenant admin portal with Keycloak authentication and MSP support.
+    API uses CalVer (Calendar Versioning) - each date represents a potentially breaking
+    change version.
   license:
     name: CC BY-NC-ND 4.0
     url: https://creativecommons.org/licenses/by-nc-nd/4.0/
   title: Booli Admin API
-  version: "1.0"
+  version: "2025-08-01"
 paths:
   /admin/tenants:
     get:
@@ -990,19 +992,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserListResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.UserListResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
@@ -1018,26 +1020,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create user
@@ -1058,19 +1060,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete user
@@ -1090,23 +1092,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user
@@ -1127,30 +1129,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user
@@ -1562,15 +1564,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.TenantEnvironmentListResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentListResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: List environments
@@ -1587,26 +1589,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateTenantEnvironmentRequestSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CreateTenantEnvironmentRequestSwagger'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.TenantEnvironmentSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Create environment
@@ -1631,19 +1633,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Delete environment
@@ -1665,19 +1667,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.TenantEnvironmentSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Get environment
@@ -1698,30 +1700,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateTenantEnvironmentRequestSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateTenantEnvironmentRequestSwagger'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.TenantEnvironmentSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Update environment
@@ -1738,26 +1740,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateTenantAccessGrantRequestSwagger'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CreateTenantAccessGrantRequestSwagger'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.TenantAccessGrantSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Grant environment access
@@ -1786,19 +1788,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Revoke environment access
@@ -1820,11 +1822,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Get infrastructure IPs
@@ -1852,15 +1854,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Lookup enrichment data
@@ -1882,11 +1884,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Get network ranges
@@ -1904,15 +1906,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.SIEMEnrichmentDataSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.SIEMEnrichmentDataSwagger'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponseSwagger'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger'
       security:
       - BearerAuth: []
       summary: Get SIEM enrichment data
@@ -2095,19 +2097,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.UserListResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.UserListResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
@@ -2123,26 +2125,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create user
@@ -2163,19 +2165,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete user
@@ -2195,23 +2197,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user
@@ -2232,30 +2234,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user
@@ -2272,26 +2274,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.BulkCreateUserRequest'
+          $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.BulkCreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.BulkCreateResult'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.BulkCreateResult'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Bulk create users
@@ -2314,24 +2316,39 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.CSVImportResult'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_models.CSVImportResult'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Import users from CSV
       tags:
       - users
+  /version:
+    get:
+      description: Get information about the current API version using Calendar Versioning
+        (CalVer)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: API version information
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get API version info
+      tags:
+      - health
 schemes:
 - http
 - https
@@ -2343,5 +2360,5 @@ securityDefinitions:
     type: apiKey
 swagger: "2.0"
 x-servers:
-- http://localhost:8081/api/v1
-- https://api.booli.local/api/v1
+- http://localhost:8081/api/2025-08-01
+- https://api.booli.local/api/2025-08-01

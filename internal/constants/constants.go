@@ -35,7 +35,9 @@ const (
 
 	TenantIDKey = "tenant_id"
 
-	APIVersion  = "v1"
+	// CalVer format: YYYY-MM-DD (Calendar Versioning)
+	// New version for each breaking change release
+	APIVersion  = "2025-08-01"
 	APIBasePath = "/api/" + APIVersion
 
 	PathHealth                 = "/health"

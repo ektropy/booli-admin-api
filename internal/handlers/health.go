@@ -9,6 +9,7 @@ import (
 	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/constants"
 	"github.com/booli/booli-admin-api/internal/initialization"
+	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -118,4 +119,19 @@ func (h *HealthHandler) ValidateKeycloak(c *gin.Context) {
 		"clients":     len(initConfig.Clients),
 		"providers":   len(initConfig.OIDCProviders),
 	})
+}
+
+// GetVersionInfo returns API version information using CalVer
+// @Summary Get API version info
+// @Description Get information about the current API version using Calendar Versioning (CalVer)
+// @Tags health
+// @Produce json
+// @Success 200 {object} map[string]interface{} "API version information"
+// @Router /version [get]
+func (h *HealthHandler) GetVersionInfo(c *gin.Context) {
+	versionInfo := utils.GetAPIVersionInfo(constants.APIVersion)
+	versionInfo["app_version"] = h.version
+	versionInfo["environment"] = h.config.Environment
+	
+	c.JSON(http.StatusOK, versionInfo)
 }

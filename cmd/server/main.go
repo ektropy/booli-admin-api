@@ -1,14 +1,14 @@
 // @title Booli Admin API
-// @version 1.0
-// @description Multi-tenant admin portal with Keycloak authentication and MSP support
+// @version 2025-08-01
+// @description Multi-tenant admin portal with Keycloak authentication and MSP support. API uses CalVer (Calendar Versioning) - each date represents a potentially breaking change version.
 // @contact.name Booli Admin API Support
 // @contact.email support@booli.ai
 // @license.name CC BY-NC-ND 4.0
 // @license.url https://creativecommons.org/licenses/by-nc-nd/4.0/
 // @host localhost:8081
 // @schemes http https
-// @x-servers ["http://localhost:8081/api/v1","https://api.booli.local/api/v1"]
-// @BasePath /api/v1
+// @x-servers ["http://localhost:8081/api/2025-08-01","https://api.booli.local/api/2025-08-01"]
+// @BasePath /api/2025-08-01
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

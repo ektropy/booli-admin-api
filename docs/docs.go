@@ -418,25 +418,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.UserListResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.UserListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -465,7 +465,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateUserRequest"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest"
                         }
                     }
                 ],
@@ -473,25 +473,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -525,31 +525,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -585,7 +585,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpdateUserRequest"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateUserRequest"
                         }
                     }
                 ],
@@ -593,31 +593,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -649,25 +649,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -1291,19 +1291,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.TenantEnvironmentListResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentListResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1332,7 +1332,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateTenantEnvironmentRequestSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CreateTenantEnvironmentRequestSwagger"
                         }
                     }
                 ],
@@ -1340,25 +1340,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.TenantEnvironmentSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1389,7 +1389,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateTenantAccessGrantRequestSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CreateTenantAccessGrantRequestSwagger"
                         }
                     }
                 ],
@@ -1397,25 +1397,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.TenantAccessGrantSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1461,25 +1461,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1514,13 +1514,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1564,19 +1564,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1611,13 +1611,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1645,19 +1645,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.SIEMEnrichmentDataSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.SIEMEnrichmentDataSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1694,25 +1694,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.TenantEnvironmentSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1748,7 +1748,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpdateTenantEnvironmentRequestSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateTenantEnvironmentRequestSwagger"
                         }
                     }
                 ],
@@ -1756,31 +1756,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.TenantEnvironmentSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -1818,25 +1818,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponseSwagger"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -2124,25 +2124,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.UserListResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.UserListResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2171,7 +2171,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateUserRequest"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest"
                         }
                     }
                 ],
@@ -2179,25 +2179,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2228,7 +2228,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.BulkCreateUserRequest"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.BulkCreateUserRequest"
                         }
                     }
                 ],
@@ -2236,25 +2236,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.BulkCreateResult"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.BulkCreateResult"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2291,25 +2291,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.CSVImportResult"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CSVImportResult"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2343,31 +2343,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2403,7 +2403,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpdateUserRequest"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.UpdateUserRequest"
                         }
                     }
                 ],
@@ -2411,31 +2411,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     }
                 }
@@ -2467,25 +2467,46 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.ErrorResponse"
+                            "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/version": {
+            "get": {
+                "description": "Get information about the current API version using Calendar Versioning (CalVer)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Get API version info",
+                "responses": {
+                    "200": {
+                        "description": "API version information",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2493,13 +2514,13 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.BulkCreateResult": {
+        "github_com_booli_booli-admin-api_internal_models.BulkCreateResult": {
             "type": "object",
             "properties": {
                 "failed": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BulkError"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.BulkError"
                     }
                 },
                 "failure_count": {
@@ -2511,7 +2532,7 @@ const docTemplate = `{
                 "successful": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.User"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                     }
                 },
                 "total_processed": {
@@ -2519,7 +2540,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.BulkCreateUserRequest": {
+        "github_com_booli_booli-admin-api_internal_models.BulkCreateUserRequest": {
             "type": "object",
             "required": [
                 "users"
@@ -2539,12 +2560,12 @@ const docTemplate = `{
                     "maxItems": 100,
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/models.CreateUserRequest"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CreateUserRequest"
                     }
                 }
             }
         },
-        "models.BulkError": {
+        "github_com_booli_booli-admin-api_internal_models.BulkError": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2558,7 +2579,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CSVError": {
+        "github_com_booli_booli-admin-api_internal_models.CSVError": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2572,7 +2593,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CSVImportResult": {
+        "github_com_booli_booli-admin-api_internal_models.CSVImportResult": {
             "type": "object",
             "properties": {
                 "error_count": {
@@ -2581,13 +2602,13 @@ const docTemplate = `{
                 "failed_users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CSVError"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CSVError"
                     }
                 },
                 "parse_errors": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CSVError"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.CSVError"
                     }
                 },
                 "success_count": {
@@ -2596,7 +2617,7 @@ const docTemplate = `{
                 "successful_users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.User"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                     }
                 },
                 "total_processed": {
@@ -2604,7 +2625,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateTenantAccessGrantRequestSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.CreateTenantAccessGrantRequestSwagger": {
             "type": "object",
             "properties": {
                 "access_level": {
@@ -2638,7 +2659,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateTenantEnvironmentRequestSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.CreateTenantEnvironmentRequestSwagger": {
             "type": "object",
             "properties": {
                 "description": {
@@ -2648,13 +2669,13 @@ const docTemplate = `{
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.DomainSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger"
                     }
                 },
                 "egress_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EgressIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger"
                     }
                 },
                 "environment": {
@@ -2664,7 +2685,7 @@ const docTemplate = `{
                 "infrastructure_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.InfrastructureIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger"
                     }
                 },
                 "name": {
@@ -2674,19 +2695,19 @@ const docTemplate = `{
                 "naming_conventions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NamingConventionSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger"
                     }
                 },
                 "network_ranges": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NetworkRangeSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger"
                     }
                 },
                 "public_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PublicIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger"
                     }
                 },
                 "tenant_domain": {
@@ -2703,7 +2724,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateUserRequest": {
+        "github_com_booli_booli-admin-api_internal_models.CreateUserRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -2774,7 +2795,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.DomainSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.DomainSwagger": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2835,7 +2856,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.EgressIPSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.EgressIPSwagger": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2888,7 +2909,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.ErrorDetailSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.ErrorDetailSwagger": {
             "type": "object",
             "properties": {
                 "code": {
@@ -2905,11 +2926,11 @@ const docTemplate = `{
                 }
             }
         },
-        "models.ErrorResponseSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.ErrorResponseSwagger": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/models.ErrorDetailSwagger"
+                    "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.ErrorDetailSwagger"
                 },
                 "path": {
                     "type": "string",
@@ -2929,7 +2950,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.InfrastructureIPSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2990,7 +3011,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NamingConventionSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3043,7 +3064,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.NetworkRangeSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger": {
             "type": "object",
             "properties": {
                 "cidr": {
@@ -3100,7 +3121,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.PublicIPSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.PublicIPSwagger": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3157,25 +3178,25 @@ const docTemplate = `{
                 }
             }
         },
-        "models.SIEMEnrichmentDataSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.SIEMEnrichmentDataSwagger": {
             "type": "object",
             "properties": {
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.DomainSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger"
                     }
                 },
                 "egress_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EgressIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger"
                     }
                 },
                 "infrastructure_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.InfrastructureIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger"
                     }
                 },
                 "last_updated": {
@@ -3185,13 +3206,13 @@ const docTemplate = `{
                 "network_ranges": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NetworkRangeSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger"
                     }
                 },
                 "public_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PublicIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger"
                     }
                 },
                 "tenant_realm": {
@@ -3200,7 +3221,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.TenantAccessGrantSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger": {
             "type": "object",
             "properties": {
                 "access_level": {
@@ -3253,13 +3274,13 @@ const docTemplate = `{
                 }
             }
         },
-        "models.TenantEnvironmentListResponseSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.TenantEnvironmentListResponseSwagger": {
             "type": "object",
             "properties": {
                 "environments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.TenantEnvironmentSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger"
                     }
                 },
                 "page": {
@@ -3280,13 +3301,13 @@ const docTemplate = `{
                 }
             }
         },
-        "models.TenantEnvironmentSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.TenantEnvironmentSwagger": {
             "type": "object",
             "properties": {
                 "access_grants": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.TenantAccessGrantSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.TenantAccessGrantSwagger"
                     }
                 },
                 "created_at": {
@@ -3304,13 +3325,13 @@ const docTemplate = `{
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.DomainSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.DomainSwagger"
                     }
                 },
                 "egress_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EgressIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.EgressIPSwagger"
                     }
                 },
                 "environment": {
@@ -3324,7 +3345,7 @@ const docTemplate = `{
                 "infrastructure_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.InfrastructureIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.InfrastructureIPSwagger"
                     }
                 },
                 "is_active": {
@@ -3338,19 +3359,19 @@ const docTemplate = `{
                 "naming_conventions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NamingConventionSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.NamingConventionSwagger"
                     }
                 },
                 "network_ranges": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.NetworkRangeSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.NetworkRangeSwagger"
                     }
                 },
                 "public_ips": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PublicIPSwagger"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.PublicIPSwagger"
                     }
                 },
                 "tenant_realm": {
@@ -3363,7 +3384,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.UpdateTenantEnvironmentRequestSwagger": {
+        "github_com_booli_booli-admin-api_internal_models.UpdateTenantEnvironmentRequestSwagger": {
             "type": "object",
             "properties": {
                 "description": {
@@ -3384,7 +3405,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.UpdateUserRequest": {
+        "github_com_booli_booli-admin-api_internal_models.UpdateUserRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3417,7 +3438,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.User": {
+        "github_com_booli_booli-admin-api_internal_models.User": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3446,7 +3467,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.UserListResponse": {
+        "github_com_booli_booli-admin-api_internal_models.UserListResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -3464,12 +3485,12 @@ const docTemplate = `{
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.User"
+                        "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_models.User"
                     }
                 }
             }
         },
-        "utils.ErrorDetail": {
+        "github_com_booli_booli-admin-api_internal_utils.ErrorDetail": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3483,11 +3504,11 @@ const docTemplate = `{
                 }
             }
         },
-        "utils.ErrorResponse": {
+        "github_com_booli_booli-admin-api_internal_utils.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/utils.ErrorDetail"
+                    "$ref": "#/definitions/github_com_booli_booli-admin-api_internal_utils.ErrorDetail"
                 },
                 "path": {
                     "type": "string",
@@ -3517,19 +3538,19 @@ const docTemplate = `{
         }
     },
     "x-servers": [
-        "http://localhost:8081/api/v1",
-        "https://api.booli.local/api/v1"
+        "http://localhost:8081/api/2025-08-01",
+        "https://api.booli.local/api/2025-08-01"
     ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "2025-08-01",
 	Host:             "localhost:8081",
-	BasePath:         "/api/v1",
+	BasePath:         "/api/2025-08-01",
 	Schemes:          []string{"http", "https"},
 	Title:            "Booli Admin API",
-	Description:      "Multi-tenant admin portal with Keycloak authentication and MSP support",
+	Description:      "Multi-tenant admin portal with Keycloak authentication and MSP support. API uses CalVer (Calendar Versioning) - each date represents a potentially breaking change version.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
