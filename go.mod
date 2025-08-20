@@ -1,6 +1,6 @@
 module github.com/booli/booli-admin-api
 
-go 1.24.6
+go 1.25
 
 require (
 	github.com/coreos/go-oidc/v3 v3.15.0

@@ -8,7 +8,7 @@ variables:
   IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
 
   # Go configuration
-  GO_VERSION: "1.23"
+  GO_VERSION: "1.25"
   CGO_ENABLED: "0"
   GOOS: "linux"
   GOARCH: "amd64"
