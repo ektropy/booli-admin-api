@@ -71,7 +71,7 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_OAuth2(t *testin
 
 	assert.Equal(t, "test-oauth2", keycloakRep.Alias)
 	assert.Equal(t, "Test OAuth2 Provider", keycloakRep.DisplayName)
-	assert.Equal(t, "oauth", keycloakRep.ProviderId)
+	assert.Equal(t, "oidc", keycloakRep.ProviderId)
 	assert.True(t, keycloakRep.Enabled)
 	assert.False(t, keycloakRep.TrustEmail)
 	assert.True(t, keycloakRep.StoreToken)
@@ -188,12 +188,12 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 		},
 	}
 
-	keycloakRep := req.ToKeycloakRepresentation()
+	mappers := req.BuildAttributeMappers()
 
-	require.Len(t, keycloakRep.Mappers, 3)
+	require.Len(t, mappers, 3)
 
 	// Check email mapper
-	emailMapper := keycloakRep.Mappers[0]
+	emailMapper := mappers[0]
 	assert.Equal(t, "email-mapper", emailMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", emailMapper.IdentityProviderMapper)
 	assert.Equal(t, "email", emailMapper.Config["user.attribute"])
@@ -201,7 +201,7 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 	assert.Equal(t, "INHERIT", emailMapper.Config["syncMode"])
 
 	// Check name mapper
-	nameMapper := keycloakRep.Mappers[1]
+	nameMapper := mappers[1]
 	assert.Equal(t, "name-mapper", nameMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", nameMapper.IdentityProviderMapper)
 	assert.Equal(t, "name", nameMapper.Config["user.attribute"])
@@ -209,7 +209,7 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 	assert.Equal(t, "FORCE", nameMapper.Config["syncMode"])
 
 	// Check custom template mapper
-	customMapper := keycloakRep.Mappers[2]
+	customMapper := mappers[2]
 	assert.Equal(t, "custom-mapper", customMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", customMapper.IdentityProviderMapper)
 	assert.Equal(t, "department", customMapper.Config["user.attribute"])
