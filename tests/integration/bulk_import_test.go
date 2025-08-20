@@ -87,20 +87,16 @@ func (test *BulkImportIntegrationTest) TestJSONBulkCreate(t *testing.T) {
 		"users": users,
 	}
 
-	// Make the request
 	resp, err := test.makeJSONRequest("POST", "/api/v1/users/bulk-create", requestBody)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Check response
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Parse response
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(t, err)
 
-	// Verify results
 	assert.Equal(t, float64(2), result["total_processed"])
 	assert.Equal(t, float64(2), result["success_count"])
 	assert.Equal(t, float64(0), result["failure_count"])
@@ -119,25 +115,20 @@ func (test *BulkImportIntegrationTest) TestJSONBulkCreate(t *testing.T) {
 
 // TestCSVImport tests bulk user creation via CSV file upload
 func (test *BulkImportIntegrationTest) TestCSVImport(t *testing.T) {
-	// Create CSV content
 	csvContent := `email,first_name,last_name,username,password,role,enabled
 csv1@test.com,CSV,User1,csv.user1,SecurePass123!,tenant-user,true
 csv2@test.com,CSV,User2,csv.user2,SecurePass456!,tenant-admin,true`
 
-	// Make the request
 	resp, err := test.makeCSVRequest("/api/v1/users/import-csv", "test-users.csv", csvContent)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Check response
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Parse response
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(t, err)
 
-	// Verify results
 	assert.Equal(t, float64(2), result["total_processed"])
 	assert.Equal(t, float64(2), result["success_count"])
 	assert.Equal(t, float64(0), result["error_count"])
@@ -162,24 +153,19 @@ valid@test.com,Valid,User,valid.user,SecurePass123!,tenant-user,true
 invalid-email,Invalid,Email,invalid.email,SecurePass456!,tenant-user,true
 ,Missing,Email,missing.email,SecurePass789!,tenant-user,true`
 
-	// Make the request
 	resp, err := test.makeCSVRequest("/api/v1/users/import-csv", "error-users.csv", csvContent)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Check response (should still be 200 even with errors)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Parse response
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(t, err)
 
-	// Verify results
 	assert.Equal(t, float64(3), result["total_processed"])
 	assert.Greater(t, result["error_count"], float64(0))
 
-	// Check for parse errors or failed users
 	parseErrors, hasParseErrors := result["parse_errors"].([]interface{})
 	failedUsers, hasFailedUsers := result["failed_users"].([]interface{})
 	
@@ -217,21 +203,17 @@ func (test *BulkImportIntegrationTest) TestRateLimiting(t *testing.T) {
 		"users": users,
 	}
 
-	// Make the request
 	resp, err := test.makeJSONRequest("POST", "/api/v1/users/bulk-create", requestBody)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Check rate limiting headers are present
 	assert.NotEmpty(t, resp.Header.Get("X-RateLimit-Limit"))
 	assert.NotEmpty(t, resp.Header.Get("X-RateLimit-Remaining"))
 	assert.NotEmpty(t, resp.Header.Get("X-RateLimit-Reset"))
 
-	// Check bulk operation headers
 	assert.Equal(t, "bulk-operation", resp.Header.Get("X-Request-Type"))
 	assert.Equal(t, "no-cache, no-store, must-revalidate", resp.Header.Get("Cache-Control"))
 
-	// Cleanup
 	if resp.StatusCode == http.StatusCreated {
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)

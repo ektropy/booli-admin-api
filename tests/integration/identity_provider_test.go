@@ -96,7 +96,6 @@ func (suite *IdentityProviderTestSuite) ensureCleanState() {
 func (suite *IdentityProviderTestSuite) TestCreateOIDCIdentityProvider() {
 	suite.ensureCleanState()
 	
-	// Create OIDC identity provider via API
 	request := models.CreateIdentityProviderRequest{
 		Alias:       "test-oidc-provider",
 		DisplayName: "Test OIDC Provider",
@@ -313,7 +312,6 @@ func (suite *IdentityProviderTestSuite) TestCreateMicrosoftIdentityProvider() {
 func (suite *IdentityProviderTestSuite) TestListIdentityProviders() {
 	suite.ensureCleanState()
 	
-	// Create multiple providers
 	providers := []models.CreateIdentityProviderRequest{
 		{
 			Alias: "list-test-oidc",
@@ -349,7 +347,6 @@ func (suite *IdentityProviderTestSuite) TestListIdentityProviders() {
 		resp.Body.Close()
 	}
 
-	// List providers
 	resp, err := suite.MakeRequest("GET", 
 		"/identity-providers",
 		map[string]string{
@@ -379,7 +376,6 @@ func (suite *IdentityProviderTestSuite) TestListIdentityProviders() {
 func (suite *IdentityProviderTestSuite) TestGetIdentityProvider() {
 	suite.ensureCleanState()
 	
-	// Create a provider
 	request := models.CreateIdentityProviderRequest{
 		Alias:       "get-test-provider",
 		DisplayName: "Get Test Provider",
@@ -403,7 +399,6 @@ func (suite *IdentityProviderTestSuite) TestGetIdentityProvider() {
 	suite.Equal(http.StatusCreated, resp.StatusCode)
 	resp.Body.Close()
 
-	// Get the provider
 	resp, err = suite.MakeRequest("GET", 
 		"/identity-providers/get-test-provider",
 		map[string]string{
@@ -431,7 +426,6 @@ func (suite *IdentityProviderTestSuite) TestGetIdentityProvider() {
 func (suite *IdentityProviderTestSuite) TestDeleteIdentityProvider() {
 	suite.ensureCleanState()
 	
-	// Create a provider
 	request := models.CreateIdentityProviderRequest{
 		Alias: "delete-test-provider",
 		Type:  models.IdentityProviderTypeOIDC,
@@ -457,7 +451,6 @@ func (suite *IdentityProviderTestSuite) TestDeleteIdentityProvider() {
 	_, err = suite.adminClient.GetIdentityProvider(suite.ctx, suite.testTenantRealm, "delete-test-provider")
 	suite.Require().NoError(err, "Provider should exist before deletion")
 
-	// Delete the provider
 	resp, err = suite.MakeRequest("DELETE", 
 		"/identity-providers/delete-test-provider",
 		map[string]string{
@@ -511,7 +504,6 @@ func (suite *IdentityProviderTestSuite) TestErrorHandling() {
 		},
 	}
 
-	// Create first provider
 	resp, err = suite.MakeRequest("POST", 
 		"/identity-providers",
 		map[string]string{

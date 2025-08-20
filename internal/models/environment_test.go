@@ -90,8 +90,7 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Basic structure validation - would need actual validator for field validation
-			if tt.valid {
+					if tt.valid {
 				assert.NotEmpty(t, tt.request.Name)
 				assert.NotEmpty(t, tt.request.TenantRealm)
 			}
@@ -372,7 +371,6 @@ func TestAccessLevelConstants(t *testing.T) {
 		assert.True(t, len(string(level)) > 0, "Access level should have content")
 	}
 	
-	// Test specific values
 	assert.Equal(t, AccessLevel("read"), AccessLevelRead)
 	assert.Equal(t, AccessLevel("read_write"), AccessLevelReadWrite)
 	assert.Equal(t, AccessLevel("full_access"), AccessLevelFullAccess)

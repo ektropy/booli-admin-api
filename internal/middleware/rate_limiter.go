@@ -11,7 +11,6 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// RateLimiterConfig defines rate limiting configuration
 type RateLimiterConfig struct {
 	RequestsPerMinute int
 	BurstSize         int
@@ -19,14 +18,12 @@ type RateLimiterConfig struct {
 	OnRateLimited     func(*gin.Context)
 }
 
-// RateLimiter provides rate limiting middleware
 type RateLimiter struct {
 	limiters map[string]*rate.Limiter
 	config   RateLimiterConfig
 	logger   *zap.Logger
 }
 
-// NewRateLimiter creates a new rate limiter middleware
 func NewRateLimiter(config RateLimiterConfig, logger *zap.Logger) *RateLimiter {
 	if config.KeyFunc == nil {
 		config.KeyFunc = defaultKeyFunc
@@ -43,7 +40,6 @@ func NewRateLimiter(config RateLimiterConfig, logger *zap.Logger) *RateLimiter {
 	}
 }
 
-// Middleware returns the rate limiting gin middleware
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := rl.config.KeyFunc(c)
@@ -65,11 +61,9 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	}
 }
 
-// getLimiter gets or creates a rate limiter for the given key
 func (rl *RateLimiter) getLimiter(key string) *rate.Limiter {
 	limiter, exists := rl.limiters[key]
 	if !exists {
-		// Create new limiter with requests per minute converted to requests per second
 		rps := rate.Limit(float64(rl.config.RequestsPerMinute) / 60.0)
 		limiter = rate.NewLimiter(rps, rl.config.BurstSize)
 		rl.limiters[key] = limiter
@@ -77,17 +71,13 @@ func (rl *RateLimiter) getLimiter(key string) *rate.Limiter {
 	return limiter
 }
 
-// addRateLimitHeaders adds rate limiting headers to the response
 func (rl *RateLimiter) addRateLimitHeaders(c *gin.Context, limiter *rate.Limiter) {
-	// Calculate remaining requests based on burst size
-	// This is an approximation since golang.org/x/time/rate doesn't expose tokens directly
+	// Approximation since rate limiter doesn't expose tokens directly
 	remaining := rl.config.BurstSize
 
-	// Try to reserve a token to check availability
 	reservation := limiter.Reserve()
 	if reservation.OK() {
-		reservation.Cancel() // Cancel the reservation since we're just checking
-		// If reservation was OK, we have at least one token available
+		reservation.Cancel()
 		if remaining > 0 {
 			remaining--
 		}
@@ -100,12 +90,10 @@ func (rl *RateLimiter) addRateLimitHeaders(c *gin.Context, limiter *rate.Limiter
 	c.Header("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10))
 }
 
-// defaultKeyFunc uses client IP as the key
 func defaultKeyFunc(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-// defaultOnRateLimited sends a 429 response
 func defaultOnRateLimited(c *gin.Context) {
 	c.JSON(http.StatusTooManyRequests, gin.H{
 		"error":   "Rate limit exceeded",
@@ -116,9 +104,7 @@ func defaultOnRateLimited(c *gin.Context) {
 	c.Abort()
 }
 
-// Common rate limiter configurations
 
-// StandardAPIRateLimit provides standard rate limiting (100 req/min, burst 10)
 func StandardAPIRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	return NewRateLimiter(RateLimiterConfig{
 		RequestsPerMinute: 100,
@@ -126,13 +112,11 @@ func StandardAPIRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	}, logger).Middleware()
 }
 
-// BulkOperationRateLimit provides strict rate limiting for bulk operations (10 req/min, burst 2)
 func BulkOperationRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	return NewRateLimiter(RateLimiterConfig{
 		RequestsPerMinute: 10,
 		BurstSize:         2,
 		KeyFunc: func(c *gin.Context) string {
-			// Use user ID + realm for bulk operations to prevent abuse
 			userID, _ := c.Get("user_id")
 			realm, _ := c.Get("realm")
 			return fmt.Sprintf("bulk_%v_%v", userID, realm)
@@ -140,7 +124,6 @@ func BulkOperationRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	}, logger).Middleware()
 }
 
-// CSVImportRateLimit provides very strict rate limiting for CSV imports (5 req/min, burst 1)
 func CSVImportRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	return NewRateLimiter(RateLimiterConfig{
 		RequestsPerMinute: 5,

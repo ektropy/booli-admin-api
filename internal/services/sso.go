@@ -29,7 +29,6 @@ func (s *SSOService) ListProviders(ctx context.Context, realmName string, page, 
 		return nil, 0, fmt.Errorf("failed to list identity providers: %w", err)
 	}
 
-	// Convert Keycloak Identity Providers to our SSO Provider model
 	var providers []*models.SSOProvider
 	for _, idp := range idps {
 		provider := &models.SSOProvider{
@@ -44,7 +43,6 @@ func (s *SSOService) ListProviders(ctx context.Context, realmName string, page, 
 		providers = append(providers, provider)
 	}
 
-	// Apply pagination
 	total := int64(len(providers))
 	start := (page - 1) * pageSize
 	end := start + pageSize
@@ -98,18 +96,15 @@ func (s *SSOService) CreateProvider(ctx context.Context, realmName string, req *
 		zap.String("alias", req.Alias),
 		zap.String("type", string(req.ProviderType)))
 
-	// Return the created provider
 	return s.GetProvider(ctx, realmName, req.Alias)
 }
 
 func (s *SSOService) UpdateProvider(ctx context.Context, realmName, alias string, req *models.UpdateSSOProviderRequest) (*models.SSOProvider, error) {
-	// Get existing provider first
 	existingIdp, err := s.keycloakAdmin.GetIdentityProvider(ctx, realmName, alias)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing identity provider: %w", err)
 	}
 
-	// Update fields if provided
 	if req.DisplayName != nil {
 		existingIdp.DisplayName = *req.DisplayName
 	}
@@ -128,7 +123,6 @@ func (s *SSOService) UpdateProvider(ctx context.Context, realmName, alias string
 		zap.String("realm", realmName),
 		zap.String("alias", alias))
 
-	// Return the updated provider
 	return s.GetProvider(ctx, realmName, alias)
 }
 
@@ -160,7 +154,6 @@ func (s *SSOService) TestProvider(ctx context.Context, realmName, alias string, 
 	return result, nil
 }
 
-// Helper functions to convert between string and interface{} maps
 func (s *SSOService) convertStringMapToInterface(stringMap map[string]string) map[string]interface{} {
 	interfaceMap := make(map[string]interface{})
 	for k, v := range stringMap {

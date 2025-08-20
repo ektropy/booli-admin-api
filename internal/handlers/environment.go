@@ -38,7 +38,6 @@ func NewEnvironmentHandler(environmentService EnvironmentService, logger *zap.Lo
 }
 
 
-// CreateEnvironment creates a new tenant environment
 // @Summary Create environment
 // @Description Create a new tenant environment with network ranges, IPs, domains, and infrastructure
 // @Tags environments
@@ -76,7 +75,6 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	c.JSON(http.StatusCreated, environment)
 }
 
-// GetEnvironment retrieves a specific environment by ID
 // @Summary Get environment
 // @Description Get tenant environment by ID
 // @Tags environments
@@ -121,7 +119,6 @@ func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, environment)
 }
 
-// ListEnvironments retrieves a paginated list of environments
 // @Summary List environments
 // @Description Get paginated list of tenant environments
 // @Tags environments
@@ -163,7 +160,6 @@ func (h *EnvironmentHandler) ListEnvironments(c *gin.Context) {
 	c.JSON(http.StatusOK, environments)
 }
 
-// UpdateEnvironment updates an existing environment
 // @Summary Update environment
 // @Description Update tenant environment by ID
 // @Tags environments
@@ -216,7 +212,6 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, environment)
 }
 
-// DeleteEnvironment deletes an environment by ID
 // @Summary Delete environment
 // @Description Delete tenant environment by ID
 // @Tags environments
@@ -264,7 +259,6 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	})
 }
 
-// GrantAccess grants access to an environment for another user/tenant
 // @Summary Grant environment access
 // @Description Grant access to an environment for another user or tenant
 // @Tags environments
@@ -291,7 +285,6 @@ func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 	}
 
 	userID, _ := middleware.GetUserID(c)
-	// Convert string userID to UUID for legacy model compatibility
 	if userUUID, err := uuid.Parse(userID); err == nil {
 		req.GrantedBy = userUUID
 	} else {
@@ -311,7 +304,6 @@ func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 	c.JSON(http.StatusCreated, grant)
 }
 
-// RevokeAccess revokes access grant to an environment
 // @Summary Revoke environment access
 // @Description Revoke access grant to an environment
 // @Tags environments
@@ -359,7 +351,6 @@ func (h *EnvironmentHandler) RevokeAccess(c *gin.Context) {
 	})
 }
 
-// GetSIEMEnrichmentData retrieves SIEM enrichment data for environments
 // @Summary Get SIEM enrichment data
 // @Description Get security information and event management (SIEM) enrichment data including network ranges, IPs, domains, and infrastructure
 // @Tags environments
@@ -389,7 +380,6 @@ func (h *EnvironmentHandler) GetSIEMEnrichmentData(c *gin.Context) {
 	c.JSON(http.StatusOK, enrichmentData)
 }
 
-// LookupEnrichment looks up enrichment data for a specific IP or domain
 // @Summary Lookup enrichment data
 // @Description Lookup enrichment data for a specific IP address or domain
 // @Tags environments
@@ -429,7 +419,6 @@ func (h *EnvironmentHandler) LookupEnrichment(c *gin.Context) {
 	})
 }
 
-// GetNetworkRanges retrieves network ranges for the tenant
 // @Summary Get network ranges
 // @Description Get all network ranges for the tenant's environments
 // @Tags environments
@@ -464,7 +453,6 @@ func (h *EnvironmentHandler) GetNetworkRanges(c *gin.Context) {
 	})
 }
 
-// GetInfrastructureIPs retrieves infrastructure IPs for the tenant
 // @Summary Get infrastructure IPs
 // @Description Get all infrastructure IPs for the tenant's environments
 // @Tags environments

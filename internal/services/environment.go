@@ -382,9 +382,7 @@ func (s *EnvironmentService) GetSIEMEnrichmentData(ctx context.Context, tenantRe
 
 	actualTenantRealm := tenantRealm
 
-	// Check if user is MSP admin (from master realm)
 	if userTenantRealm == "master" {
-		// For MSP admins, try to find any environment to get data from
 		var environment models.TenantEnvironment
 		if err := s.db.WithContext(ctx).
 			Where("is_active = ? AND deleted_at IS NULL", true).
@@ -441,7 +439,6 @@ func (s *EnvironmentService) GetSIEMEnrichmentData(ctx context.Context, tenantRe
 }
 
 func (s *EnvironmentService) validateTenantAccess(ctx context.Context, userTenantRealm, targetTenantRealm string, requiredLevel models.AccessLevel) error {
-	// MSP admin realm - master realm has full access to all tenants
 	if userTenantRealm == "master" {
 		return nil
 	}
@@ -450,9 +447,6 @@ func (s *EnvironmentService) validateTenantAccess(ctx context.Context, userTenan
 		return nil
 	}
 
-	// Since tenants are in Keycloak, not database, we can't check tenant type here
-	// MSP admins from master realm have access to all client tenants
-	// This is already handled by the first check above
 
 	var grant models.TenantAccessGrant
 	err := s.db.WithContext(ctx).

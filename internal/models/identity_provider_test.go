@@ -36,7 +36,6 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_OIDC(t *testing.
 	assert.True(t, keycloakRep.TrustEmail)
 	assert.False(t, keycloakRep.StoreToken)
 
-	// Check config values
 	assert.Equal(t, "test-client-id", keycloakRep.Config["clientId"])
 	assert.Equal(t, "test-client-secret", keycloakRep.Config["clientSecret"])
 	assert.Equal(t, "https://provider.example.com", keycloakRep.Config["issuer"])
@@ -76,7 +75,6 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_OAuth2(t *testin
 	assert.False(t, keycloakRep.TrustEmail)
 	assert.True(t, keycloakRep.StoreToken)
 
-	// Check config values
 	assert.Equal(t, "oauth-client-id", keycloakRep.Config["clientId"])
 	assert.Equal(t, "oauth-client-secret", keycloakRep.Config["clientSecret"])
 	assert.Equal(t, "https://oauth.example.com/authorize", keycloakRep.Config["authorizationUrl"])
@@ -110,7 +108,6 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_SAML(t *testing.
 	assert.True(t, keycloakRep.TrustEmail)
 	assert.False(t, keycloakRep.StoreToken)
 
-	// Check config values
 	assert.Equal(t, "https://saml.example.com/sso", keycloakRep.Config["singleSignOnServiceUrl"])
 	assert.Equal(t, "https://saml.example.com/metadata", keycloakRep.Config["entityId"])
 	assert.Equal(t, "MIICert...", keycloakRep.Config["signingCertificate"])
@@ -145,7 +142,6 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_Microsoft(t *tes
 	assert.True(t, keycloakRep.TrustEmail)
 	assert.True(t, keycloakRep.StoreToken)
 
-	// Check that Azure endpoints are properly constructed
 	assert.Equal(t, "azure-client-id", keycloakRep.Config["clientId"])
 	assert.Equal(t, "azure-client-secret", keycloakRep.Config["clientSecret"])
 	assert.Contains(t, keycloakRep.Config["authorizationUrl"], "login.microsoftonline.com/tenant-123/oauth2/v2.0/authorize")
@@ -192,7 +188,6 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 
 	require.Len(t, mappers, 3)
 
-	// Check email mapper
 	emailMapper := mappers[0]
 	assert.Equal(t, "email-mapper", emailMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", emailMapper.IdentityProviderMapper)
@@ -200,7 +195,6 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 	assert.Equal(t, "email", emailMapper.Config["claim"])
 	assert.Equal(t, "INHERIT", emailMapper.Config["syncMode"])
 
-	// Check name mapper
 	nameMapper := mappers[1]
 	assert.Equal(t, "name-mapper", nameMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", nameMapper.IdentityProviderMapper)
@@ -208,7 +202,6 @@ func TestCreateIdentityProviderRequest_BuildAttributeMappers(t *testing.T) {
 	assert.Equal(t, "name", nameMapper.Config["claim"])
 	assert.Equal(t, "FORCE", nameMapper.Config["syncMode"])
 
-	// Check custom template mapper
 	customMapper := mappers[2]
 	assert.Equal(t, "custom-mapper", customMapper.Name)
 	assert.Equal(t, "oidc-user-attribute-idp-mapper", customMapper.IdentityProviderMapper)

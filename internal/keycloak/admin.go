@@ -770,7 +770,6 @@ func (c *AdminClient) CreateIdentityProvider(ctx context.Context, realmName stri
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		// Read response body for detailed error information
 		body, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			c.logger.Error("Failed to read error response body",
@@ -1278,9 +1277,7 @@ func (c *AdminClient) ListOrganizationMembers(ctx context.Context, realmName, or
 	return members, nil
 }
 
-// Authorization Services support
 
-// ResourceRepresentation represents a Keycloak Authorization resource
 type ResourceRepresentation struct {
 	ID          string                 `json:"id,omitempty"`
 	Name        string                 `json:"name"`
@@ -1291,7 +1288,6 @@ type ResourceRepresentation struct {
 	DisplayName string                 `json:"displayName,omitempty"`
 }
 
-// ScopeRepresentation represents a Keycloak Authorization scope
 type ScopeRepresentation struct {
 	ID          string `json:"id,omitempty"`
 	Name        string `json:"name"`
@@ -1299,7 +1295,6 @@ type ScopeRepresentation struct {
 	IconURI     string `json:"iconUri,omitempty"`
 }
 
-// PolicyRepresentation represents a Keycloak Authorization policy
 type PolicyRepresentation struct {
 	ID               string                 `json:"id,omitempty"`
 	Name             string                 `json:"name"`
@@ -1309,7 +1304,6 @@ type PolicyRepresentation struct {
 	Config           map[string]interface{} `json:"config,omitempty"`
 }
 
-// PermissionRepresentation represents a Keycloak Authorization permission
 type PermissionRepresentation struct {
 	ID               string   `json:"id,omitempty"`
 	Name             string   `json:"name"`
@@ -1321,7 +1315,6 @@ type PermissionRepresentation struct {
 	Policies         []string `json:"policies,omitempty"`
 }
 
-// AuthorizationRequest represents a request for authorization evaluation
 type AuthorizationRequest struct {
 	GrantType string `json:"grant_type"`
 	Audience  string `json:"audience"`
@@ -1329,7 +1322,6 @@ type AuthorizationRequest struct {
 	Password  string `json:"password,omitempty"`
 }
 
-// CheckUserPermission checks if a user has permission to perform an action on a resource
 func (c *AdminClient) CheckUserPermission(ctx context.Context, realmName, userID, resource, action string) (bool, error) {
 	
 	c.logger.Debug("Checking user permission",
@@ -1338,14 +1330,10 @@ func (c *AdminClient) CheckUserPermission(ctx context.Context, realmName, userID
 		zap.String("resource", resource),
 		zap.String("action", action))
 
-	// For now, return true for basic operations
-	// In production, this should use Keycloak's Authorization Services API
-	// to evaluate permissions based on policies and resources
 	
 	return true, nil
 }
 
-// CreateResource creates an authorization resource in Keycloak
 func (c *AdminClient) CreateResource(ctx context.Context, realmName, clientID string, resource *ResourceRepresentation) (*ResourceRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/resource", realmName, clientID)
 	
@@ -1374,7 +1362,6 @@ func (c *AdminClient) CreateResource(ctx context.Context, realmName, clientID st
 	return &createdResource, nil
 }
 
-// CreateScope creates an authorization scope in Keycloak
 func (c *AdminClient) CreateScope(ctx context.Context, realmName, clientID string, scope *ScopeRepresentation) (*ScopeRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/scope", realmName, clientID)
 	
@@ -1403,7 +1390,6 @@ func (c *AdminClient) CreateScope(ctx context.Context, realmName, clientID strin
 	return &createdScope, nil
 }
 
-// CreatePolicy creates an authorization policy in Keycloak
 func (c *AdminClient) CreatePolicy(ctx context.Context, realmName, clientID string, policy *PolicyRepresentation) (*PolicyRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/policy/%s", realmName, clientID, policy.Type)
 	
@@ -1433,7 +1419,6 @@ func (c *AdminClient) CreatePolicy(ctx context.Context, realmName, clientID stri
 	return &createdPolicy, nil
 }
 
-// CreatePermission creates an authorization permission in Keycloak
 func (c *AdminClient) CreatePermission(ctx context.Context, realmName, clientID string, permission *PermissionRepresentation) (*PermissionRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/permission/%s", realmName, clientID, permission.Type)
 	
@@ -1463,11 +1448,8 @@ func (c *AdminClient) CreatePermission(ctx context.Context, realmName, clientID 
 	return &createdPermission, nil
 }
 
-// Cross-realm access control methods
 
-// CheckUserRealmAccess verifies if a user has access to a specific realm
 func (c *AdminClient) CheckUserRealmAccess(ctx context.Context, userID, targetRealm string) (bool, error) {
-	// First, check if user exists in the target realm
 	exists, err := c.UserExistsInRealm(ctx, targetRealm, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to check user existence in realm: %w", err)
@@ -1480,12 +1462,9 @@ func (c *AdminClient) CheckUserRealmAccess(ctx context.Context, userID, targetRe
 		return true, nil
 	}
 	
-	// If user doesn't exist in target realm, check for cross-realm access
-	// This involves checking if the user has MSP admin roles that grant cross-realm access
 	return c.CheckCrossRealmAccess(ctx, userID, targetRealm)
 }
 
-// UserExistsInRealm checks if a user exists in a specific realm
 func (c *AdminClient) UserExistsInRealm(ctx context.Context, realmName, userID string) (bool, error) {
 	endpoint := fmt.Sprintf("/%s/users/%s", realmName, userID)
 	
@@ -1506,15 +1485,12 @@ func (c *AdminClient) UserExistsInRealm(ctx context.Context, realmName, userID s
 	return true, nil
 }
 
-// CheckCrossRealmAccess verifies if a user has cross-realm access privileges
 func (c *AdminClient) CheckCrossRealmAccess(ctx context.Context, userID, targetRealm string) (bool, error) {
-	// Get user's realm memberships and roles across all realms
 	realms, err := c.GetRealms(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get realms: %w", err)
 	}
 	
-	// Check each realm where the user might exist
 	for _, realm := range realms {
 		userExists, err := c.UserExistsInRealm(ctx, realm.Realm, userID)
 		if err != nil {
@@ -1526,7 +1502,6 @@ func (c *AdminClient) CheckCrossRealmAccess(ctx context.Context, userID, targetR
 		}
 		
 		if userExists {
-			// Check if user has MSP admin roles in this realm
 			hasAccess, err := c.UserHasCrossRealmRole(ctx, realm.Realm, userID, targetRealm)
 			if err != nil {
 				c.logger.Debug("Error checking cross-realm role",
@@ -1554,15 +1529,12 @@ func (c *AdminClient) CheckCrossRealmAccess(ctx context.Context, userID, targetR
 	return false, nil
 }
 
-// UserHasCrossRealmRole checks if user has roles that grant cross-realm access
 func (c *AdminClient) UserHasCrossRealmRole(ctx context.Context, userRealm, userID, targetRealm string) (bool, error) {
-	// Get user's roles in their home realm
 	roles, err := c.GetUserRealmRoles(ctx, userRealm, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get user roles: %w", err)
 	}
 	
-	// Check for MSP admin roles that grant cross-realm access
 	for _, role := range roles {
 		if c.isCrossRealmRole(role.Name, userRealm, targetRealm) {
 			return true, nil
@@ -1573,22 +1545,17 @@ func (c *AdminClient) UserHasCrossRealmRole(ctx context.Context, userRealm, user
 }
 
 
-// isCrossRealmRole determines if a role grants cross-realm access
 func (c *AdminClient) isCrossRealmRole(roleName, sourceRealm, targetRealm string) bool {
-	// MSP admin roles grant access to all tenant realms
 	if roleName == "msp-admin" || roleName == "msp-power" {
-		// Check if source is master realm and target is tenant realm
 		if sourceRealm == "master" || sourceRealm == c.adminRealm {
 			return true
 		}
 		
-		// Or if it's a parent-child relationship between MSP and tenant realms
 		if c.isParentChildRelationship(sourceRealm, targetRealm) {
 			return true
 		}
 	}
 	
-	// MSP viewer role grants read-only access
 	if roleName == "msp-viewer" {
 		if sourceRealm == "master" || sourceRealm == c.adminRealm {
 			return true
@@ -1598,13 +1565,8 @@ func (c *AdminClient) isCrossRealmRole(roleName, sourceRealm, targetRealm string
 	return false
 }
 
-// isParentChildRelationship checks if there's a parent-child relationship between realms
 func (c *AdminClient) isParentChildRelationship(parentRealm, childRealm string) bool {
-	// In our architecture, MSP realms can manage tenant realms
-	// This is where you'd implement your specific parent-child logic
-	// For now, we'll use a simple naming convention check
 	
-	// Example: msp-acme realm can manage acme-tenant-1, acme-tenant-2, etc.
 	if strings.HasPrefix(parentRealm, "msp-") {
 		mspName := strings.TrimPrefix(parentRealm, "msp-")
 		return strings.HasPrefix(childRealm, mspName+"-")
@@ -1613,18 +1575,14 @@ func (c *AdminClient) isParentChildRelationship(parentRealm, childRealm string) 
 	return false
 }
 
-// ValidateRealmAccess is the main method used by middleware to validate access
 func (c *AdminClient) ValidateRealmAccess(ctx context.Context, userID, targetRealm, sourceRealm string) (bool, error) {
-	// If user is accessing their own realm, allow
 	if sourceRealm == targetRealm {
 		return true, nil
 	}
 	
-	// Check cross-realm access
 	return c.CheckUserRealmAccess(ctx, userID, targetRealm)
 }
 
-// RealmAccessLevel represents the level of access a user has to a realm
 type RealmAccessLevel string
 
 const (
@@ -1635,14 +1593,11 @@ const (
 	RealmAccessMSPAdmin RealmAccessLevel = "msp-admin"
 )
 
-// GetUserRealmAccessLevel determines the level of access a user has to a realm
 func (c *AdminClient) GetUserRealmAccessLevel(ctx context.Context, userID, targetRealm, sourceRealm string) (RealmAccessLevel, error) {
-	// Direct realm membership grants full access
 	if sourceRealm == targetRealm {
 		return RealmAccessAdmin, nil
 	}
 	
-	// Check for cross-realm roles
 	realms, err := c.GetRealms(ctx)
 	if err != nil {
 		return RealmAccessNone, fmt.Errorf("failed to get realms: %w", err)
@@ -1660,7 +1615,6 @@ func (c *AdminClient) GetUserRealmAccessLevel(ctx context.Context, userID, targe
 				continue
 			}
 			
-			// Determine highest access level based on roles
 			for _, role := range roles {
 				switch role.Name {
 				case "msp-admin":
@@ -1683,11 +1637,8 @@ func (c *AdminClient) GetUserRealmAccessLevel(ctx context.Context, userID, targe
 	return RealmAccessNone, nil
 }
 
-// Role management methods
 
-// AssignRealmRoleToUser assigns a realm role to a user
 func (c *AdminClient) AssignRealmRoleToUser(ctx context.Context, realmName, userID, roleName string) error {
-	// First, get the role to get its ID
 	role, err := c.GetRealmRole(ctx, realmName, roleName)
 	if err != nil {
 		return fmt.Errorf("failed to get role %s: %w", roleName, err)
@@ -1720,9 +1671,7 @@ func (c *AdminClient) AssignRealmRoleToUser(ctx context.Context, realmName, user
 	return nil
 }
 
-// RevokeRealmRoleFromUser revokes a realm role from a user
 func (c *AdminClient) RevokeRealmRoleFromUser(ctx context.Context, realmName, userID, roleName string) error {
-	// First, get the role to get its ID
 	role, err := c.GetRealmRole(ctx, realmName, roleName)
 	if err != nil {
 		return fmt.Errorf("failed to get role %s: %w", roleName, err)
@@ -1755,7 +1704,6 @@ func (c *AdminClient) RevokeRealmRoleFromUser(ctx context.Context, realmName, us
 	return nil
 }
 
-// ResetUserPassword resets a user's password
 func (c *AdminClient) ResetUserPassword(ctx context.Context, realmName, userID, newPassword string, temporary bool) error {
 	endpoint := fmt.Sprintf("/%s/users/%s/reset-password", realmName, userID)
 	
@@ -1785,7 +1733,6 @@ func (c *AdminClient) ResetUserPassword(ctx context.Context, realmName, userID, 
 	return nil
 }
 
-// SearchUsers searches for users by username, email, first name, or last name
 func (c *AdminClient) SearchUsers(ctx context.Context, realmName, query string, max int) ([]UserRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/users?search=%s", realmName, url.QueryEscape(query))
 	if max > 0 {

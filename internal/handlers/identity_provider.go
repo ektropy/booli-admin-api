@@ -24,7 +24,6 @@ func NewIdentityProviderHandler(identityProviderService *keycloak.IdentityProvid
 	}
 }
 
-// CreateIdentityProvider creates a new identity provider for a tenant realm
 // @Summary Create identity provider
 // @Description Create a new identity provider for federated authentication. Supports OIDC, OAuth2, SAML, and Microsoft Azure AD providers. Each provider type has specific configuration requirements. Client secrets are automatically masked in responses for security.
 // @Description
@@ -64,7 +63,6 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 		return
 	}
 
-	// Validate protocol-specific configuration requirements
 	if err := req.ValidateConfiguration(); err != nil {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, err.Error(), nil)
 		return
@@ -87,7 +85,6 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 			zap.String("type", string(req.Type)),
 			zap.Error(err))
 			
-		// Check if it's a conflict error (provider already exists)
 		if strings.Contains(err.Error(), "already exists") {
 			utils.RespondWithError(c, http.StatusConflict, utils.ErrCodeConflict, err.Error(), nil)
 		} else {
@@ -126,7 +123,6 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// GetIdentityProvider retrieves an identity provider by alias
 // @Summary Get identity provider
 // @Description Get details of a specific identity provider by alias. Client secrets are automatically masked as "**********" for security purposes.
 // @Tags identity-providers
@@ -190,7 +186,6 @@ func (h *IdentityProviderHandler) GetIdentityProvider(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// UpdateIdentityProvider updates an existing identity provider
 // @Summary Update identity provider
 // @Description Update an existing identity provider configuration. All fields can be updated including provider type, configuration, and attribute mappings. Client secrets are automatically masked in responses.
 // @Tags identity-providers
@@ -219,7 +214,6 @@ func (h *IdentityProviderHandler) UpdateIdentityProvider(c *gin.Context) {
 		return
 	}
 
-	// Validate protocol-specific configuration requirements
 	if err := req.ValidateConfiguration(); err != nil {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, err.Error(), nil)
 		return
@@ -281,7 +275,6 @@ func (h *IdentityProviderHandler) UpdateIdentityProvider(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// DeleteIdentityProvider deletes an identity provider
 // @Summary Delete identity provider
 // @Description Delete an identity provider from the tenant realm. This action cannot be undone and will remove all associated configurations and attribute mappings.
 // @Tags identity-providers
@@ -322,7 +315,6 @@ func (h *IdentityProviderHandler) DeleteIdentityProvider(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ListIdentityProviders lists all identity providers for a tenant realm
 // @Summary List identity providers
 // @Description Get a list of all identity providers configured for a tenant realm. Returns all provider types (OIDC, OAuth2, SAML, Microsoft) with their configurations. Client secrets are automatically masked for security.
 // @Tags identity-providers

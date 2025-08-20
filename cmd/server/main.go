@@ -70,14 +70,12 @@ func main() {
 		return
 	}
 
-	// Now initialize loggers only for actual operations
 	basicLogger, _ := zap.NewProduction()
 	if basicLogger == nil {
 		basicLogger, _ = zap.NewDevelopment()
 	}
 	defer basicLogger.Sync()
 
-	// Create a professional startup banner
 	banner := `
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                               Booli Admin API                                │
@@ -87,7 +85,6 @@ func main() {
 │  Commit:      %-62s │
 └──────────────────────────────────────────────────────────────────────────────┘`
 	
-	// Print the banner to stdout for visibility
 	commitDisplay := commit
 	if len(commit) > 8 {
 		commitDisplay = commit[:8]

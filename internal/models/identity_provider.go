@@ -28,24 +28,20 @@ type IdentityProviderConfig struct {
 	ClientID     string `json:"client_id" validate:"required" example:"my-client-id"`
 	ClientSecret string `json:"client_secret" validate:"required" example:"my-client-secret"`
 	
-	// OIDC/OAuth2 specific fields
 	AuthorizationURL string `json:"authorization_url,omitempty" example:"https://auth.example.com/oauth2/authorize"`
 	TokenURL         string `json:"token_url,omitempty" example:"https://auth.example.com/oauth2/token"`
 	UserInfoURL      string `json:"user_info_url,omitempty" example:"https://auth.example.com/oauth2/userinfo"`
 	IssuerURL        string `json:"issuer_url,omitempty" example:"https://auth.example.com"`
 	JWKSURL          string `json:"jwks_url,omitempty" example:"https://auth.example.com/.well-known/jwks.json"`
 	
-	// SAML specific fields
 	SSOServiceURL        string `json:"sso_service_url,omitempty" example:"https://saml.example.com/sso"`
 	EntityID             string `json:"entity_id,omitempty" example:"https://saml.example.com/metadata"`
 	SigningCertificate   string `json:"signing_certificate,omitempty" example:"MIICertificateData..."`
 	ValidateSignature    bool   `json:"validate_signature,omitempty" example:"true"`
 	
-	// Microsoft specific fields
 	AzureTenantID string `json:"azure_tenant_id,omitempty" example:"12345678-1234-1234-1234-123456789012"`
 	AzureAuthority string `json:"azure_authority,omitempty" example:"https://login.microsoftonline.com/"`
 	
-	// Common configuration
 	DefaultScopes    []string `json:"default_scopes,omitempty" example:"[\"openid\", \"profile\", \"email\"]"`
 	TrustEmail       bool     `json:"trust_email,omitempty" example:"false"`
 	StoreToken       bool     `json:"store_token,omitempty" example:"true"`
@@ -94,12 +90,10 @@ func (req *CreateIdentityProviderRequest) ToKeycloakRepresentation() *keycloak.I
 	case IdentityProviderTypeMicrosoft:
 		return req.buildMicrosoftProvider(config)
 	default:
-		// Invalid provider type - return nil to trigger 400 Bad Request
 		return nil
 	}
 }
 
-// ValidateConfiguration validates the configuration for the specific provider type
 func (req *CreateIdentityProviderRequest) ValidateConfiguration() error {
 	switch req.Type {
 	case IdentityProviderTypeOAuth2:
@@ -162,7 +156,6 @@ func (req *CreateIdentityProviderRequest) buildOIDCProvider(config map[string]st
 		StoreToken:  req.Config.StoreToken,
 		LinkOnly:    req.Config.LinkOnly,
 		Config:      config,
-		// Don't include Mappers here - they need to be created separately after the identity provider
 	}
 }
 
@@ -170,22 +163,19 @@ func (req *CreateIdentityProviderRequest) buildOAuth2Provider(config map[string]
 	config["clientId"] = req.Config.ClientID
 	config["clientSecret"] = req.Config.ClientSecret
 	
-	// OAuth2 requires authorization and token URLs
 	if req.Config.AuthorizationURL == "" {
-		return nil // Invalid configuration
+		return nil
 	}
 	if req.Config.TokenURL == "" {
-		return nil // Invalid configuration
+		return nil
 	}
 	
 	config["authorizationUrl"] = req.Config.AuthorizationURL
 	config["tokenUrl"] = req.Config.TokenURL
 	
-	// UserInfo URL is required for OAuth2 providers in Keycloak
 	if req.Config.UserInfoURL != "" {
 		config["userInfoUrl"] = req.Config.UserInfoURL
 	} else {
-		// Provide a default userinfo endpoint if not specified
 		config["userInfoUrl"] = req.Config.AuthorizationURL + "/userinfo"
 	}
 	
@@ -193,7 +183,6 @@ func (req *CreateIdentityProviderRequest) buildOAuth2Provider(config map[string]
 		config["defaultScope"] = joinScopes(req.Config.DefaultScopes)
 	}
 	
-	// OAuth2-specific settings required by Keycloak
 	config["syncMode"] = "LEGACY"
 	config["clientAuthMethod"] = "client_secret_post"
 	config["pkceEnabled"] = "false"
@@ -201,23 +190,21 @@ func (req *CreateIdentityProviderRequest) buildOAuth2Provider(config map[string]
 	return &keycloak.IdentityProviderRepresentation{
 		Alias:       req.Alias,
 		DisplayName: req.DisplayName,
-		ProviderId:  "oidc", // Use oidc provider type for OAuth2 in Keycloak
+		ProviderId:  "oidc",
 		Enabled:     req.Enabled,
 		TrustEmail:  req.Config.TrustEmail,
 		StoreToken:  req.Config.StoreToken,
 		LinkOnly:    req.Config.LinkOnly,
 		Config:      config,
-		// Don't include Mappers here - they need to be created separately after the identity provider
 	}
 }
 
 func (req *CreateIdentityProviderRequest) buildSAMLProvider(config map[string]string) *keycloak.IdentityProviderRepresentation {
-	// SAML requires SSO service URL and Entity ID
 	if req.Config.SSOServiceURL == "" {
-		return nil // Invalid configuration
+		return nil
 	}
 	if req.Config.EntityID == "" {
-		return nil // Invalid configuration
+		return nil
 	}
 	
 	config["singleSignOnServiceUrl"] = req.Config.SSOServiceURL
@@ -233,7 +220,6 @@ func (req *CreateIdentityProviderRequest) buildSAMLProvider(config map[string]st
 	config["nameIDPolicyFormat"] = "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
 	config["syncMode"] = "LEGACY"
 	
-	// Additional SAML settings for better compatibility
 	config["wantAssertionsSigned"] = "false"
 	config["wantAssertionsEncrypted"] = "false"
 	config["forceAuthn"] = "false"
@@ -247,7 +233,6 @@ func (req *CreateIdentityProviderRequest) buildSAMLProvider(config map[string]st
 		StoreToken:  req.Config.StoreToken,
 		LinkOnly:    req.Config.LinkOnly,
 		Config:      config,
-		// Don't include Mappers here - they need to be created separately after the identity provider
 	}
 }
 
@@ -276,7 +261,6 @@ func (req *CreateIdentityProviderRequest) buildMicrosoftProvider(config map[stri
 		StoreToken:  req.Config.StoreToken,
 		LinkOnly:    req.Config.LinkOnly,
 		Config:      config,
-		// Don't include Mappers here - they need to be created separately after the identity provider
 	}
 }
 

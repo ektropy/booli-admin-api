@@ -121,7 +121,6 @@ func (h *HealthHandler) ValidateKeycloak(c *gin.Context) {
 	})
 }
 
-// GetVersionInfo returns API version information using CalVer
 // @Summary Get API version info
 // @Description Get information about the current API version using Calendar Versioning (CalVer)
 // @Tags health

@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestLoggingConfig configures request logging behavior
 type RequestLoggingConfig struct {
 	LogRequestBody   bool
 	LogResponseBody  bool
@@ -20,42 +19,37 @@ type RequestLoggingConfig struct {
 	SkipHealthChecks bool
 }
 
-// DefaultRequestLoggingConfig returns a sensible default configuration
 func DefaultRequestLoggingConfig() RequestLoggingConfig {
 	return RequestLoggingConfig{
-		LogRequestBody:   false, // Disabled by default for security
-		LogResponseBody:  false, // Disabled by default for performance
-		MaxBodySize:      1024,  // 1KB max for logged bodies
+		LogRequestBody:   false,
+		LogResponseBody:  false,
+		MaxBodySize:      1024,
 		SkipPaths:        []string{"/favicon.ico"},
 		SkipHealthChecks: true,
 	}
 }
 
-// DevelopmentRequestLoggingConfig returns config suitable for development
 func DevelopmentRequestLoggingConfig() RequestLoggingConfig {
 	return RequestLoggingConfig{
-		LogRequestBody:   true,  // Enabled for debugging
-		LogResponseBody:  true,  // Enabled for debugging
-		MaxBodySize:      4096,  // 4KB max for logged bodies
+		LogRequestBody:   true,
+		LogResponseBody:  true,
+		MaxBodySize:      4096,
 		SkipPaths:        []string{"/favicon.ico"},
 		SkipHealthChecks: true,
 	}
 }
 
-// EnhancedRequestLogger provides detailed HTTP request/response logging
 func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
 
-		// Skip certain paths
 		if shouldSkipLogging(path, config) {
 			c.Next()
 			return
 		}
 
-		// Store context information
 		c.Set("logger", logger)
 
 		var requestBody []byte
@@ -63,7 +57,6 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 			requestBody = readAndRestoreBody(c.Request, config.MaxBodySize)
 		}
 
-		// Capture response
 		responseWriter := &responseCapture{
 			ResponseWriter: c.Writer,
 			body:           &bytes.Buffer{},
@@ -72,10 +65,8 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 		}
 		c.Writer = responseWriter
 
-		// Process request
 		c.Next()
 
-		// Calculate metrics
 		latency := time.Since(start)
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
@@ -86,7 +77,6 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 			path = path + "?" + raw
 		}
 
-		// Build log fields
 		fields := []zap.Field{
 			zap.String("method", method),
 			zap.String("path", path),
@@ -98,7 +88,6 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 			zap.Int("response_size", c.Writer.Size()),
 		}
 
-		// Add user context if available
 		if userID, exists := c.Get("user_id"); exists {
 			fields = append(fields, zap.String("user_id", userID.(string)))
 		}
@@ -109,22 +98,18 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 			fields = append(fields, zap.String("user_email", email.(string)))
 		}
 
-		// Add request body if enabled
 		if len(requestBody) > 0 {
 			fields = append(fields, zap.String("request_body", string(requestBody)))
 		}
 
-		// Add response body if enabled and captured
 		if responseWriter.body.Len() > 0 {
 			fields = append(fields, zap.String("response_body", responseWriter.body.String()))
 		}
 
-		// Add error information if available
 		if len(c.Errors) > 0 {
 			fields = append(fields, zap.String("errors", c.Errors.String()))
 		}
 
-		// Log based on status code
 		message := "HTTP Request"
 		switch {
 		case statusCode >= 500:
@@ -139,14 +124,11 @@ func EnhancedRequestLogger(logger *zap.Logger, config RequestLoggingConfig) gin.
 	}
 }
 
-// shouldSkipLogging determines if a path should be skipped
 func shouldSkipLogging(path string, config RequestLoggingConfig) bool {
-	// Skip health checks if configured
 	if config.SkipHealthChecks && isHealthCheck(path) {
 		return true
 	}
 
-	// Skip configured paths
 	for _, skipPath := range config.SkipPaths {
 		if path == skipPath {
 			return true
@@ -156,7 +138,6 @@ func shouldSkipLogging(path string, config RequestLoggingConfig) bool {
 	return false
 }
 
-// isHealthCheck determines if a path is a health check endpoint
 func isHealthCheck(path string) bool {
 	healthPaths := []string{"/health", "/ready", "/ping", "/status"}
 	for _, healthPath := range healthPaths {
@@ -167,12 +148,9 @@ func isHealthCheck(path string) bool {
 	return false
 }
 
-// shouldLogBody determines if request body should be logged
 func shouldLogBody(req *http.Request) bool {
-	// Don't log bodies for certain content types
 	contentType := req.Header.Get("Content-Type")
 	
-	// Skip binary content
 	if strings.Contains(contentType, "multipart/form-data") ||
 		strings.Contains(contentType, "application/octet-stream") ||
 		strings.Contains(contentType, "image/") ||
@@ -185,26 +163,22 @@ func shouldLogBody(req *http.Request) bool {
 	return method == "POST" || method == "PUT" || method == "PATCH"
 }
 
-// readAndRestoreBody reads request body and restores it for further processing
 func readAndRestoreBody(req *http.Request, maxSize int64) []byte {
 	if req.Body == nil {
 		return nil
 	}
 
-	// Read body up to maxSize
 	limitReader := io.LimitReader(req.Body, maxSize)
 	body, err := io.ReadAll(limitReader)
 	if err != nil {
 		return nil
 	}
 
-	// Restore original body for further processing
 	req.Body = io.NopCloser(bytes.NewReader(body))
 
 	return body
 }
 
-// responseCapture captures response data for logging
 type responseCapture struct {
 	gin.ResponseWriter
 	body    *bytes.Buffer
@@ -214,10 +188,8 @@ type responseCapture struct {
 }
 
 func (w *responseCapture) Write(b []byte) (int, error) {
-	// Write to original response
 	n, err := w.ResponseWriter.Write(b)
 
-	// Capture response body if enabled and within size limit
 	if w.logBody && w.written < w.maxSize {
 		remaining := w.maxSize - w.written
 		if int64(len(b)) <= remaining {

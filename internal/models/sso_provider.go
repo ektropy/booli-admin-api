@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-// SSOProvider now represents a Keycloak Identity Provider
 type SSOProvider struct {
 	ID           string                 `json:"id"`            // Keycloak Identity Provider ID
 	Alias        string                 `json:"alias"`         // Identity Provider alias
@@ -20,7 +19,6 @@ const (
 	SSOProviderTypeOIDC SSOProviderType = "oidc"
 )
 
-// Request/Response structures for API
 type CreateSSOProviderRequest struct {
 	Alias        string                 `json:"alias" validate:"required,min=1,max=255"`
 	DisplayName  string                 `json:"display_name" validate:"max=255"`
@@ -64,7 +62,6 @@ func (s *SSOProvider) ToResponse() *SSOProviderResponse {
 	}
 }
 
-// Test structures (simplified)
 type TestSSOProviderRequest struct {
 	TestUser string `json:"test_user,omitempty"`
 }

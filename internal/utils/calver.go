@@ -11,7 +11,6 @@ const CalVerFormat = "2006-01-02"
 
 var calverRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
-// ValidateCalVer validates if a string is in valid CalVer format (YYYY-MM-DD)
 func ValidateCalVer(version string) bool {
 	if !calverRegex.MatchString(version) {
 		return false
@@ -21,7 +20,6 @@ func ValidateCalVer(version string) bool {
 	return err == nil
 }
 
-// ParseCalVer parses a CalVer string and returns the corresponding time
 func ParseCalVer(version string) (time.Time, error) {
 	if !ValidateCalVer(version) {
 		return time.Time{}, fmt.Errorf("invalid CalVer format: %s, expected YYYY-MM-DD", version)
@@ -30,7 +28,6 @@ func ParseCalVer(version string) (time.Time, error) {
 	return time.Parse(CalVerFormat, version)
 }
 
-// CurrentCalVer returns today's date in CalVer format
 func CurrentCalVer() string {
 	return time.Now().UTC().Format(CalVerFormat)
 }
@@ -68,7 +65,6 @@ func CompareVersions(v1, v2 string) (int, error) {
 	return 0, nil
 }
 
-// GetAPIVersionInfo returns structured information about API versioning
 func GetAPIVersionInfo(currentVersion string) map[string]interface{} {
 	info := map[string]interface{}{
 		"current_version": currentVersion,

@@ -56,7 +56,7 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 		}
 
 		realmName := extractRealmFromClaims(claims, providerName)
-		
+
 		c.Set("user_id", claims.Subject)
 		c.Set("realm_name", realmName)
 		c.Set("user_email", claims.Email)
@@ -69,21 +69,18 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 }
 
 func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string {
-	// For Keycloak providers, extract realm from provider name
 	if strings.HasPrefix(providerName, "keycloak-") {
 		return strings.TrimPrefix(providerName, "keycloak-")
 	}
-	
-	// For default "keycloak" provider, extract realm from the token's issuer
+
 	if providerName == "keycloak" && claims.Issuer != "" {
-		// Extract realm from issuer URL like "http://localhost:8083/realms/msp"
+		// The issuer URL contains the realm name after "/realms/"
 		parts := strings.Split(claims.Issuer, "/realms/")
 		if len(parts) == 2 {
 			return parts[1]
 		}
 	}
-	
-	// Default fallback - use provider name as realm
+
 	return providerName
 }
 

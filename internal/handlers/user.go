@@ -379,20 +379,17 @@ func (h *UserHandler) ImportCSV(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Validate file type
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "File must be a CSV", nil)
 		return
 	}
 
-	// Validate file size (e.g., 10MB max)
 	const maxSize = 10 * 1024 * 1024
 	if header.Size > maxSize {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "File too large (max 10MB)", nil)
 		return
 	}
 
-	// Read and parse CSV
 	data, err := io.ReadAll(file)
 	if err != nil {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Failed to read file", nil)
@@ -411,7 +408,6 @@ func (h *UserHandler) ImportCSV(c *gin.Context) {
 		return
 	}
 
-	// Process CSV import
 	result, err := h.userService.ImportUsersFromCSV(c.Request.Context(), realmName, records)
 	if err != nil {
 		h.logger.Error("CSV import failed", zap.Error(err))

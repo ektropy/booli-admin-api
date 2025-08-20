@@ -18,7 +18,6 @@ type UserService struct {
 	logger        *zap.Logger
 }
 
-// NewUserService creates a new user service
 func NewUserService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *UserService {
 	return &UserService{
 		keycloakAdmin: keycloakAdmin,
@@ -26,7 +25,6 @@ func NewUserService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *Us
 	}
 }
 
-// ListUsers retrieves users from a Keycloak realm
 func (s *UserService) ListUsers(ctx context.Context, realmName string, req *models.UserSearchRequest) ([]models.User, int64, error) {
 	keycloakUsers, err := s.keycloakAdmin.GetUsers(ctx, realmName)
 	if err != nil {
@@ -46,11 +44,9 @@ func (s *UserService) ListUsers(ctx context.Context, realmName string, req *mode
 		users = append(users, user)
 	}
 
-	// Apply client-side filtering
 	filteredUsers := s.filterUsers(users, req)
 	total := int64(len(filteredUsers))
 
-	// Apply pagination
 	if req.Page > 0 && req.PageSize > 0 {
 		start := (req.Page - 1) * req.PageSize
 		end := start + req.PageSize
@@ -67,14 +63,12 @@ func (s *UserService) ListUsers(ctx context.Context, realmName string, req *mode
 	return filteredUsers, total, nil
 }
 
-// GetUser retrieves a specific user from a Keycloak realm
 func (s *UserService) GetUser(ctx context.Context, realmName, userID string) (*models.User, error) {
 	keycloakUser, err := s.keycloakAdmin.GetUser(ctx, realmName, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found in Keycloak: %w", err)
 	}
 
-	// Get user roles
 	roles, err := s.keycloakAdmin.GetUserRealmRoles(ctx, realmName, userID)
 	if err != nil {
 		s.logger.Warn("Failed to get user roles", zap.Error(err))
@@ -98,9 +92,7 @@ func (s *UserService) GetUser(ctx context.Context, realmName, userID string) (*m
 	return user, nil
 }
 
-// CreateUser creates a new user in a Keycloak realm
 func (s *UserService) CreateUser(ctx context.Context, realmName string, req *models.CreateUserRequest) (*models.User, error) {
-	// Create user in Keycloak
 	keycloakUser := &keycloak.UserRepresentation{
 		Username:  req.Username,
 		Email:     req.Email,
@@ -109,7 +101,6 @@ func (s *UserService) CreateUser(ctx context.Context, realmName string, req *mod
 		Enabled:   req.Enabled,
 	}
 
-	// Add credentials if password is provided
 	if req.Password != "" {
 		keycloakUser.Credentials = []keycloak.CredentialRepresentation{
 			{
@@ -140,19 +131,15 @@ func (s *UserService) CreateUser(ctx context.Context, realmName string, req *mod
 		zap.String("username", req.Username),
 		zap.String("user_id", createdUser.ID))
 
-	// Return the created user
 	return s.GetUser(ctx, realmName, createdUser.ID)
 }
 
-// UpdateUser updates a user in a Keycloak realm
 func (s *UserService) UpdateUser(ctx context.Context, realmName, userID string, req *models.UpdateUserRequest) (*models.User, error) {
-	// Get current user
 	currentUser, err := s.keycloakAdmin.GetUser(ctx, realmName, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
 
-	// Update fields if provided
 	updateUser := *currentUser
 	if req.Email != nil {
 		updateUser.Email = *req.Email
@@ -167,7 +154,6 @@ func (s *UserService) UpdateUser(ctx context.Context, realmName, userID string, 
 		updateUser.Enabled = *req.Enabled
 	}
 
-	// Update user in Keycloak
 	if err := s.keycloakAdmin.UpdateUser(ctx, realmName, userID, &updateUser); err != nil {
 		return nil, fmt.Errorf("failed to update user in Keycloak: %w", err)
 	}
@@ -176,11 +162,9 @@ func (s *UserService) UpdateUser(ctx context.Context, realmName, userID string, 
 		zap.String("realm", realmName),
 		zap.String("user_id", userID))
 
-	// Return the updated user
 	return s.GetUser(ctx, realmName, userID)
 }
 
-// DeleteUser deletes a user from a Keycloak realm
 func (s *UserService) DeleteUser(ctx context.Context, realmName, userID string) error {
 	if err := s.keycloakAdmin.DeleteUser(ctx, realmName, userID); err != nil {
 		return fmt.Errorf("failed to delete user from Keycloak: %w", err)
@@ -251,7 +235,6 @@ func (s *UserService) DisableUser(ctx context.Context, realmName, userID string)
 	return err
 }
 
-// GetUserRoles gets all roles assigned to a user
 func (s *UserService) GetUserRoles(ctx context.Context, realmName, userID string) ([]string, error) {
 	roles, err := s.keycloakAdmin.GetUserRealmRoles(ctx, realmName, userID)
 	if err != nil {
@@ -289,7 +272,6 @@ func (s *UserService) SearchUsers(ctx context.Context, realmName, query string, 
 	return users, nil
 }
 
-// Helper function to filter users based on search criteria
 func (s *UserService) filterUsers(users []models.User, req *models.UserSearchRequest) []models.User {
 	if req == nil {
 		return users
@@ -299,7 +281,6 @@ func (s *UserService) filterUsers(users []models.User, req *models.UserSearchReq
 	for _, user := range users {
 		match := true
 
-		// Filter by search query (username, email, first name, last name)
 		if req.Search != "" {
 			query := strings.ToLower(req.Search)
 			match = strings.Contains(strings.ToLower(user.Username), query) ||
@@ -308,12 +289,10 @@ func (s *UserService) filterUsers(users []models.User, req *models.UserSearchReq
 				strings.Contains(strings.ToLower(user.LastName), query)
 		}
 
-		// Filter by enabled status
 		if req.Enabled != nil && user.Enabled != *req.Enabled {
 			match = false
 		}
 
-		// Filter by role
 		if req.Role != "" && match {
 			hasRole := false
 			for _, role := range user.Roles {
@@ -335,7 +314,6 @@ func (s *UserService) filterUsers(users []models.User, req *models.UserSearchReq
 	return filtered
 }
 
-// BulkCreateUsers creates multiple users in a Keycloak realm
 func (s *UserService) BulkCreateUsers(ctx context.Context, realmName string, users []models.CreateUserRequest) (*models.BulkCreateResult, error) {
 	result := &models.BulkCreateResult{
 		TotalProcessed: len(users),
@@ -373,14 +351,12 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		return nil, fmt.Errorf("CSV must contain at least header row and one data row")
 	}
 	
-	// Parse CSV headers
 	headers := csvRecords[0]
 	columnMap := make(map[string]int)
 	for i, header := range headers {
 		columnMap[strings.ToLower(strings.TrimSpace(header))] = i
 	}
 	
-	// Required columns
 	requiredColumns := []string{"email", "first_name", "last_name"}
 	for _, col := range requiredColumns {
 		if _, exists := columnMap[col]; !exists {
@@ -388,7 +364,6 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		}
 	}
 	
-	// Convert CSV rows to user requests
 	var users []models.CreateUserRequest
 	var parseErrors []models.CSVError
 	
@@ -409,7 +384,6 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			LastName:  getColumnValue(row, columnMap, "last_name"),
 		}
 		
-		// Optional columns
 		if username := getColumnValue(row, columnMap, "username"); username != "" {
 			user.Username = username
 		} else {
@@ -437,7 +411,6 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			user.Enabled = true
 		}
 		
-		// Validate required fields
 		if user.Email == "" || user.FirstName == "" || user.LastName == "" {
 			parseErrors = append(parseErrors, models.CSVError{
 				Row:   rowNum,
@@ -449,7 +422,6 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		users = append(users, user)
 	}
 	
-	// If there are parse errors, return them
 	if len(parseErrors) > 0 {
 		return &models.CSVImportResult{
 			TotalProcessed: len(csvRecords) - 1,
@@ -457,13 +429,11 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		}, nil
 	}
 	
-	// Bulk create users
 	bulkResult, err := s.BulkCreateUsers(ctx, realmName, users)
 	if err != nil {
 		return nil, err
 	}
 	
-	// Convert to CSV import result
 	csvResult := &models.CSVImportResult{
 		TotalProcessed:  bulkResult.TotalProcessed,
 		SuccessCount:    bulkResult.SuccessCount,
@@ -472,12 +442,10 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		FailedUsers:     make([]models.CSVError, 0, len(bulkResult.Failed)),
 	}
 	
-	// Convert successful users
 	for _, user := range bulkResult.Successful {
 		csvResult.SuccessfulUsers = append(csvResult.SuccessfulUsers, *user)
 	}
 	
-	// Convert failed users
 	for _, failed := range bulkResult.Failed {
 		csvResult.FailedUsers = append(csvResult.FailedUsers, models.CSVError{
 			Row:   failed.Row,
@@ -489,7 +457,6 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 	return csvResult, nil
 }
 
-// Helper functions
 func getColumnValue(row []string, columnMap map[string]int, columnName string) string {
 	if idx, exists := columnMap[columnName]; exists && idx < len(row) {
 		return strings.TrimSpace(row[idx])

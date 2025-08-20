@@ -20,7 +20,6 @@ func TestAuditDetails_Value(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, value)
 	
-	// Verify it's valid JSON
 	var unmarshalled AuditDetails
 	err = json.Unmarshal(value.([]byte), &unmarshalled)
 	assert.NoError(t, err)
@@ -110,7 +109,6 @@ func TestAuditLog_GetUserEmail(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 	
-	// GetUserEmail currently returns empty string as per implementation
 	assert.Equal(t, "", log.GetUserEmail())
 }
 
@@ -147,7 +145,6 @@ func TestAuditLog_ToResponse(t *testing.T) {
 	assert.Equal(t, log.Status, response.Status)
 	assert.Equal(t, now, response.CreatedAt)
 	
-	// Note: IsSecurityEvent and IsFailure are methods on AuditLog, not AuditLogResponse
 	assert.True(t, log.IsSecurityEvent())
 	assert.False(t, log.IsFailure())
 }
@@ -190,7 +187,6 @@ func TestCreateAuditLogRequest_Validation(t *testing.T) {
 		Status:         AuditStatusSuccess,
 	}
 	
-	// This would normally be validated by a validator instance
 	assert.Equal(t, AuditActions.UserLogin, validRequest.Action)
 	assert.Equal(t, "user", validRequest.ResourceType)
 	assert.NotNil(t, validRequest.KeycloakUserID)
@@ -319,7 +315,6 @@ func TestTimelinePoint_Structure(t *testing.T) {
 }
 
 func TestAuditActions_Constants(t *testing.T) {
-	// Test all action constants are defined
 	actions := []string{
 		AuditActions.UserLogin,
 		AuditActions.UserLogout,
@@ -378,7 +373,6 @@ func TestAuditSeverityConstants(t *testing.T) {
 		assert.True(t, len(string(severity)) > 0, "Severity should have content")
 	}
 	
-	// Test specific values
 	assert.Equal(t, AuditSeverity("info"), AuditSeverityInfo)
 	assert.Equal(t, AuditSeverity("warning"), AuditSeverityWarning)
 	assert.Equal(t, AuditSeverity("error"), AuditSeverityError)
@@ -397,7 +391,6 @@ func TestAuditStatusConstants(t *testing.T) {
 		assert.True(t, len(string(status)) > 0, "Status should have content")
 	}
 	
-	// Test specific values
 	assert.Equal(t, AuditStatus("success"), AuditStatusSuccess)
 	assert.Equal(t, AuditStatus("failure"), AuditStatusFailure)
 	assert.Equal(t, AuditStatus("partial"), AuditStatusPartial)

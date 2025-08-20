@@ -21,7 +21,6 @@ func NewIdentityProviderService(client *AdminClient, logger *zap.Logger) *Identi
 }
 
 func (s *IdentityProviderService) CreateIdentityProvider(ctx context.Context, realm string, provider *IdentityProviderRepresentation) error {
-	// Store mappers if any are provided, then remove them from the provider for creation
 	mappers := provider.Mappers
 	provider.Mappers = nil
 	
@@ -35,7 +34,6 @@ func (s *IdentityProviderService) CreateIdentityProvider(ctx context.Context, re
 		zap.String("alias", provider.Alias),
 		zap.String("providerId", provider.ProviderId))
 
-	// Create mappers separately after the identity provider is created
 	for _, mapper := range mappers {
 		mapper.IdentityProviderAlias = provider.Alias
 		err := s.client.CreateIdentityProviderMapper(ctx, realm, provider.Alias, &mapper)
@@ -45,7 +43,6 @@ func (s *IdentityProviderService) CreateIdentityProvider(ctx context.Context, re
 				zap.String("provider", provider.Alias),
 				zap.String("mapper", mapper.Name),
 				zap.Error(err))
-			// Continue with other mappers rather than failing completely
 		} else {
 			s.logger.Info("Created identity provider mapper",
 				zap.String("realm", realm),

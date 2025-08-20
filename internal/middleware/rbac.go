@@ -11,13 +11,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// RBAC middleware that uses Keycloak Authorization Services
 type RBACMiddleware struct {
 	keycloakAdmin *keycloak.AdminClient
 	logger        *zap.Logger
 }
 
-// NewRBACMiddleware creates a new RBAC middleware instance
 func NewRBACMiddleware(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *RBACMiddleware {
 	return &RBACMiddleware{
 		keycloakAdmin: keycloakAdmin,
@@ -25,10 +23,8 @@ func NewRBACMiddleware(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) 
 	}
 }
 
-// RequirePermission checks if the user has the specified permission on a resource
 func (r *RBACMiddleware) RequirePermission(resource, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract user and realm context
 		userID, exists := c.Get("user_id")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -49,7 +45,6 @@ func (r *RBACMiddleware) RequirePermission(resource, action string) gin.HandlerF
 			return
 		}
 
-		// Check permission using Keycloak Authorization Services
 		hasPermission, err := r.checkPermission(c.Request.Context(), realmName.(string), userID.(string), resource, action)
 		if err != nil {
 			r.logger.Error("Failed to check permission",
@@ -86,7 +81,6 @@ func (r *RBACMiddleware) RequirePermission(resource, action string) gin.HandlerF
 	}
 }
 
-// RequireAnyRole checks if the user has any of the specified roles
 func (r *RBACMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRoles, exists := c.Get("user_roles")
@@ -122,7 +116,6 @@ func (r *RBACMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
-// RequireAllRoles checks if the user has all of the specified roles
 func (r *RBACMiddleware) RequireAllRoles(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRoles, exists := c.Get("user_roles")
@@ -163,7 +156,6 @@ func (r *RBACMiddleware) RequireAllRoles(roles ...string) gin.HandlerFunc {
 	}
 }
 
-// RequireRealmAccess ensures user has access to the current realm
 func (r *RBACMiddleware) RequireRealmAccess() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get("user_id")
@@ -186,7 +178,6 @@ func (r *RBACMiddleware) RequireRealmAccess() gin.HandlerFunc {
 			return
 		}
 
-		// Check if user belongs to this realm or has cross-realm access
 		hasAccess, err := r.checkRealmAccess(c.Request.Context(), realmName.(string), userID.(string))
 		if err != nil {
 			r.logger.Error("Failed to check realm access",
@@ -219,34 +210,26 @@ func (r *RBACMiddleware) RequireRealmAccess() gin.HandlerFunc {
 	}
 }
 
-// checkPermission uses Keycloak Authorization Services to check permissions
 func (r *RBACMiddleware) checkPermission(ctx context.Context, realmName, userID, resource, action string) (bool, error) {
-	// Use Keycloak Authorization Services to check permissions
 	return r.keycloakAdmin.CheckUserPermission(ctx, realmName, userID, resource, action)
 }
 
-// checkRealmAccess verifies if user has access to the specified realm
 func (r *RBACMiddleware) checkRealmAccess(ctx context.Context, realmName, userID string) (bool, error) {
-	// Use Keycloak to check realm access
 	return r.keycloakAdmin.CheckUserRealmAccess(ctx, userID, realmName)
 }
 
-// MSPAdminRequired checks for MSP admin role (cross-realm access)
 func (r *RBACMiddleware) MSPAdminRequired() gin.HandlerFunc {
 	return r.RequireAnyRole("msp-admin")
 }
 
-// TenantAdminRequired checks for tenant admin role
 func (r *RBACMiddleware) TenantAdminRequired() gin.HandlerFunc {
 	return r.RequireAnyRole("tenant-admin", "msp-admin")
 }
 
-// TenantUserRequired checks for basic tenant user role
 func (r *RBACMiddleware) TenantUserRequired() gin.HandlerFunc {
 	return r.RequireAnyRole("tenant-user", "tenant-admin", "msp-admin")
 }
 
-// RequireAccessLevel ensures user has the specified access level to the target realm
 func (r *RBACMiddleware) RequireAccessLevel(requiredLevel keycloak.RealmAccessLevel) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get("user_id")
@@ -269,14 +252,12 @@ func (r *RBACMiddleware) RequireAccessLevel(requiredLevel keycloak.RealmAccessLe
 			return
 		}
 
-		// Extract source realm from provider name
 		providerName, _ := c.Get("provider_name")
 		var sourceRealm string
 		if providerName != nil {
 			sourceRealm = extractRealmFromProvider(providerName.(string))
 		}
 
-		// Check user's access level to the target realm
 		accessLevel, err := r.keycloakAdmin.GetUserRealmAccessLevel(
 			c.Request.Context(),
 			userID.(string),
@@ -298,7 +279,6 @@ func (r *RBACMiddleware) RequireAccessLevel(requiredLevel keycloak.RealmAccessLe
 			return
 		}
 
-		// Validate access level
 		if !r.hasRequiredAccessLevel(accessLevel, requiredLevel) {
 			r.logger.Warn("Insufficient access level",
 				zap.String("user_id", userID.(string)),
@@ -314,15 +294,12 @@ func (r *RBACMiddleware) RequireAccessLevel(requiredLevel keycloak.RealmAccessLe
 			return
 		}
 
-		// Store access level in context for use by handlers
 		c.Set("access_level", accessLevel)
 		c.Next()
 	}
 }
 
-// hasRequiredAccessLevel checks if the user's access level meets the requirement
 func (r *RBACMiddleware) hasRequiredAccessLevel(userLevel, requiredLevel keycloak.RealmAccessLevel) bool {
-	// Define access level hierarchy
 	levels := map[keycloak.RealmAccessLevel]int{
 		keycloak.RealmAccessNone:     0,
 		keycloak.RealmAccessRead:     1,
@@ -391,14 +368,12 @@ func (r *RBACMiddleware) CrossRealmAccessMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Get user's source realm from token claims
 		providerName, _ := c.Get("provider_name")
 		var sourceRealm string
 		if providerName != nil {
 			sourceRealm = extractRealmFromProvider(providerName.(string))
 		}
 
-		// Validate realm access
 		hasAccess, err := r.keycloakAdmin.ValidateRealmAccess(
 			c.Request.Context(),
 			userID.(string),
