@@ -35,19 +35,11 @@ func ConnectWithEnv(cfg config.DatabaseConfig, environment string) (*gorm.DB, er
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
 	)
 
-	safeDSN := fmt.Sprintf(
-		"host=%s port=%d user=%s dbname=%s sslmode=%s connect_timeout=%d",
-		cfg.Host, cfg.Port, cfg.User, cfg.DBName, cfg.SSLMode, cfg.ConnectTimeout,
-	)
-	fmt.Printf("Attempting database connection: %s\n", safeDSN)
-
-	// Configure GORM logger based on environment
 	var gormLogger logger.Interface
 	if environment == "development" {
 		gormLogger = logger.Default.LogMode(logger.Info)
 	} else {
-		// Production: only log errors and warnings, no SQL queries
-		gormLogger = logger.Default.LogMode(logger.Warn)
+		gormLogger = logger.Default.LogMode(logger.Silent)
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
@@ -87,7 +79,6 @@ func ConnectRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	}
 
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-	fmt.Printf("Attempting Redis connection: %s (db: %d, timeout: %ds)\n", addr, cfg.DB, cfg.DialTimeout)
 
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
