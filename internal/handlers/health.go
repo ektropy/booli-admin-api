@@ -18,14 +18,14 @@ type HealthHandler struct {
 	logger      *zap.Logger
 	config      *config.Config
 	initializer *initialization.KeycloakInitializer
-	version     string
+	buildInfo   BuildInfo
 }
 
-func NewHealthHandler(logger *zap.Logger, cfg *config.Config, version string) *HealthHandler {
+func NewHealthHandler(logger *zap.Logger, cfg *config.Config, buildInfo BuildInfo) *HealthHandler {
 	return &HealthHandler{
-		logger:  logger,
-		config:  cfg,
-		version: version,
+		logger:    logger,
+		config:    cfg,
+		buildInfo: buildInfo,
 	}
 }
 
@@ -44,7 +44,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 		"status":    "healthy",
 		"timestamp": time.Now().UTC(),
 		"service":   "booli-admin-api",
-		"version":   h.version,
+		"version":   h.buildInfo.Version,
 	})
 }
 
@@ -130,7 +130,10 @@ func (h *HealthHandler) ValidateKeycloak(c *gin.Context) {
 // @Router /version [get]
 func (h *HealthHandler) GetVersionInfo(c *gin.Context) {
 	versionInfo := utils.GetAPIVersionInfo(constants.APIVersion)
-	versionInfo["app_version"] = h.version
+	versionInfo["app_version"] = h.buildInfo.Version
+	versionInfo["build_date"] = h.buildInfo.BuildDate
+	versionInfo["commit"] = h.buildInfo.Commit
+	versionInfo["built_by"] = h.buildInfo.BuiltBy
 	versionInfo["environment"] = h.config.Environment
 	
 	c.JSON(http.StatusOK, versionInfo)

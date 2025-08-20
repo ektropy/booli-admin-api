@@ -10,7 +10,17 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o booli-admin-api ./cmd/server
+# Get build information
+RUN BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
+    GIT_COMMIT=$(git rev-parse --short HEAD || echo "unknown") && \
+    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "unknown") && \
+    GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "dev") && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w \
+    -X main.version=${GIT_TAG} \
+    -X main.commit=${GIT_COMMIT} \
+    -X main.date=${BUILD_DATE}" \
+    -o booli-admin-api ./cmd/server
 
 FROM alpine:3.19
 

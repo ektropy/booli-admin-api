@@ -18,9 +18,16 @@ type Container struct {
 	IdentityProvider *IdentityProviderHandler
 }
 
-func NewContainer(services *services.Container, oidcService *auth.OIDCService, logger *zap.Logger, cfg *config.Config, version string) *Container {
+type BuildInfo struct {
+	Version   string
+	Commit    string
+	BuildDate string
+	BuiltBy   string
+}
+
+func NewContainer(services *services.Container, oidcService *auth.OIDCService, logger *zap.Logger, cfg *config.Config, buildInfo BuildInfo) *Container {
 	return &Container{
-		Health:           NewHealthHandler(logger, cfg, version),
+		Health:           NewHealthHandler(logger, cfg, buildInfo),
 		Auth:             NewAuthHandler(oidcService, logger),
 		Tenant:           NewTenantHandler(services.Tenant, logger),
 		User:             NewUserHandler(services.User, logger),

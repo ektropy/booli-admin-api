@@ -21,18 +21,24 @@ import (
 	"go.uber.org/zap"
 )
 
-type Application struct {
-	config  *config.Config
-	logger  *zap.Logger
-	server  *http.Server
-	version string
+type BuildInfo struct {
+	Version   string
+	Commit    string
+	BuildDate string
 }
 
-func New(cfg *config.Config, logger *zap.Logger, version string) *Application {
+type Application struct {
+	config    *config.Config
+	logger    *zap.Logger
+	server    *http.Server
+	buildInfo BuildInfo
+}
+
+func New(cfg *config.Config, logger *zap.Logger, buildInfo BuildInfo) *Application {
 	return &Application{
-		config:  cfg,
-		logger:  logger,
-		version: version,
+		config:    cfg,
+		logger:    logger,
+		buildInfo: buildInfo,
 	}
 }
 
@@ -42,7 +48,7 @@ func (app *Application) Initialize() error {
 		zap.Int("port", app.config.Database.Port),
 		zap.String("database", app.config.Database.DBName))
 
-	db, err := database.Connect(app.config.Database)
+	db, err := database.ConnectWithEnv(app.config.Database, app.config.Environment)
 	if err != nil {
 		app.logger.Error("Failed to connect to database",
 			zap.Error(err),
@@ -174,7 +180,12 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 	router.Use(middleware.CORS())
 	router.Use(middleware.SecurityHeaders())
 
-	handlerContainer := handlers.NewContainer(serviceContainer, oidcService, app.logger, app.config, app.version)
+	buildInfo := handlers.BuildInfo{
+		Version:   app.buildInfo.Version,
+		Commit:    app.buildInfo.Commit,
+		BuildDate: app.buildInfo.BuildDate,
+	}
+	handlerContainer := handlers.NewContainer(serviceContainer, oidcService, app.logger, app.config, buildInfo)
 	handlerContainer.Health.SetInitializer(initializer)
 
 	app.setupRoutes(router, handlerContainer, oidcService)
@@ -277,14 +288,10 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 }
 
 func (app *Application) Start() error {
-	app.logger.Info("HTTP server starting",
-		zap.String("service", "booli-admin-api"),
-		zap.String("address", app.server.Addr),
-		zap.String("version", app.version),
+	app.logger.Info("Server ready",
+		zap.String("port", app.config.Server.Port),
+		zap.String("api_version", constants.APIVersion),
 		zap.String("environment", app.config.Environment))
-
-	app.logger.Info("Server is now listening for requests",
-		zap.String("url", "http://0.0.0.0"+app.server.Addr+"/health"))
 
 	if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		app.logger.Error("Server failed to start", zap.Error(err))

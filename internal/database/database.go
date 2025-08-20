@@ -13,6 +13,10 @@ import (
 )
 
 func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
+	return ConnectWithEnv(cfg, "production")
+}
+
+func ConnectWithEnv(cfg config.DatabaseConfig, environment string) (*gorm.DB, error) {
 	if cfg.Host == "" {
 		return nil, fmt.Errorf("database host is required")
 	}
@@ -37,7 +41,14 @@ func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
 	)
 	fmt.Printf("Attempting database connection: %s\n", safeDSN)
 
-	gormLogger := logger.Default.LogMode(logger.Info)
+	// Configure GORM logger based on environment
+	var gormLogger logger.Interface
+	if environment == "development" {
+		gormLogger = logger.Default.LogMode(logger.Info)
+	} else {
+		// Production: only log errors and warnings, no SQL queries
+		gormLogger = logger.Default.LogMode(logger.Warn)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormLogger,

@@ -184,11 +184,8 @@ func NewLogger(environment string) (*zap.Logger, error) {
 		config.EncoderConfig.StacktraceKey = "stacktrace"
 		config.Development = false
 
-		if logLevel <= zapcore.WarnLevel {
-			config.DisableStacktrace = false
-		} else {
-			config.DisableStacktrace = true
-		}
+		// Disable stack traces for production to reduce log verbosity
+		config.DisableStacktrace = true
 	}
 
 	config.OutputPaths = []string{"stdout"}
@@ -226,7 +223,7 @@ func getLogLevel(environment string) zapcore.Level {
 	case "staging":
 		return zapcore.InfoLevel
 	case "production":
-		return zapcore.InfoLevel
+		return zapcore.WarnLevel
 	default:
 		return zapcore.InfoLevel
 	}

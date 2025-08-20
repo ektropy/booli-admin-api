@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,8 +38,14 @@ var (
 	version = "dev"
 	commit  = "unknown"
 	date    = "unknown"
-	builtBy = "unknown"
 )
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func main() {
 	var (
@@ -70,11 +77,23 @@ func main() {
 	}
 	defer basicLogger.Sync()
 
-	basicLogger.Info("Booli Admin API starting",
-		zap.String("service", "booli-admin-api"),
-		zap.String("version", version),
-		zap.String("commit", commit),
-		zap.String("build_date", date))
+	// Create a professional startup banner
+	banner := `
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                               Booli Admin API                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Version:     %-62s │
+│  Build Date:  %-62s │
+│  Commit:      %-62s │
+└──────────────────────────────────────────────────────────────────────────────┘`
+	
+	// Print the banner to stdout for visibility
+	commitDisplay := commit
+	if len(commit) > 8 {
+		commitDisplay = commit[:8]
+	}
+	fmt.Printf(banner, version, date, commitDisplay)
+	fmt.Println()
 
 	cfg, err := config.LoadWithConfigFile(*configFile)
 	if err != nil {
@@ -150,7 +169,13 @@ func main() {
 		return
 	}
 
-	app := app.New(cfg, logger, version)
+	buildInfo := app.BuildInfo{
+		Version:   version,
+		Commit:    commit,
+		BuildDate: date,
+	}
+	
+	app := app.New(cfg, logger, buildInfo)
 	if err := app.Initialize(); err != nil {
 		logger.Error("Failed to initialize application", zap.Error(err))
 		os.Exit(1)
