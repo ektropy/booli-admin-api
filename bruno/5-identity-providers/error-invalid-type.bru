@@ -1,0 +1,45 @@
+meta {
+  name: Error - Invalid Provider Type
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/identity-providers
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+  X-Auth-Provider: keycloak
+}
+
+body:json {
+  {
+    "alias": "invalid-provider",
+    "display_name": "Invalid Provider",
+    "type": "invalid-type",
+    "enabled": true,
+    "config": {
+      "client_id": "test",
+      "client_secret": "test"
+    }
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("Invalid provider type returns 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Error response contains message", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("error");
+    expect(body.error).to.have.property("message");
+  });
+}

@@ -19,6 +19,56 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const (
+	DefaultAzureADAuthority = "https://login.microsoftonline.com"
+	AzureADUSGovAuthority   = "https://login.microsoftonline.us"
+	AzureADChinaAuthority   = "https://login.chinacloudapi.cn"
+	AzureADV2Suffix         = "v2.0"
+)
+
+type AzureADEndpoints struct {
+	AuthorizationURL string
+	TokenURL         string
+	UserInfoURL      string
+	IssuerURL        string
+	JWKSURL          string
+}
+
+func buildAzureADIssuerURL(authority, tenantID string) string {
+	if authority == "" {
+		authority = os.Getenv("AZURE_AD_AUTHORITY")
+		if authority == "" {
+			authority = DefaultAzureADAuthority
+		}
+	}
+	
+	authority = strings.TrimRight(authority, "/")
+	tenantID = strings.Trim(tenantID, "/")
+	
+	return fmt.Sprintf("%s/%s/%s", authority, tenantID, AzureADV2Suffix)
+}
+
+func BuildAzureADEndpoints(authority, tenantID string) *AzureADEndpoints {
+	if authority == "" {
+		authority = os.Getenv("AZURE_AD_AUTHORITY")
+		if authority == "" {
+			authority = DefaultAzureADAuthority
+		}
+	}
+	
+	authority = strings.TrimRight(authority, "/")
+	tenantID = strings.Trim(tenantID, "/")
+	base := fmt.Sprintf("%s/%s", authority, tenantID)
+	
+	return &AzureADEndpoints{
+		AuthorizationURL: fmt.Sprintf("%s/oauth2/v2.0/authorize", base),
+		TokenURL:         fmt.Sprintf("%s/oauth2/v2.0/token", base),
+		UserInfoURL:      fmt.Sprintf("%s/openid/userinfo", base),
+		IssuerURL:        fmt.Sprintf("%s/v2.0", base),
+		JWKSURL:          fmt.Sprintf("%s/discovery/v2.0/keys", base),
+	}
+}
+
 type OIDCProvider struct {
 	Name                string
 	IssuerURL           string
@@ -28,8 +78,6 @@ type OIDCProvider struct {
 	Scopes              []string
 	RealmName           string
 	APIAudience         string
-	IsAzureAD           bool
-	TenantID            string
 	SkipTLSVerify       bool
 	CACertPath          string
 	provider            *oidc.Provider
@@ -60,8 +108,6 @@ type OIDCClaims struct {
 
 	Roles         []string `json:"roles"`
 	Groups        []string `json:"groups"`
-	TenantID      string   `json:"tid"`
-	TenantContext string   `json:"tenant_context,omitempty"`
 
 	Organizations []string `json:"organizations,omitempty"`
 	ActiveOrg     string   `json:"active_org,omitempty"`
@@ -75,9 +121,6 @@ func NewOIDCService(logger *zap.Logger) *OIDCService {
 }
 
 func (s *OIDCService) AddProvider(ctx context.Context, config *OIDCProvider) error {
-	if config.IsAzureAD {
-		return s.addAzureADProvider(ctx, config)
-	}
 	return s.addStandardOIDCProvider(ctx, config)
 }
 
@@ -120,54 +163,6 @@ func (s *OIDCService) addStandardOIDCProvider(ctx context.Context, config *OIDCP
 	return nil
 }
 
-func (s *OIDCService) addAzureADProvider(ctx context.Context, config *OIDCProvider) error {
-	var issuerURL string
-	if config.TenantID != "" {
-		issuerURL = fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", config.TenantID)
-	} else {
-		issuerURL = config.IssuerURL
-	}
-
-	provider, err := oidc.NewProvider(ctx, issuerURL)
-	if err != nil {
-		return fmt.Errorf("failed to discover Azure AD provider %s: %w", config.Name, err)
-	}
-
-	oauth2Config := &oauth2.Config{
-		ClientID:     config.ClientID,
-		ClientSecret: config.ClientSecret,
-		RedirectURL:  config.RedirectURL,
-		Endpoint:     provider.Endpoint(),
-		Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, config.Scopes...),
-	}
-
-	verifier := provider.Verifier(&oidc.Config{
-		ClientID:          config.ClientID,
-		SkipIssuerCheck:   true,
-		SkipClientIDCheck: true,
-	})
-
-	accessTokenVerifier := provider.Verifier(&oidc.Config{
-		ClientID:          config.APIAudience,
-		SkipIssuerCheck:   true,
-		SkipClientIDCheck: true,
-	})
-
-	config.provider = provider
-	config.oauth2Config = oauth2Config
-	config.verifier = verifier
-	config.accessTokenVerifier = accessTokenVerifier
-	config.logger = s.logger
-
-	s.providers[config.Name] = config
-
-	s.logger.Info("Azure AD provider added successfully",
-		zap.String("provider", config.Name),
-		zap.String("tenant_id", config.TenantID),
-		zap.String("issuer", issuerURL))
-
-	return nil
-}
 
 func (s *OIDCService) GetProvider(name string) (*OIDCProvider, error) {
 	provider, exists := s.providers[name]
@@ -205,9 +200,6 @@ func (p *OIDCProvider) VerifyIDToken(ctx context.Context, rawIDToken string) (*O
 		return nil, fmt.Errorf("failed to extract claims: %w", err)
 	}
 
-	if p.IsAzureAD {
-		p.mapAzureADClaims(&claims)
-	}
 
 	return &claims, nil
 }
@@ -223,9 +215,6 @@ func (p *OIDCProvider) VerifyAccessTokenAsJWT(ctx context.Context, accessToken s
 		return nil, fmt.Errorf("failed to extract JWT claims: %w", err)
 	}
 
-	if p.IsAzureAD {
-		p.mapAzureADClaims(&claims)
-	}
 
 	return &claims, nil
 }
@@ -246,15 +235,6 @@ func (p *OIDCProvider) VerifyAccessToken(ctx context.Context, accessToken string
 	return &claims, nil
 }
 
-func (p *OIDCProvider) mapAzureADClaims(claims *OIDCClaims) {
-	if len(claims.Roles) > 0 {
-		claims.RealmAccess.Roles = claims.Roles
-	}
-
-	if claims.TenantID != "" {
-		claims.TenantContext = claims.TenantID
-	}
-}
 
 func (p *OIDCProvider) GetWellKnownConfig(ctx context.Context) (map[string]interface{}, error) {
 	transport := &http.Transport{}
@@ -351,7 +331,6 @@ func CreateKeycloakProvider(name, baseURL, realm, clientID, clientSecret, redire
 		RedirectURL:   redirectURL,
 		Scopes:        []string{"openid", "profile", "email", "roles"},
 		APIAudience:   apiAudience,
-		IsAzureAD:     false,
 		RealmName:     realm,
 		SkipTLSVerify: skipTLSVerify,
 		CACertPath:    caCertPath,
@@ -372,20 +351,6 @@ func CreateKeycloakMSPProvider(baseURL, mspRealm, clientID, clientSecret, redire
 	)
 }
 
-func CreateAzureADProvider(name, tenantID, clientID, clientSecret, redirectURL string) *OIDCProvider {
-	issuerURL := fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", tenantID)
-
-	return &OIDCProvider{
-		Name:         name,
-		IssuerURL:    issuerURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  redirectURL,
-		Scopes:       []string{"profile", "email", "User.Read"},
-		IsAzureAD:    true,
-		TenantID:     tenantID,
-	}
-}
 
 func (p *OIDCProvider) GetClientCredentialsToken(ctx context.Context, scopes []string) (*oauth2.Token, error) {
 	config := &oauth2.Config{

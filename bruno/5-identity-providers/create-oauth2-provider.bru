@@ -1,0 +1,73 @@
+meta {
+  name: Create OAuth2 Identity Provider
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/identity-providers
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+  X-Auth-Provider: keycloak
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("oauth2ProviderAlias", `test-oauth2-${timestamp}`);
+}
+
+body:json {
+  {
+    "alias": "{{oauth2ProviderAlias}}",
+    "display_name": "Test OAuth2 Provider",
+    "type": "oauth",
+    "enabled": true,
+    "config": {
+      "client_id": "oauth2-client-id",
+      "client_secret": "oauth2-client-secret",
+      "authorization_url": "https://oauth.example.com/authorize",
+      "token_url": "https://oauth.example.com/token",
+      "userinfo_url": "https://oauth.example.com/userinfo",
+      "default_scopes": ["read", "write"],
+      "trust_email": false,
+      "store_token": true,
+      "link_only": false
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    bru.setEnvVar("createdOauth2ProviderAlias", body.alias);
+  }
+}
+
+tests {
+  test("OAuth2 provider creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains provider details", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("alias");
+    expect(body.type).to.equal("oauth");
+    expect(body.enabled).to.equal(true);
+    expect(body.display_name).to.equal("Test OAuth2 Provider");
+  });
+
+  test("Config contains OAuth2-specific settings", function() {
+    const body = res.getBody();
+    expect(body.config).to.have.property("clientId", "oauth2-client-id");
+    expect(body.config).to.have.property("authorizationUrl", "https://oauth.example.com/authorize");
+    expect(body.config).to.have.property("tokenUrl", "https://oauth.example.com/token");
+  });
+}

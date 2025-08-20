@@ -1,0 +1,47 @@
+meta {
+  name: Error - Duplicate Provider Alias
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/identity-providers
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+  X-Auth-Provider: keycloak
+}
+
+body:json {
+  {
+    "alias": "{{createdOidcProviderAlias}}",
+    "display_name": "Duplicate Provider",
+    "type": "oidc",
+    "enabled": true,
+    "config": {
+      "client_id": "duplicate-client-id",
+      "client_secret": "duplicate-client-secret",
+      "issuer_url": "https://duplicate.example.com"
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+tests {
+  test("Duplicate provider alias returns 409", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+
+  test("Error response contains conflict message", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("error");
+    expect(body.error).to.have.property("message");
+    expect(body.error.message).to.contain("already exists");
+  });
+}

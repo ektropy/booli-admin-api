@@ -83,15 +83,6 @@ func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string
 		}
 	}
 	
-	// For Azure AD and other providers, use tenant context or create a default realm name
-	if claims.TenantContext != "" {
-		return claims.TenantContext
-	}
-	
-	if claims.TenantID != "" {
-		return claims.TenantID
-	}
-	
 	// Default fallback - use provider name as realm
 	return providerName
 }

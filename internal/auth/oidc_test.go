@@ -127,8 +127,7 @@ func TestCreateKeycloakProvider(t *testing.T) {
 			assert.Equal(t, tt.clientSecret, provider.ClientSecret)
 			assert.Equal(t, tt.redirectURL, provider.RedirectURL)
 			assert.Equal(t, tt.realm, provider.RealmName)
-			assert.False(t, provider.IsAzureAD)
-
+		
 			expectedScopes := []string{"openid", "profile", "email", "roles"}
 			assert.Equal(t, expectedScopes, provider.Scopes)
 		})
@@ -162,12 +161,10 @@ func TestOIDCProvider_Configuration(t *testing.T) {
 		RedirectURL:  "https://app.example.com/auth/callback",
 		Scopes:       []string{"openid", "profile", "email", "roles"},
 		RealmName:    "test",
-		IsAzureAD:    false,
 	}
 
 	assert.Equal(t, "test-keycloak", provider.Name)
 	assert.Equal(t, "test", provider.RealmName)
-	assert.False(t, provider.IsAzureAD)
 	assert.Contains(t, provider.Scopes, "openid")
 	assert.Contains(t, provider.Scopes, "roles")
 }
@@ -191,10 +188,9 @@ func TestOIDCService_ProviderManagement(t *testing.T) {
 		},
 		{
 			Name:      "azure-ad",
-			IssuerURL: "https://login.microsoftonline.com/tenant-id/v2.0",
+			IssuerURL: buildAzureADIssuerURL("", "tenant-id"),
 			ClientID:  "azure-client",
-			IsAzureAD: true,
-		},
+			},
 	}
 
 	for _, provider := range providers {
@@ -215,7 +211,6 @@ func TestOIDCService_ProviderManagement(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, expectedProvider.Name, provider.Name)
 			assert.Equal(t, expectedProvider.ClientID, provider.ClientID)
-			assert.Equal(t, expectedProvider.IsAzureAD, provider.IsAzureAD)
 		}
 	})
 }
@@ -238,7 +233,6 @@ func TestOIDCProvider_MSPPlatformConfiguration(t *testing.T) {
 	assert.Equal(t, "https://keycloak.example.com/realms/msp-platform", provider.IssuerURL)
 	assert.Equal(t, "msp-platform-client", provider.ClientID)
 	assert.Equal(t, "msp-platform", provider.RealmName)
-	assert.False(t, provider.IsAzureAD)
 
 	expectedScopes := []string{"openid", "profile", "email", "roles"}
 	assert.Equal(t, expectedScopes, provider.Scopes)
@@ -285,30 +279,61 @@ func TestCreateKeycloakMSPProvider(t *testing.T) {
 	assert.Equal(t, "msp-realm", provider.RealmName)
 	assert.True(t, provider.SkipTLSVerify)
 	assert.Equal(t, "/path/to/ca.crt", provider.CACertPath)
-	assert.False(t, provider.IsAzureAD)
 }
 
-func TestCreateAzureADProvider(t *testing.T) {
-	provider := CreateAzureADProvider(
-		"azure-ad",
-		"tenant-id-123",
-		"client-id",
-		"client-secret",
-		"https://app.example.com/callback",
-	)
-	
-	assert.NotNil(t, provider)
-	assert.Equal(t, "azure-ad", provider.Name)
-	assert.Equal(t, "https://login.microsoftonline.com/tenant-id-123/v2.0", provider.IssuerURL)
-	assert.Equal(t, "client-id", provider.ClientID)
-	assert.Equal(t, "client-secret", provider.ClientSecret)
-	assert.Equal(t, "https://app.example.com/callback", provider.RedirectURL)
-	assert.True(t, provider.IsAzureAD)
-	assert.Equal(t, "tenant-id-123", provider.TenantID)
-	assert.Contains(t, provider.Scopes, "profile")
-	assert.Contains(t, provider.Scopes, "email")
-	assert.Contains(t, provider.Scopes, "User.Read")
+func TestBuildAzureADIssuerURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		authority string
+		tenantID  string
+		expected  string
+	}{
+		{
+			name:      "Standard URL",
+			authority: "https://login.microsoftonline.com",
+			tenantID:  "tenant-123",
+			expected:  "https://login.microsoftonline.com/tenant-123/v2.0",
+		},
+		{
+			name:      "Authority with trailing slash",
+			authority: "https://login.microsoftonline.com/",
+			tenantID:  "tenant-123",
+			expected:  "https://login.microsoftonline.com/tenant-123/v2.0",
+		},
+		{
+			name:      "TenantID with slashes",
+			authority: "https://login.microsoftonline.com",
+			tenantID:  "/tenant-123/",
+			expected:  "https://login.microsoftonline.com/tenant-123/v2.0",
+		},
+		{
+			name:      "Both with extra slashes",
+			authority: "https://login.microsoftonline.com///",
+			tenantID:  "///tenant-123///",
+			expected:  "https://login.microsoftonline.com/tenant-123/v2.0",
+		},
+		{
+			name:      "Empty authority uses default",
+			authority: "",
+			tenantID:  "tenant-123",
+			expected:  "https://login.microsoftonline.com/tenant-123/v2.0",
+		},
+		{
+			name:      "Custom authority",
+			authority: "https://login.microsoftonline.us",
+			tenantID:  "tenant-123",
+			expected:  "https://login.microsoftonline.us/tenant-123/v2.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildAzureADIssuerURL(tt.authority, tt.tenantID)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
+
 
 func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
 	provider := CreateKeycloakProvider(
@@ -341,52 +366,6 @@ func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
 	assert.Contains(t, url, "state=test-state-123")
 }
 
-func TestOIDCProvider_MapAzureADClaims(t *testing.T) {
-	provider := CreateAzureADProvider(
-		"azure-ad",
-		"tenant-id-123",
-		"client-id",
-		"client-secret",
-		"https://app.example.com/callback",
-	)
-	
-	claims := &OIDCClaims{
-		Subject:  "user-123",
-		Email:    "user@example.com",
-		Roles:    []string{"admin", "user"},
-		TenantID: "azure-tenant-123",
-	}
-	
-	provider.mapAzureADClaims(claims)
-	
-	// Should map roles to realm access
-	assert.Contains(t, claims.RealmAccess.Roles, "admin")
-	assert.Contains(t, claims.RealmAccess.Roles, "user")
-	
-	// Should map tenant ID to tenant context
-	assert.Equal(t, "azure-tenant-123", claims.TenantContext)
-}
-
-func TestOIDCProvider_MapAzureADClaims_EmptyValues(t *testing.T) {
-	provider := CreateAzureADProvider(
-		"azure-ad",
-		"tenant-id-123",
-		"client-id",
-		"client-secret",
-		"https://app.example.com/callback",
-	)
-	
-	claims := &OIDCClaims{
-		Subject: "user-123",
-		Email:   "user@example.com",
-	}
-	
-	provider.mapAzureADClaims(claims)
-	
-	// Should handle empty values gracefully
-	assert.Empty(t, claims.RealmAccess.Roles)
-	assert.Empty(t, claims.TenantContext)
-}
 
 func TestOIDCProvider_SecurityConfiguration(t *testing.T) {
 	tests := []struct {

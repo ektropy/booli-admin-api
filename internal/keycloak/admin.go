@@ -144,13 +144,26 @@ type RoleRepresentation struct {
 }
 
 type IdentityProviderRepresentation struct {
-	Alias                    string            `json:"alias"`
-	DisplayName              string            `json:"displayName,omitempty"`
-	ProviderId               string            `json:"providerId"`
-	Enabled                  bool              `json:"enabled"`
-	TrustEmail               bool              `json:"trustEmail"`
-	StoreToken               bool              `json:"storeToken"`
-	AddReadTokenRoleOnCreate bool              `json:"addReadTokenRoleOnCreate"`
+	Alias                     string                   `json:"alias"`
+	DisplayName               string                   `json:"displayName,omitempty"`
+	ProviderId                string                   `json:"providerId"`
+	Enabled                   bool                     `json:"enabled"`
+	TrustEmail                bool                     `json:"trustEmail"`
+	StoreToken                bool                     `json:"storeToken"`
+	LinkOnly                  bool                     `json:"linkOnly,omitempty"`
+	AddReadTokenRoleOnCreate  bool                     `json:"addReadTokenRoleOnCreate"`
+	UpdateProfileFirstLogin   string                   `json:"updateProfileFirstLoginMode,omitempty"`
+	FirstBrokerLoginFlowAlias string                   `json:"firstBrokerLoginFlowAlias,omitempty"`
+	PostBrokerLoginFlowAlias  string                   `json:"postBrokerLoginFlowAlias,omitempty"`
+	Config                    map[string]string        `json:"config"`
+	Mappers                   []IdentityProviderMapper `json:"mappers,omitempty"`
+}
+
+type IdentityProviderMapper struct {
+	ID                       string            `json:"id,omitempty"`
+	Name                     string            `json:"name"`
+	IdentityProviderAlias    string            `json:"identityProviderAlias,omitempty"`
+	IdentityProviderMapper   string            `json:"identityProviderMapper"`
 	Config                   map[string]string `json:"config"`
 }
 
@@ -757,12 +770,66 @@ func (c *AdminClient) CreateIdentityProvider(ctx context.Context, realmName stri
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("create identity provider failed with status %d", resp.StatusCode)
+		// Read response body for detailed error information
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			c.logger.Error("Failed to read error response body",
+				zap.Int("status_code", resp.StatusCode),
+				zap.String("realm", realmName),
+				zap.String("provider", idp.Alias),
+				zap.Error(readErr))
+			return fmt.Errorf("create identity provider failed with status %d", resp.StatusCode)
+		}
+		
+		c.logger.Error("Failed to create identity provider - Keycloak error",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("realm", realmName),
+			zap.String("provider", idp.Alias),
+			zap.String("response_body", string(body)))
+		
+		return fmt.Errorf("create identity provider failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	c.logger.Info("Created identity provider",
 		zap.String("realm", realmName),
 		zap.String("provider", idp.Alias))
+
+	return nil
+}
+
+func (c *AdminClient) CreateIdentityProviderMapper(ctx context.Context, realmName, providerAlias string, mapper *IdentityProviderMapper) error {
+	resp, err := c.makeRequest(ctx, "POST", fmt.Sprintf("/%s/identity-provider/instances/%s/mappers", realmName, providerAlias), mapper)
+	if err != nil {
+		return fmt.Errorf("failed to create identity provider mapper: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			c.logger.Error("Failed to read error response body for mapper creation",
+				zap.Int("status_code", resp.StatusCode),
+				zap.String("realm", realmName),
+				zap.String("provider", providerAlias),
+				zap.String("mapper", mapper.Name),
+				zap.Error(readErr))
+			return fmt.Errorf("create identity provider mapper failed with status %d", resp.StatusCode)
+		}
+		
+		c.logger.Error("Failed to create identity provider mapper - Keycloak error",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("realm", realmName),
+			zap.String("provider", providerAlias),
+			zap.String("mapper", mapper.Name),
+			zap.String("response_body", string(body)))
+		
+		return fmt.Errorf("create identity provider mapper failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	c.logger.Info("Created identity provider mapper",
+		zap.String("realm", realmName),
+		zap.String("provider", providerAlias),
+		zap.String("mapper", mapper.Name))
 
 	return nil
 }

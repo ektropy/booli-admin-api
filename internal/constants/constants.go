@@ -82,6 +82,9 @@ const (
 	PathEnvironmentSecurityData   = "/environments/security-data"
 	PathEnvironmentNetworks       = "/environments/networks"
 	PathEnvironmentInfrastructure = "/environments/infrastructure"
+	
+	PathIdentityProviders   = "/identity-providers"
+	PathIdentityProvidersID = "/identity-providers/:alias"
 
 	PathAdminTenantsID        = "/tenants/:id"
 	PathAdminTenantsProvision = "/tenants/:id/provision"

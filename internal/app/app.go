@@ -266,6 +266,12 @@ func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Conta
 			tenantScoped.GET(constants.PathEnvironmentSecurityData, handlers.Environment.GetSIEMEnrichmentData)
 			tenantScoped.GET(constants.PathEnvironmentNetworks, handlers.Environment.GetNetworkRanges)
 			tenantScoped.GET(constants.PathEnvironmentInfrastructure, handlers.Environment.GetInfrastructureIPs)
+			
+			tenantScoped.GET(constants.PathIdentityProviders, handlers.IdentityProvider.ListIdentityProviders)
+			tenantScoped.POST(constants.PathIdentityProviders, handlers.IdentityProvider.CreateIdentityProvider)
+			tenantScoped.GET(constants.PathIdentityProvidersID, handlers.IdentityProvider.GetIdentityProvider)
+			tenantScoped.PUT(constants.PathIdentityProvidersID, handlers.IdentityProvider.UpdateIdentityProvider)
+			tenantScoped.DELETE(constants.PathIdentityProvidersID, handlers.IdentityProvider.DeleteIdentityProvider)
 		}
 	}
 }

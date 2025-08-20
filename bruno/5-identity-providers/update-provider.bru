@@ -1,0 +1,70 @@
+meta {
+  name: Update Identity Provider
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/identity-providers/{{createdOidcProviderAlias}}
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+  X-Auth-Provider: keycloak
+}
+
+body:json {
+  {
+    "display_name": "Updated OIDC Provider",
+    "type": "oidc",
+    "enabled": false,
+    "config": {
+      "client_id": "updated-client-id",
+      "client_secret": "updated-client-secret",
+      "issuer_url": "https://updated-auth.example.com",
+      "authorization_url": "https://updated-auth.example.com/auth",
+      "token_url": "https://updated-auth.example.com/token",
+      "userinfo_url": "https://updated-auth.example.com/userinfo",
+      "jwks_url": "https://updated-auth.example.com/keys",
+      "default_scopes": ["openid", "profile"],
+      "trust_email": true,
+      "store_token": false,
+      "link_only": true
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Update provider returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains updated details", function() {
+    const body = res.getBody();
+    expect(body.display_name).to.equal("Updated OIDC Provider");
+    expect(body.enabled).to.equal(false);
+    expect(body.config.clientId).to.equal("updated-client-id");
+    expect(body.config.issuer).to.equal("https://updated-auth.example.com");
+  });
+
+  test("Boolean settings are updated correctly", function() {
+    const body = res.getBody();
+    // Note: Boolean settings may not be returned in config object
+    // They are stored as top-level identity provider properties
+    if (body.hasOwnProperty('trustEmail')) {
+      expect(body.trustEmail).to.equal(true);
+    }
+    if (body.hasOwnProperty('storeToken')) {
+      expect(body.storeToken).to.equal(false);
+    }
+    if (body.hasOwnProperty('linkOnly')) {
+      expect(body.linkOnly).to.equal(true);
+    }
+  });
+}

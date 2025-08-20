@@ -1,0 +1,83 @@
+meta {
+  name: Create OIDC Identity Provider
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/identity-providers
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+  X-Auth-Provider: keycloak
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("oidcProviderAlias", `test-oidc-${timestamp}`);
+}
+
+body:json {
+  {
+    "alias": "{{oidcProviderAlias}}",
+    "display_name": "Test OIDC Provider",
+    "type": "oidc",
+    "enabled": true,
+    "config": {
+      "client_id": "test-client-id",
+      "client_secret": "test-client-secret",
+      "issuer_url": "https://auth.example.com",
+      "authorization_url": "https://auth.example.com/auth",
+      "token_url": "https://auth.example.com/token",
+      "userinfo_url": "https://auth.example.com/userinfo",
+      "jwks_url": "https://auth.example.com/keys",
+      "default_scopes": ["openid", "profile", "email"],
+      "trust_email": false,
+      "store_token": true,
+      "link_only": false,
+      "attribute_mappings": [
+        {
+          "name": "email-mapper",
+          "user_attribute": "email",
+          "claim": "email",
+          "sync_mode": "INHERIT"
+        }
+      ]
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    bru.setEnvVar("createdOidcProviderAlias", body.alias);
+  }
+}
+
+tests {
+  test("OIDC provider creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains provider details", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("alias");
+    expect(body.type).to.equal("oidc");
+    expect(body.enabled).to.equal(true);
+    expect(body.display_name).to.equal("Test OIDC Provider");
+  });
+
+  test("Config contains OIDC-specific settings", function() {
+    const body = res.getBody();
+    expect(body.config).to.have.property("clientId", "test-client-id");
+    expect(body.config).to.have.property("issuer", "https://auth.example.com");
+    expect(body.config).to.have.property("authorizationUrl", "https://auth.example.com/auth");
+  });
+}
