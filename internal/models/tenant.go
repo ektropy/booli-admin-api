@@ -22,6 +22,7 @@ type Tenant struct {
 	Domain    string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
 	Type      TenantType     `gorm:"default:'client'" json:"type"`
 	Status    TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
+	ParentMSP string         `gorm:"index;size:255" json:"parent_msp,omitempty"`
 	Settings  datatypes.JSON `gorm:"type:jsonb" json:"settings"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -110,7 +111,7 @@ func (t *Tenant) IsClientTenant() bool {
 }
 
 func (t *Tenant) HasParentMSP() bool {
-	return t.Type == TenantTypeClient
+	return t.Type == TenantTypeClient && t.ParentMSP != ""
 }
 
 func (t *Tenant) CanManageChildTenants() bool {

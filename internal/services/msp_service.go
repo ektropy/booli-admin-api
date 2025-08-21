@@ -16,7 +16,6 @@ type MSPService struct {
 	db                *gorm.DB
 	keycloakAdmin     *keycloak.AdminClient
 	permissionService *PermissionService
-	tenantService     *TenantService
 	logger            *zap.Logger
 }
 
@@ -28,10 +27,6 @@ func NewMSPService(db *gorm.DB, keycloakAdmin *keycloak.AdminClient, logger *zap
 		permissionService: permissionService,
 		logger:            logger,
 	}
-}
-
-func (m *MSPService) SetTenantService(tenantService *TenantService) {
-	m.tenantService = tenantService
 }
 
 func (m *MSPService) CreateMSP(ctx context.Context, req *models.CreateMSPRequest) (*models.MSP, error) {
@@ -254,26 +249,43 @@ func (m *MSPService) CreateClientTenant(ctx context.Context, mspRealm string, re
 		return nil, fmt.Errorf("failed to marshal tenant settings: %w", err)
 	}
 
-	tenantReq := &models.CreateTenantRequest{
-		Name:     req.Name,
-		Domain:   req.Domain,
-		Type:     models.TenantTypeClient,
-		Settings: settingsJSON,
+	// Create tenant in database
+	tenant := &models.Tenant{
+		RealmName:  clientRealmName,
+		Name:       req.Name,
+		Domain:     req.Domain,
+		Type:       models.TenantTypeClient,
+		ParentMSP:  mspRealm,
+		Status:     models.TenantStatusActive,
+		Settings:   settingsJSON,
 	}
 
-	if m.tenantService == nil {
-		return nil, fmt.Errorf("tenant service not initialized")
+	if err := m.db.Create(tenant).Error; err != nil {
+		return nil, fmt.Errorf("failed to create tenant in database: %w", err)
 	}
 
-	tenant, err := m.tenantService.CreateTenant(ctx, tenantReq, mspRealm)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client tenant: %w", err)
+	// Create realm in Keycloak
+	realmRep := &keycloak.RealmRepresentation{
+		Realm:                 clientRealmName,
+		Enabled:               true,
+		DisplayName:           req.Name,
+		LoginWithEmailAllowed: true,
+		RegistrationAllowed:   false,
+		ResetPasswordAllowed:  true,
+		RememberMe:            true,
+		VerifyEmail:           false,
 	}
 
-	tenant.RealmName = clientRealmName
+	if err := m.keycloakAdmin.CreateRealm(ctx, realmRep); err != nil {
+		m.db.Delete(tenant)
+		return nil, fmt.Errorf("failed to create realm in Keycloak: %w", err)
+	}
 
-	if err := m.db.Model(tenant).Update("realm_name", clientRealmName).Error; err != nil {
-		m.logger.Warn("Failed to update tenant realm name", zap.Error(err))
+	// Setup permissions for the new realm
+	if err := m.permissionService.SetupRealmPermissions(ctx, clientRealmName); err != nil {
+		m.keycloakAdmin.DeleteRealm(ctx, clientRealmName)
+		m.db.Delete(tenant)
+		return nil, fmt.Errorf("failed to setup realm permissions: %w", err)
 	}
 
 	m.logger.Info("Client tenant created successfully",

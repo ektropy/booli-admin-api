@@ -35,10 +35,9 @@ const (
 
 	TenantIDKey = "tenant_id"
 
-	// CalVer format: YYYY-MM-DD (Calendar Versioning)
-	// New version for each breaking change release
-	APIVersion  = "2025-08-01"
-	APIBasePath = "/api/" + APIVersion
+	// Resource-based API versioning
+	APIVersion  = "v1"
+	APIBasePath = "/api"
 
 	PathHealth                 = "/health"
 	PathHealthKeycloak         = "/health/keycloak"
@@ -55,12 +54,12 @@ const (
 	PathAuthServiceValidate    = "/service-validate"
 
 	PathAdmin             = "/admin"
-	PathAdminTenants      = APIBasePath + PathAdmin + "/tenants"
-	PathAdminUsers        = APIBasePath + PathAdmin + "/users"
-	PathAdminRoles        = APIBasePath + PathAdmin + "/roles"
-	PathAdminSSO          = APIBasePath + PathAdmin + "/sso"
-	PathAdminAudit        = APIBasePath + PathAdmin + "/audit"
-	PathAdminEnvironments = APIBasePath + PathAdmin + "/environments"
+	PathAdminTenants      = APIBasePath + "/admin/" + APIVersion + "/tenants"
+	PathAdminUsers        = APIBasePath + "/admin/" + APIVersion + "/users"
+	PathAdminRoles        = APIBasePath + "/admin/" + APIVersion + "/roles"
+	PathAdminSSO          = APIBasePath + "/admin/" + APIVersion + "/sso"
+	PathAdminAudit        = APIBasePath + "/admin/" + APIVersion + "/audit"
+	PathAdminEnvironments = APIBasePath + "/admin/" + APIVersion + "/environments"
 
 	PathTenants                   = "/tenants"
 	PathUsers                     = "/users"
@@ -91,11 +90,11 @@ const (
 	PathAdminUsersID          = "/users/:id"
 	PathAdminRolesID          = "/roles/:id"
 
-	EndpointAuthProviders    = APIBasePath + PathAuth + PathAuthProviders
-	EndpointAuthValidate     = APIBasePath + PathAuth + PathAuthValidate
-	EndpointAuthServiceToken = APIBasePath + PathAuth + PathAuthServiceToken
-	EndpointAuthUserInfo     = APIBasePath + PathAuth + PathAuthUserInfo
-	EndpointAdminTenants     = APIBasePath + PathAdmin + PathTenants
-	EndpointAdminUsers       = APIBasePath + PathAdmin + PathUsers
-	EndpointAdminRoles       = APIBasePath + PathAdmin + PathRoles
+	EndpointAuthProviders    = APIBasePath + "/auth/" + APIVersion + PathAuthProviders
+	EndpointAuthValidate     = APIBasePath + "/auth/" + APIVersion + PathAuthValidate
+	EndpointAuthServiceToken = APIBasePath + "/auth/" + APIVersion + PathAuthServiceToken
+	EndpointAuthUserInfo     = APIBasePath + "/auth/" + APIVersion + PathAuthUserInfo
+	EndpointAdminTenants     = APIBasePath + "/admin/" + APIVersion + PathTenants
+	EndpointAdminUsers       = APIBasePath + "/admin/" + APIVersion + PathUsers
+	EndpointAdminRoles       = APIBasePath + "/admin/" + APIVersion + PathRoles
 )

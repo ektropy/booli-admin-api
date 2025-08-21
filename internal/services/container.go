@@ -16,6 +16,7 @@ type Container struct {
 	Audit            *AuditService
 	Environment      *EnvironmentService
 	IdentityProvider *keycloak.IdentityProviderService
+	MSP              *MSPService
 }
 
 func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.AdminClient, logger *zap.Logger, cfg *config.Config) *Container {
@@ -37,5 +38,6 @@ func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.Admi
 		Audit:            NewAuditService(db, logger, cfg),
 		Environment:      NewEnvironmentService(db, valkeyCache, logger),
 		IdentityProvider: keycloak.NewIdentityProviderService(keycloakAdmin, logger),
+		MSP:              NewMSPService(db, keycloakAdmin, logger),
 	}
 }

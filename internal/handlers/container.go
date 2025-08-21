@@ -16,6 +16,7 @@ type Container struct {
 	Audit            *AuditHandler
 	Environment      *EnvironmentHandler
 	IdentityProvider *IdentityProviderHandler
+	MSP              *MSPHandler
 }
 
 type BuildInfo struct {
@@ -35,5 +36,6 @@ func NewContainer(services *services.Container, oidcService *auth.OIDCService, l
 		Audit:            NewAuditHandler(services.Audit, logger),
 		Environment:      NewEnvironmentHandler(services.Environment, logger),
 		IdentityProvider: NewIdentityProviderHandler(services.IdentityProvider, logger),
+		MSP:              NewMSPHandler(services.MSP, logger),
 	}
 }
