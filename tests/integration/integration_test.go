@@ -80,7 +80,7 @@ func (suite *IntegrationTestSuite) TestAuthenticationFlow() {
 	require.NoError(suite.T(), err)
 
 	bodyStr := string(body)
-	assert.Contains(suite.T(), bodyStr, `"error":"Authentication required"`)
+	assert.Contains(suite.T(), bodyStr, `"message":"Authentication required"`)
 }
 
 func (suite *IntegrationTestSuite) TestContainerOrchestration() {
