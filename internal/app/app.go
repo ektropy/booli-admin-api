@@ -14,6 +14,7 @@ import (
 	"github.com/booli/booli-admin-api/internal/initialization"
 	"github.com/booli/booli-admin-api/internal/keycloak"
 	"github.com/booli/booli-admin-api/internal/middleware"
+	"github.com/booli/booli-admin-api/internal/routing"
 	"github.com/booli/booli-admin-api/internal/services"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -28,10 +29,11 @@ type BuildInfo struct {
 }
 
 type Application struct {
-	config    *config.Config
-	logger    *zap.Logger
-	server    *http.Server
-	buildInfo BuildInfo
+	config        *config.Config
+	logger        *zap.Logger
+	server        *http.Server
+	keycloakAdmin *keycloak.AdminClient
+	buildInfo     BuildInfo
 }
 
 func New(cfg *config.Config, logger *zap.Logger, buildInfo BuildInfo) *Application {
@@ -98,6 +100,7 @@ func (app *Application) Initialize() error {
 		app.config.Keycloak.CACertPath,
 		app.logger,
 	)
+	app.keycloakAdmin = keycloakAdmin
 
 	oidcService := auth.NewOIDCService(app.logger)
 
@@ -194,97 +197,19 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 }
 
 func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Container, oidcService *auth.OIDCService) {
-	router.GET(constants.PathHealth, handlers.Health.Check)
-	router.GET(constants.PathHealthKeycloak, handlers.Health.ValidateKeycloak)
+	// Health and utility endpoints
+	router.GET("/health", handlers.Health.Check)
+	router.GET("/health/keycloak", handlers.Health.ValidateKeycloak)
 	router.GET("/version", handlers.Health.GetVersionInfo)
-	router.GET(constants.PathSwagger+"*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	v1 := router.Group(constants.APIBasePath)
+	// Setup resource-based API routes
+	rbacMiddleware := middleware.NewRBACMiddleware(app.keycloakAdmin, app.logger)
+	apiRouter := routing.NewAPIRouter(rbacMiddleware, app.logger)
+	apiRouter.SetupAPIRoutes(router, handlers)
 
-	auth := v1.Group(constants.PathAuth)
-	{
-		auth.GET(constants.PathAuthProviders, handlers.Auth.GetProviders)
-		auth.GET(constants.PathAuthProvidersWellKnown, handlers.Auth.GetWellKnown)
-		auth.POST(constants.PathAuthLogin, handlers.Auth.InitiateLogin)
-		auth.GET(constants.PathAuthCallback, handlers.Auth.HandleCallback)
-		auth.POST(constants.PathAuthValidate, handlers.Auth.ValidateToken)
-		auth.POST(constants.PathAuthLogout, handlers.Auth.Logout)
-		auth.GET(constants.PathAuthUserInfo, handlers.Auth.GetUserInfo)
-		auth.POST(constants.PathAuthServiceToken, handlers.Auth.GetServiceToken)
-		auth.POST(constants.PathAuthServiceValidate, handlers.Auth.ValidateServiceToken)
-	}
-
-	protected := v1.Group("/")
-	protected.Use(middleware.OIDCAuthRequired(oidcService, app.logger))
-
-	app.logger.Info("Routes configured",
-		zap.String("admin_tenants_path", constants.PathAdminTenants))
-	{
-		admin := protected.Group(constants.PathAdmin)
-		admin.Use(middleware.SuperAdminRequired())
-		{
-			admin.GET(constants.PathTenants, handlers.Tenant.List)
-			admin.POST(constants.PathTenants, handlers.Tenant.Create)
-			admin.GET(constants.PathAdminTenantsID, handlers.Tenant.Get)
-			admin.PUT(constants.PathAdminTenantsID, handlers.Tenant.Update)
-			admin.DELETE(constants.PathAdminTenantsID, handlers.Tenant.Delete)
-			admin.POST(constants.PathAdminTenantsProvision, handlers.Tenant.ProvisionTenant)
-
-			admin.GET(constants.PathUsers, handlers.User.List)
-			admin.POST(constants.PathUsers, handlers.User.Create)
-			admin.GET(constants.PathAdminUsersID, handlers.User.Get)
-			admin.PUT(constants.PathAdminUsersID, handlers.User.Update)
-			admin.DELETE(constants.PathAdminUsersID, handlers.User.Delete)
-		}
-
-		tenantScoped := protected.Group("/")
-		tenantScoped.Use(middleware.RealmContextRequired())
-		{
-			tenantScoped.GET(constants.PathUsers, handlers.User.List)
-			tenantScoped.POST(constants.PathUsers, handlers.User.Create)
-			tenantScoped.GET(constants.PathUsersID, handlers.User.Get)
-			tenantScoped.PUT(constants.PathUsersID, handlers.User.Update)
-			tenantScoped.DELETE(constants.PathUsersID, handlers.User.Delete)
-			bulkOps := tenantScoped.Group("/")
-			bulkOps.Use(middleware.BulkOperationRateLimit(app.logger))
-			bulkOps.Use(middleware.BulkOperationHeaders())
-			{
-				bulkOps.POST(constants.PathUsersBulkCreate, handlers.User.BulkCreate)
-			}
-
-			csvOps := tenantScoped.Group("/")
-			csvOps.Use(middleware.CSVImportRateLimit(app.logger))
-			csvOps.Use(middleware.BulkOperationHeaders())
-			{
-				csvOps.POST(constants.PathUsersImportCSV, handlers.User.ImportCSV)
-			}
-
-			tenantScoped.GET(constants.PathSSOProviders, handlers.SSO.ListProviders)
-			tenantScoped.POST(constants.PathSSOProviders, handlers.SSO.CreateProvider)
-			tenantScoped.GET(constants.PathSSOProvidersID, handlers.SSO.GetProvider)
-			tenantScoped.PUT(constants.PathSSOProvidersID, handlers.SSO.UpdateProvider)
-			tenantScoped.DELETE(constants.PathSSOProvidersID, handlers.SSO.DeleteProvider)
-			tenantScoped.GET(constants.PathAudit, handlers.Audit.List)
-			tenantScoped.GET(constants.PathAuditID, handlers.Audit.Get)
-			tenantScoped.POST(constants.PathAuditExport, handlers.Audit.Export)
-			tenantScoped.GET(constants.PathEnvironments, handlers.Environment.ListEnvironments)
-			tenantScoped.POST(constants.PathEnvironments, handlers.Environment.CreateEnvironment)
-			tenantScoped.GET(constants.PathEnvironmentsID, handlers.Environment.GetEnvironment)
-			tenantScoped.PUT(constants.PathEnvironmentsID, handlers.Environment.UpdateEnvironment)
-			tenantScoped.DELETE(constants.PathEnvironmentsID, handlers.Environment.DeleteEnvironment)
-			tenantScoped.POST(constants.PathEnvironmentAccess, handlers.Environment.GrantAccess)
-			tenantScoped.DELETE(constants.PathEnvironmentAccessGrant, handlers.Environment.RevokeAccess)
-			tenantScoped.GET(constants.PathEnvironmentSecurityData, handlers.Environment.GetSIEMEnrichmentData)
-			tenantScoped.GET(constants.PathEnvironmentNetworks, handlers.Environment.GetNetworkRanges)
-			tenantScoped.GET(constants.PathEnvironmentInfrastructure, handlers.Environment.GetInfrastructureIPs)
-			
-			tenantScoped.GET(constants.PathIdentityProviders, handlers.IdentityProvider.ListIdentityProviders)
-			tenantScoped.POST(constants.PathIdentityProviders, handlers.IdentityProvider.CreateIdentityProvider)
-			tenantScoped.GET(constants.PathIdentityProvidersID, handlers.IdentityProvider.GetIdentityProvider)
-			tenantScoped.PUT(constants.PathIdentityProvidersID, handlers.IdentityProvider.UpdateIdentityProvider)
-			tenantScoped.DELETE(constants.PathIdentityProvidersID, handlers.IdentityProvider.DeleteIdentityProvider)
-		}
-	}
+	app.logger.Info("Routes configured with resource-based API structure",
+		zap.String("api_version", constants.APIVersion))
 }
 
 func (app *Application) Start() error {

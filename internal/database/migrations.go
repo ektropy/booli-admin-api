@@ -13,6 +13,7 @@ func Initialize(db *gorm.DB) error {
 	}
 
 	if err := db.AutoMigrate(
+		&models.MSP{},
 		&models.Tenant{},
 		&models.AuditLog{},
 		&models.TenantEnvironment{},
@@ -60,5 +61,6 @@ func DropAllTables(db *gorm.DB) error {
 		&models.TenantEnvironment{},
 		&models.AuditLog{},
 		&models.Tenant{},
+		&models.MSP{},
 	)
 }
