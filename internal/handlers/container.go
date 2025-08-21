@@ -30,7 +30,7 @@ func NewContainer(services *services.Container, oidcService *auth.OIDCService, l
 	return &Container{
 		Health:           NewHealthHandler(logger, cfg, buildInfo),
 		Auth:             NewAuthHandler(oidcService, logger),
-		Tenant:           NewTenantHandler(services.Tenant, logger),
+		Tenant:           NewTenantHandler(services.Tenant, services.User, logger),
 		User:             NewUserHandler(services.User, logger),
 		SSO:              NewSSOHandler(services.SSO, logger),
 		Audit:            NewAuditHandler(services.Audit, logger),

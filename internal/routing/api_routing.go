@@ -55,6 +55,14 @@ func (r *APIRouter) setupTenantRoutes(group *gin.RouterGroup, tenantHandler *han
 	group.GET("/:id", tenantHandler.Get)                    // Get tenant details
 	group.PUT("/:id", tenantHandler.Update)                 // Update tenant
 	group.DELETE("/:id", tenantHandler.Delete)              // Delete tenant
+	
+	// Tenant-scoped user management using tenant ID as identifier
+	usersGroup := group.Group("/:id/users")
+	usersGroup.POST("", tenantHandler.CreateTenantUser)         // Create user in tenant
+	usersGroup.GET("", tenantHandler.ListTenantUsers)           // List tenant users
+	usersGroup.GET("/:user_id", tenantHandler.GetTenantUser)    // Get tenant user
+	usersGroup.PUT("/:user_id", tenantHandler.UpdateTenantUser) // Update tenant user
+	usersGroup.DELETE("/:user_id", tenantHandler.DeleteTenantUser) // Delete tenant user
 }
 
 func (r *APIRouter) setupAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {

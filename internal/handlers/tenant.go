@@ -11,6 +11,7 @@ import (
 	"github.com/booli/booli-admin-api/internal/models"
 	"github.com/booli/booli-admin-api/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
 )
@@ -29,13 +30,17 @@ type TenantService interface {
 
 type TenantHandler struct {
 	tenantService TenantService
+	userService   UserServiceInterface
 	logger        *zap.Logger
+	validator     *validator.Validate
 }
 
-func NewTenantHandler(tenantService TenantService, logger *zap.Logger) *TenantHandler {
+func NewTenantHandler(tenantService TenantService, userService UserServiceInterface, logger *zap.Logger) *TenantHandler {
 	return &TenantHandler{
 		tenantService: tenantService,
+		userService:   userService,
 		logger:        logger,
+		validator:     validator.New(),
 	}
 }
 
@@ -425,6 +430,321 @@ func (h *TenantHandler) TestMSPSSO(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// Tenant-scoped user management methods
+
+// @Summary Create user in tenant
+// @Description Create a new user within a specific tenant
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param request body models.CreateUserRequest true "User creation request"
+// @Success 201 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /api/tenants/v1/{tenant_id}/users [post]
+func (h *TenantHandler) CreateTenantUser(c *gin.Context) {
+	tenantID := c.Param("id")
+	if tenantID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+		return
+	}
+
+	// Get tenant to verify it exists and get realm name
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant", zap.Error(err))
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
+		return
+	}
+
+	var req models.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid request body", err.Error())
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeValidationFailed,
+			"Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	// Use tenant's realm name for user creation
+	createdUser, err := h.userService.CreateUser(c.Request.Context(), tenant.RealmName, &req)
+	if err != nil {
+		h.logger.Error("Failed to create user in tenant", 
+			zap.Error(err), 
+			zap.String("tenant_id", tenantID),
+			zap.String("realm", tenant.RealmName))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create user", nil)
+		return
+	}
+
+	c.JSON(http.StatusCreated, createdUser.ToResponse())
+}
+
+// @Summary List tenant users
+// @Description Get paginated list of users within a specific tenant
+// @Tags tenants
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param page query int false "Page number (default: 1)"
+// @Param page_size query int false "Page size (default: 20, min: 1, max: 100)"
+// @Param search_term query string false "Search term for username or email"
+// @Param status query string false "Filter by user status (active, inactive)"
+// @Param role query string false "Filter by user role"
+// @Success 200 {object} models.UserListResponse
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /api/tenants/v1/{tenant_id}/users [get]
+func (h *TenantHandler) ListTenantUsers(c *gin.Context) {
+	tenantID := c.Param("id")
+	if tenantID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+		return
+	}
+
+	// Get tenant to verify it exists and get realm name
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant", zap.Error(err))
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
+		return
+	}
+
+	var req models.UserSearchRequest
+	req.Page = 1
+	req.PageSize = constants.DefaultPageSize
+
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			req.Page = parsed
+		}
+	}
+
+	if ps := c.Query("page_size"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed >= constants.MinPageSize && parsed <= constants.MaxPageSize {
+			req.PageSize = parsed
+		}
+	}
+
+	if query := c.Query("search_term"); query != "" {
+		req.SearchTerm = query
+	}
+
+	if status := c.Query("status"); status != "" {
+		req.Status = status
+	}
+
+	if role := c.Query("role"); role != "" {
+		req.Role = role
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeValidationFailed,
+			"Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	users, total, err := h.userService.ListUsers(c.Request.Context(), tenant.RealmName, &req)
+	if err != nil {
+		h.logger.Error("Failed to list tenant users", 
+			zap.Error(err),
+			zap.String("tenant_id", tenantID),
+			zap.String("realm", tenant.RealmName))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError,
+			"Failed to list users", err.Error())
+		return
+	}
+
+	response := &models.UserListResponse{
+		Users:      users,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Get tenant user
+// @Description Get user details within a specific tenant
+// @Tags tenants
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param user_id path string true "User ID"
+// @Success 200 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /api/tenants/v1/{tenant_id}/users/{user_id} [get]
+func (h *TenantHandler) GetTenantUser(c *gin.Context) {
+	tenantID := c.Param("id")
+	userID := c.Param("user_id")
+	
+	if tenantID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+		return
+	}
+	
+	if userID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
+		return
+	}
+
+	// Get tenant to verify it exists and get realm name
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant", zap.Error(err))
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
+		return
+	}
+
+	user, err := h.userService.GetUser(c.Request.Context(), tenant.RealmName, userID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant user", 
+			zap.Error(err),
+			zap.String("tenant_id", tenantID),
+			zap.String("user_id", userID),
+			zap.String("realm", tenant.RealmName))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get user", nil)
+		return
+	}
+
+	if user == nil {
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "User not found", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, user.ToResponse())
+}
+
+// @Summary Update tenant user
+// @Description Update user information within a specific tenant
+// @Tags tenants
+// @Accept json
+// @Produce json
+// @Param tenant_id path string true "Tenant ID"
+// @Param user_id path string true "User ID"
+// @Param request body models.UpdateUserRequest true "User update request"
+// @Success 200 {object} models.User
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /api/tenants/v1/{tenant_id}/users/{user_id} [put]
+func (h *TenantHandler) UpdateTenantUser(c *gin.Context) {
+	tenantID := c.Param("id")
+	userID := c.Param("user_id")
+	
+	if tenantID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+		return
+	}
+	
+	if userID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
+		return
+	}
+
+	// Get tenant to verify it exists and get realm name
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant", zap.Error(err))
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
+		return
+	}
+
+	var req models.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid request body", err.Error())
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeValidationFailed,
+			"Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	user, err := h.userService.UpdateUser(c.Request.Context(), tenant.RealmName, userID, &req)
+	if err != nil {
+		h.logger.Error("Failed to update tenant user", 
+			zap.Error(err),
+			zap.String("tenant_id", tenantID),
+			zap.String("user_id", userID),
+			zap.String("realm", tenant.RealmName))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to update user", nil)
+		return
+	}
+
+	if user == nil {
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "User not found", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, user.ToResponse())
+}
+
+// @Summary Delete tenant user
+// @Description Delete user within a specific tenant
+// @Tags tenants
+// @Param tenant_id path string true "Tenant ID"
+// @Param user_id path string true "User ID"
+// @Success 204
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Security BearerAuth
+// @Router /api/tenants/v1/{tenant_id}/users/{user_id} [delete]
+func (h *TenantHandler) DeleteTenantUser(c *gin.Context) {
+	tenantID := c.Param("id")
+	userID := c.Param("user_id")
+	
+	if tenantID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
+		return
+	}
+	
+	if userID == "" {
+		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
+		return
+	}
+
+	// Get tenant to verify it exists and get realm name
+	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get tenant", zap.Error(err))
+		utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Tenant not found", nil)
+		return
+	}
+
+	err = h.userService.DeleteUser(c.Request.Context(), tenant.RealmName, userID)
+	if err != nil {
+		h.logger.Error("Failed to delete tenant user", 
+			zap.Error(err),
+			zap.String("tenant_id", tenantID),
+			zap.String("user_id", userID),
+			zap.String("realm", tenant.RealmName))
+		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to delete user", nil)
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }
 
 func contains(slice []string, item string) bool {
