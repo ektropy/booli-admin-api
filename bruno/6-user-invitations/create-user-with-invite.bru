@@ -1,0 +1,58 @@
+meta {
+  name: Create User with Email Invitation
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/users
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("testUserEmail", `test-invite-${timestamp}@example.com`);
+  bru.setEnvVar("testUsername", `test-invite-${timestamp}`);
+}
+
+body:json {
+  {
+    "tenant_realm": "{{tenantRealm}}",
+    "email": "{{testUserEmail}}",
+    "first_name": "Test",
+    "last_name": "Invite",
+    "username": "{{testUsername}}",
+    "enabled": false,
+    "default_role": "tenant-user",
+    "send_invite": true
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    bru.setEnvVar("inviteUserId", body.id);
+  }
+}
+
+tests {
+  test("User creation with invite returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains user data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("id");
+    expect(body.email).to.equal(bru.getEnvVar("testUserEmail"));
+    expect(body.enabled).to.be.false; // Should be disabled until invite is completed
+  });
+}

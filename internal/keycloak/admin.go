@@ -1733,6 +1733,66 @@ func (c *AdminClient) ResetUserPassword(ctx context.Context, realmName, userID, 
 	return nil
 }
 
+func (c *AdminClient) SendVerifyEmail(ctx context.Context, realmName, userID string) error {
+	endpoint := fmt.Sprintf("/%s/users/%s/send-verify-email", realmName, userID)
+	
+	resp, err := c.makeRequest(ctx, "PUT", endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send verify email: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusNoContent {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return fmt.Errorf("send verify email failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	
+	c.logger.Info("Sent verification email",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID))
+	
+	return nil
+}
+
+func (c *AdminClient) ExecuteActionsEmail(ctx context.Context, realmName, userID string, actions []string, lifespan int, clientID, redirectURI string) error {
+	endpoint := fmt.Sprintf("/%s/users/%s/execute-actions-email", realmName, userID)
+	
+	params := url.Values{}
+	if clientID != "" {
+		params.Add("client_id", clientID)
+	}
+	if redirectURI != "" {
+		params.Add("redirect_uri", redirectURI)
+	}
+	if lifespan > 0 {
+		params.Add("lifespan", fmt.Sprintf("%d", lifespan))
+	}
+	
+	if len(params) > 0 {
+		endpoint = endpoint + "?" + params.Encode()
+	}
+	
+	resp, err := c.makeRequest(ctx, "PUT", endpoint, actions)
+	if err != nil {
+		return fmt.Errorf("failed to send execute actions email: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusNoContent {
+		body := make([]byte, 1024)
+		_, _ = resp.Body.Read(body)
+		return fmt.Errorf("execute actions email failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	
+	c.logger.Info("Sent execute actions email",
+		zap.String("realm", realmName),
+		zap.String("user_id", userID),
+		zap.Strings("actions", actions))
+	
+	return nil
+}
+
 func (c *AdminClient) SearchUsers(ctx context.Context, realmName, query string, max int) ([]UserRepresentation, error) {
 	endpoint := fmt.Sprintf("/%s/users?search=%s", realmName, url.QueryEscape(query))
 	if max > 0 {

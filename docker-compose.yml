@@ -131,6 +131,21 @@ services:
     profiles:
       - tools
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: booli-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      - MP_MAX_MESSAGES=5000
+      - MP_DATA_FILE=/data/mailpit.db
+      - MP_SMTP_AUTH_DISABLED=1
+    volumes:
+      - mailpit_data:/data
+    profiles:
+      - tools
+
 volumes:
   postgres_data:
     driver: local
@@ -139,4 +154,6 @@ volumes:
   keycloak_data:
     driver: local
   pgadmin_data:
+    driver: local
+  mailpit_data:
     driver: local

@@ -131,6 +131,22 @@ func (s *UserService) CreateUser(ctx context.Context, realmName string, req *mod
 		zap.String("username", req.Username),
 		zap.String("user_id", createdUser.ID))
 
+	if req.SendInvite {
+		actions := []string{"UPDATE_PASSWORD", "VERIFY_EMAIL"}
+		lifespan := 259200 // 72 hours in seconds
+		
+		if err := s.keycloakAdmin.ExecuteActionsEmail(ctx, realmName, createdUser.ID, actions, lifespan, "", ""); err != nil {
+			s.logger.Warn("Failed to send invitation email",
+				zap.String("user_id", createdUser.ID),
+				zap.String("email", req.Email),
+				zap.Error(err))
+		} else {
+			s.logger.Info("Sent invitation email",
+				zap.String("user_id", createdUser.ID),
+				zap.String("email", req.Email))
+		}
+	}
+
 	return s.GetUser(ctx, realmName, createdUser.ID)
 }
 

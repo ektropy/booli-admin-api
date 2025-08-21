@@ -45,7 +45,7 @@ type TestUser struct {
 
 func GetTestConfig() *TestConfig {
 	return &TestConfig{
-		KeycloakVersion: getEnvOrDefault("TEST_KEYCLOAK_VERSION", "26.3.2"),
+		KeycloakVersion: getEnvOrDefault("TEST_KEYCLOAK_VERSION", "26.3.3"),
 		PostgresVersion: getEnvOrDefault("TEST_POSTGRES_VERSION", "15-alpine"),
 		ValkeyVersion:   getEnvOrDefault("TEST_VALKEY_VERSION", "8.0-alpine"),
 
