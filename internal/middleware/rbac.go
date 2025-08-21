@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -131,6 +130,10 @@ func (r *RBACMiddleware) RequireAdminAccess() gin.HandlerFunc {
 
 func (r *RBACMiddleware) RequireMSPAdminAccess() gin.HandlerFunc {
 	return r.RequirePermissionScopes("manage-realm", "manage-users")
+}
+
+func (r *RBACMiddleware) RequireRealmAccess() gin.HandlerFunc {
+	return r.RequireAuthentication()
 }
 
 func (r *RBACMiddleware) RequireAnyRole(roles ...string) gin.HandlerFunc {
@@ -265,12 +268,12 @@ func (r *RBACMiddleware) extractRealmFromContext(c *gin.Context) string {
 
 func (r *RBACMiddleware) extractSourceRealmFromContext(c *gin.Context) string {
 	if providerName, exists := c.Get("provider_name"); exists {
-		return r.extractRealmFromProvider(providerName.(string))
+		return r.ExtractRealmFromProvider(providerName.(string))
 	}
 	return ""
 }
 
-func (r *RBACMiddleware) extractRealmFromProvider(providerName string) string {
+func (r *RBACMiddleware) ExtractRealmFromProvider(providerName string) string {
 	if strings.HasPrefix(providerName, "keycloak-") {
 		parts := strings.Split(providerName, "-")
 		if len(parts) >= 2 {

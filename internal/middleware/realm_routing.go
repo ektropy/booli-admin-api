@@ -154,7 +154,7 @@ func (r *MSPRealmRouter) GetUserRealmAccessSummary() gin.HandlerFunc {
 		providerName, _ := c.Get("provider_name")
 		sourceRealm := ""
 		if providerName != nil {
-			sourceRealm = extractRealmFromProvider(providerName.(string))
+			sourceRealm = r.rbac.ExtractRealmFromProvider(providerName.(string))
 		}
 
 		summary := &RealmAccessSummary{
