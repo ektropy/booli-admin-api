@@ -53,13 +53,22 @@ const (
 	PathAuthServiceToken       = "/service-token"
 	PathAuthServiceValidate    = "/service-validate"
 
+	// Resource-based API paths
+	PathMSPs              = APIBasePath + "/msps/" + APIVersion
+	PathTenantAPI         = APIBasePath + "/tenants/" + APIVersion  
+	PathUsersAPI          = APIBasePath + "/users/" + APIVersion
+	PathAuthAPI           = APIBasePath + "/auth/" + APIVersion
+	PathIdentityAPI       = APIBasePath + "/identity/" + APIVersion
+	PathAdminAPI          = APIBasePath + "/admin/" + APIVersion
+	
+	// Legacy admin paths for backward compatibility in tests
 	PathAdmin             = "/admin"
-	PathAdminTenants      = APIBasePath + "/admin/" + APIVersion + "/tenants"
-	PathAdminUsers        = APIBasePath + "/admin/" + APIVersion + "/users"
-	PathAdminRoles        = APIBasePath + "/admin/" + APIVersion + "/roles"
-	PathAdminSSO          = APIBasePath + "/admin/" + APIVersion + "/sso"
-	PathAdminAudit        = APIBasePath + "/admin/" + APIVersion + "/audit"
-	PathAdminEnvironments = APIBasePath + "/admin/" + APIVersion + "/environments"
+	PathAdminTenants      = PathTenantAPI
+	PathAdminUsers        = PathUsersAPI
+	PathAdminRoles        = PathAdminAPI + "/roles"
+	PathAdminSSO          = PathAdminAPI + "/sso"
+	PathAdminAudit        = PathAdminAPI + "/audit"
+	PathAdminEnvironments = PathAdminAPI + "/environments"
 
 	PathTenants                   = "/tenants"
 	PathUsers                     = "/users"
@@ -90,11 +99,11 @@ const (
 	PathAdminUsersID          = "/users/:id"
 	PathAdminRolesID          = "/roles/:id"
 
-	EndpointAuthProviders    = APIBasePath + "/auth/" + APIVersion + PathAuthProviders
-	EndpointAuthValidate     = APIBasePath + "/auth/" + APIVersion + PathAuthValidate
-	EndpointAuthServiceToken = APIBasePath + "/auth/" + APIVersion + PathAuthServiceToken
-	EndpointAuthUserInfo     = APIBasePath + "/auth/" + APIVersion + PathAuthUserInfo
-	EndpointAdminTenants     = APIBasePath + "/admin/" + APIVersion + PathTenants
-	EndpointAdminUsers       = APIBasePath + "/admin/" + APIVersion + PathUsers
-	EndpointAdminRoles       = APIBasePath + "/admin/" + APIVersion + PathRoles
+	EndpointAuthProviders    = PathAuthAPI + PathAuthProviders
+	EndpointAuthValidate     = PathAuthAPI + PathAuthValidate
+	EndpointAuthServiceToken = PathAuthAPI + PathAuthServiceToken
+	EndpointAuthUserInfo     = PathAuthAPI + PathAuthUserInfo
+	EndpointAdminTenants     = PathTenantAPI
+	EndpointAdminUsers       = PathUsersAPI
+	EndpointAdminRoles       = PathAdminAPI + PathRoles
 )
