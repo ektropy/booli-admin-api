@@ -49,7 +49,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		assert.Equal(t, "msp-client", config.Clients[0].ClientID)
 		assert.Len(t, config.Roles, 3)
 		assert.Len(t, config.Users, 1)
-		assert.Equal(t, "admin", config.Users[0].Username)
+		assert.Equal(t, "msp-admin", config.Users[0].Username)
 		assert.Len(t, config.OIDCProviders, 1)
 		assert.Equal(t, "keycloak", config.OIDCProviders[0].Name)
 	})

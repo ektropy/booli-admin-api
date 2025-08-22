@@ -49,20 +49,24 @@ func GetPlatformAdminConfig(logger *zap.Logger) (*PlatformAdminConfig, error) {
 		config.Password = generatedPassword
 		config.ForcePasswordChange = true
 
-		logger.Info("=====================================")
-		logger.Info("PLATFORM ADMIN CREDENTIALS GENERATED")
-		logger.Info("=====================================")
-		logger.Info("Username", zap.String("value", config.Username))
-		logger.Info("Password", zap.String("value", config.Password))
-		logger.Info("Email", zap.String("value", config.Email))
-		logger.Info("=====================================")
-		logger.Warn("SAVE THESE CREDENTIALS SECURELY - THEY WON'T BE SHOWN AGAIN")
-		logger.Warn("Password change will be required on first login")
-		logger.Info("=====================================")
+		if logger != nil {
+			logger.Info("=====================================")
+			logger.Info("PLATFORM ADMIN CREDENTIALS GENERATED")
+			logger.Info("=====================================")
+			logger.Info("Username", zap.String("value", config.Username))
+			logger.Info("Password", zap.String("value", config.Password))
+			logger.Info("Email", zap.String("value", config.Email))
+			logger.Info("=====================================")
+			logger.Warn("SAVE THESE CREDENTIALS SECURELY - THEY WON'T BE SHOWN AGAIN")
+			logger.Warn("Password change will be required on first login")
+			logger.Info("=====================================")
+		}
 	} else {
-		logger.Info("Using configured platform admin credentials",
-			zap.String("username", config.Username),
-			zap.String("email", config.Email))
+		if logger != nil {
+			logger.Info("Using configured platform admin credentials",
+				zap.String("username", config.Username),
+				zap.String("email", config.Email))
+		}
 	}
 
 	return config, nil
@@ -83,16 +87,18 @@ func GetDefaultMSPAdminConfig(logger *zap.Logger) (*PlatformAdminConfig, error) 
 		config.Password = generatedPassword
 		config.ForcePasswordChange = true
 
-		logger.Info("=====================================")
-		logger.Info("DEFAULT MSP ADMIN CREDENTIALS GENERATED")
-		logger.Info("=====================================")
-		logger.Info("Username", zap.String("value", config.Username))
-		logger.Info("Password", zap.String("value", config.Password))
-		logger.Info("Email", zap.String("value", config.Email))
-		logger.Info("=====================================")
-		logger.Warn("SAVE THESE CREDENTIALS SECURELY - THEY WON'T BE SHOWN AGAIN")
-		logger.Warn("Password change will be required on first login")
-		logger.Info("=====================================")
+		if logger != nil {
+			logger.Info("=====================================")
+			logger.Info("DEFAULT MSP ADMIN CREDENTIALS GENERATED")
+			logger.Info("=====================================")
+			logger.Info("Username", zap.String("value", config.Username))
+			logger.Info("Password", zap.String("value", config.Password))
+			logger.Info("Email", zap.String("value", config.Email))
+			logger.Info("=====================================")
+			logger.Warn("SAVE THESE CREDENTIALS SECURELY - THEY WON'T BE SHOWN AGAIN")
+			logger.Warn("Password change will be required on first login")
+			logger.Info("=====================================")
+		}
 	}
 
 	return config, nil
