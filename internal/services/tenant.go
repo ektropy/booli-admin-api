@@ -438,11 +438,26 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 
 	createdUser, err := s.keycloakAdmin.CreateUser(ctx, realmName, adminUser)
 	if err != nil {
-		s.logger.Error("Failed to create admin user",
-			zap.String("realm", realmName),
-			zap.String("username", adminUser.Username),
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to create admin user: %w", err)
+		if strings.Contains(err.Error(), "already exists") {
+			s.logger.Info("Admin user already exists, getting existing user",
+				zap.String("realm", realmName),
+				zap.String("username", adminUser.Username))
+			existingUser, getErr := s.keycloakAdmin.GetUserByUsername(ctx, realmName, adminUser.Username)
+			if getErr != nil {
+				s.logger.Error("Failed to get existing admin user",
+					zap.String("realm", realmName),
+					zap.String("username", adminUser.Username),
+					zap.Error(getErr))
+				return nil, fmt.Errorf("failed to get existing admin user: %w", getErr)
+			}
+			createdUser = existingUser
+		} else {
+			s.logger.Error("Failed to create admin user",
+				zap.String("realm", realmName),
+				zap.String("username", adminUser.Username),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to create admin user: %w", err)
+		}
 	}
 
 	adminRole, err := s.keycloakAdmin.GetRealmRole(ctx, realmName, "admin")
