@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/booli/booli-admin-api/internal/constants"
 	"github.com/booli/booli-admin-api/internal/middleware"
@@ -614,12 +615,16 @@ func (h *TenantHandler) GetTenantUser(c *gin.Context) {
 
 	user, err := h.userService.GetUser(c.Request.Context(), tenant.RealmName, userID)
 	if err != nil {
-		h.logger.Error("Failed to get tenant user", 
-			zap.Error(err),
-			zap.String("tenant_id", tenantID),
-			zap.String("user_id", userID),
-			zap.String("realm", tenant.RealmName))
-		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get user", nil)
+		if strings.Contains(err.Error(), "user not found") || strings.Contains(err.Error(), "not found") {
+			utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "User not found", nil)
+		} else {
+			h.logger.Error("Failed to get tenant user", 
+				zap.Error(err),
+				zap.String("tenant_id", tenantID),
+				zap.String("user_id", userID),
+				zap.String("realm", tenant.RealmName))
+			utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get user", nil)
+		}
 		return
 	}
 

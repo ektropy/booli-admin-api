@@ -381,15 +381,22 @@ func (s *TenantService) createRealmDefaultRoles(ctx context.Context, realmName s
 	for _, roleName := range rolesToCreate {
 		description := fmt.Sprintf("Default %s role for tenant", roleName)
 		if err := s.keycloakAdmin.CreateRealmRole(ctx, realmName, roleName, description); err != nil {
-			s.logger.Error("Failed to create realm role",
+			if strings.Contains(err.Error(), "already exists") {
+				s.logger.Info("Realm role already exists, continuing",
+					zap.String("realm", realmName),
+					zap.String("role", roleName))
+			} else {
+				s.logger.Error("Failed to create realm role",
+					zap.String("realm", realmName),
+					zap.String("role", roleName),
+					zap.Error(err))
+				return fmt.Errorf("failed to create role %s: %w", roleName, err)
+			}
+		} else {
+			s.logger.Info("Created realm role",
 				zap.String("realm", realmName),
-				zap.String("role", roleName),
-				zap.Error(err))
-			return fmt.Errorf("failed to create role %s: %w", roleName, err)
+				zap.String("role", roleName))
 		}
-		s.logger.Info("Created realm role",
-			zap.String("realm", realmName),
-			zap.String("role", roleName))
 	}
 
 	s.logger.Info("All default realm roles created successfully",

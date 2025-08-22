@@ -73,7 +73,7 @@ func (suite *OAuth2DebugTestSuite) TestMinimalOAuth2Provider() {
 	}
 
 	resp, err := suite.MakeRequest("POST", 
-		"/identity-providers",
+		"/identity/v1/",
 		map[string]string{
 			"Authorization":   "Bearer " + suite.mspAdminToken,
 			"X-Auth-Provider": "keycloak",
