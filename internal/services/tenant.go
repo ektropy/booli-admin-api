@@ -318,13 +318,18 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 		zap.String("realm_name", realmName))
 
 	if err := s.keycloakAdmin.CreateRealm(ctx, realm); err != nil {
-		s.logger.Error("Keycloak realm creation failed",
-			zap.String("realm_name", realmName),
-			zap.Error(err))
-		return "", fmt.Errorf("failed to create Keycloak realm: %w", err)
+		if strings.Contains(err.Error(), "already exists") {
+			s.logger.Info("Keycloak realm already exists, continuing",
+				zap.String("realm_name", realmName))
+		} else {
+			s.logger.Error("Keycloak realm creation failed",
+				zap.String("realm_name", realmName),
+				zap.Error(err))
+			return "", fmt.Errorf("failed to create Keycloak realm: %w", err)
+		}
+	} else {
+		s.logger.Info("Keycloak realm created successfully", zap.String("realm_name", realmName))
 	}
-
-	s.logger.Info("Keycloak realm created successfully", zap.String("realm_name", realmName))
 
 	if err := s.createRealmDefaultRoles(ctx, realmName, tenantType); err != nil {
 		s.logger.Error("Failed to create default roles, cleaning up realm",
