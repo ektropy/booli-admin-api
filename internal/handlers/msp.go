@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/booli/booli-admin-api/internal/models"
+	"github.com/booli/booli-admin-api/internal/services"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -18,8 +19,11 @@ type MSPService interface {
 	UpdateMSP(ctx context.Context, realmName string, req *models.UpdateMSPRequest) (*models.MSP, error)
 	DeleteMSP(ctx context.Context, realmName string) error
 	AddMSPStaff(ctx context.Context, mspRealm string, req *models.AddMSPStaffRequest) (*models.MSPStaffMember, error)
+	ListMSPStaff(ctx context.Context, mspRealm string, page, pageSize int) (*models.MSPStaffListResponse, error)
 	CreateClientTenant(ctx context.Context, mspRealm string, req *models.CreateClientTenantRequest) (*models.Tenant, error)
 	GetMSPClientTenants(ctx context.Context, mspRealm string, page, pageSize int) (*models.ClientTenantListResponse, error)
+	HealthCheck(ctx context.Context) ([]services.MSPHealth, error)
+	Reconcile(ctx context.Context, realmName string) (*services.MSPHealth, error)
 }
 
 type MSPHandler struct {
@@ -299,6 +303,53 @@ func (h *MSPHandler) AddMSPStaff(c *gin.Context) {
 	})
 }
 
+// @Summary List MSP Staff
+// @Description List all staff members for an MSP
+// @Tags MSP
+// @Accept json
+// @Produce json
+// @Param msp_id path string true "MSP ID"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(10)
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/msps/v1/{msp_id}/staff [get]
+func (h *MSPHandler) ListMSPStaff(c *gin.Context) {
+	mspRealm := c.Param("msp_id")
+	if mspRealm == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "MSP ID is required",
+			"code":  "MISSING_MSP_ID",
+		})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	staffList, err := h.mspService.ListMSPStaff(c.Request.Context(), mspRealm, page, pageSize)
+	if err != nil {
+		h.logger.Error("Failed to list MSP staff", zap.Error(err), zap.String("msp_realm", mspRealm))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to list MSP staff",
+			"code":  "MSP_STAFF_LIST_FAILED",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, staffList)
+}
+
 // @Summary Create Client Tenant
 // @Description Create a new client tenant for MSP
 // @Tags MSP
@@ -391,4 +442,81 @@ func (h *MSPHandler) ListMSPClients(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *MSPHandler) HealthCheck(c *gin.Context) {
+	h.logger.Info("MSP health check requested")
+
+	healthChecks, err := h.mspService.HealthCheck(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Failed to perform health check", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to perform health check",
+			"code":  "HEALTH_CHECK_FAILED",
+		})
+		return
+	}
+
+	healthySystems := 0
+	warningSystems := 0
+	errorSystems := 0
+
+	for _, health := range healthChecks {
+		switch health.Status {
+		case "healthy":
+			healthySystems++
+		case "warning":
+			warningSystems++
+		case "error":
+			errorSystems++
+		}
+	}
+
+	overallStatus := "healthy"
+	if errorSystems > 0 {
+		overallStatus = "error"
+	} else if warningSystems > 0 {
+		overallStatus = "warning"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"overall_status": overallStatus,
+		"summary": gin.H{
+			"total":    len(healthChecks),
+			"healthy":  healthySystems,
+			"warning":  warningSystems,
+			"error":    errorSystems,
+		},
+		"details": healthChecks,
+	})
+}
+
+func (h *MSPHandler) Reconcile(c *gin.Context) {
+	realmName := c.Param("msp_id")
+	if realmName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "MSP ID is required",
+			"code":  "MISSING_MSP_ID",
+		})
+		return
+	}
+
+	h.logger.Info("MSP reconciliation requested", zap.String("realm", realmName))
+
+	result, err := h.mspService.Reconcile(c.Request.Context(), realmName)
+	if err != nil {
+		h.logger.Error("Failed to reconcile MSP", 
+			zap.String("realm", realmName),
+			zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to reconcile MSP",
+			"code":  "RECONCILE_FAILED",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Reconciliation completed",
+		"result":  result,
+	})
 }

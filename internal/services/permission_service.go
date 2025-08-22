@@ -29,6 +29,19 @@ func (p *PermissionService) SetupRealmPermissions(ctx context.Context, realmName
 	}
 
 	for roleName, template := range keycloak.MSPPermissionTemplates {
+		roleRep := &keycloak.RoleRepresentation{
+			Name:        roleName,
+			Description: template.Description,
+		}
+		if err := p.keycloakAdmin.CreateRole(ctx, realmName, roleRep); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				p.logger.Warn("Failed to create role",
+					zap.String("realm", realmName),
+					zap.String("role", roleName),
+					zap.Error(err))
+			}
+		}
+
 		if err := p.keycloakAdmin.CreatePermissionPolicy(ctx, realmName, roleName, template); err != nil {
 			p.logger.Warn("Failed to create permission policy",
 				zap.String("realm", realmName),

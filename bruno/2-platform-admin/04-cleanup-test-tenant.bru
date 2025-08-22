@@ -1,0 +1,53 @@
+meta {
+  name: Cleanup Test Tenant
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/tenants/v1/{{testTenantRealm}}
+}
+
+headers {
+  Authorization: Bearer {{platformAdminToken}}
+}
+
+assert {
+  res.status: in [200, 204, 404]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200 || status === 204) {
+    
+    // Clear test tenant environment variables
+    bru.setEnvVar("testTenantRealm", "");
+    bru.setEnvVar("testTenantId", "");
+    bru.setEnvVar("testTenantName", "");
+    bru.setEnvVar("testTenantDomain", "");
+    
+  } else if (status === 404) {
+  } else {
+    const body = res.getBody();
+    if (body && body.error) {
+    }
+  }
+}
+
+tests {
+  test("Cleanup returns acceptable status", function() {
+    const status = res.getStatus();
+    expect([200, 204, 404]).to.include(status);
+  });
+  
+  test("If successful, no error in response", function() {
+    const status = res.getStatus();
+    if (status === 200 || status === 204) {
+      const body = res.getBody();
+      if (body) {
+        expect(body).to.not.have.property("error");
+      }
+    }
+  });
+}

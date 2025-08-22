@@ -1,0 +1,68 @@
+meta {
+  name: Update Tenant User
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users/{{testUserId}}
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+}
+
+body:json {
+  {
+    "first_name": "Updated",
+    "last_name": "TestUser",
+    "department": "DevOps",
+    "phone": "+1-555-0177",
+    "title": "Senior Engineer",
+    "enabled": true
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200) {
+    const body = res.getBody();
+    
+    if (body.updated_at) {
+    }
+  } else if (status === 204) {
+  }
+}
+
+tests {
+  test("User update returns success status", function() {
+    const status = res.getStatus();
+    expect([200, 204]).to.include(status);
+  });
+  
+  test("If 200 response, contains updated user data", function() {
+    const status = res.getStatus();
+    if (status === 200) {
+      const body = res.getBody();
+      expect(body.first_name).to.equal("Updated");
+      expect(body.last_name).to.equal("TestUser");
+    }
+  });
+  
+  test("No error in response", function() {
+    const body = res.getBody();
+    if (body) {
+      expect(body).to.not.have.property("error");
+    }
+  });
+}

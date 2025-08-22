@@ -1,0 +1,68 @@
+meta {
+  name: Validate Platform Admin Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/v1/validate
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "{{platformAdminToken}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.user.roles && body.user.roles.length > 0) {
+      
+      // Store key role information for later tests
+      if (body.user.roles.includes('msp-admin')) {
+        bru.setEnvVar("userHasMSPAdmin", "true");
+      }
+    }
+    
+    // Store user info for later reference
+    bru.setEnvVar("platformAdminUserId", body.user.sub);
+    bru.setEnvVar("platformAdminEmail", body.user.email);
+  }
+}
+
+tests {
+  test("Token validation returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Token is valid", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("valid", true);
+    expect(body).to.have.property("provider", "keycloak");
+  });
+  
+  test("User information is present", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("user");
+    expect(body.user).to.have.property("sub");
+    expect(body.user).to.have.property("email");
+  });
+  
+  test("User has required roles", function() {
+    const body = res.getBody();
+    expect(body.user).to.have.property("roles");
+    expect(body.user.roles).to.be.an("array");
+    expect(body.user.roles).to.include("msp-admin");
+  });
+}

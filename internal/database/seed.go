@@ -53,7 +53,7 @@ func createTestTenants(db *gorm.DB) error {
 		{
 			Name:   "Acme Corporation",
 			Domain: "acme.example.com",
-			Status: models.TenantStatusActive,
+			Active: true,
 			Type:   models.TenantTypeClient,
 			Settings: tenantSettingsToJSON(models.TenantSettings{
 				EnableSSO:         true,
@@ -69,7 +69,7 @@ func createTestTenants(db *gorm.DB) error {
 		{
 			Name:   "Demo Company",
 			Domain: "demo.example.com",
-			Status: models.TenantStatusActive,
+			Active: true,
 			Type:   models.TenantTypeClient,
 			Settings: tenantSettingsToJSON(models.TenantSettings{
 				EnableSSO:         false,
@@ -85,7 +85,7 @@ func createTestTenants(db *gorm.DB) error {
 		{
 			Name:   "Test MSP Partner",
 			Domain: "partner.example.com",
-			Status: models.TenantStatusActive,
+			Active: true,
 			Type:   models.TenantTypeMSP,
 			Settings: tenantSettingsToJSON(models.TenantSettings{
 				EnableSSO:         true,
@@ -147,7 +147,7 @@ func createMSPTenant(db *gorm.DB) error {
 	mspTenant := &models.Tenant{
 		Name:   mspName,
 		Domain: mspDomain,
-		Status: models.TenantStatusActive,
+		Active: true,
 		Type:   models.TenantTypeMSP,
 		Settings: tenantSettingsToJSON(models.TenantSettings{
 			EnableSSO:         true,

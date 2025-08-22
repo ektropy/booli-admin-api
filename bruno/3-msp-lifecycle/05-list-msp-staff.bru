@@ -1,0 +1,67 @@
+meta {
+  name: List MSP Staff Members
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/msps/v1/{{mspRealm1}}/staff
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.staff && body.staff.length > 0) {
+      body.staff.forEach((staff, index) => {
+      });
+      
+      // Verify our test staff member is in the list
+      const testStaffEmail = bru.getEnvVar("staffEmail");
+      if (testStaffEmail) {
+        const testStaff = body.staff.find(s => s.email === testStaffEmail);
+        if (testStaff) {
+        } else {
+        }
+      }
+    } else if (body.staff && body.staff.length === 0) {
+    } else {
+    }
+  }
+}
+
+tests {
+  test("Staff listing returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains staff array", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("staff");
+    expect(body.staff).to.be.an("array");
+  });
+  
+  test("At least one staff member exists", function() {
+    const body = res.getBody();
+    expect(body.staff.length).to.be.greaterThan(0);
+  });
+  
+  test("Staff members have required fields", function() {
+    const body = res.getBody();
+    if (body.staff.length > 0) {
+      const firstStaff = body.staff[0];
+      expect(firstStaff).to.have.property("email");
+      expect(firstStaff).to.have.property("first_name");
+      expect(firstStaff).to.have.property("last_name");
+      expect(firstStaff).to.have.property("roles");
+    }
+  });
+}

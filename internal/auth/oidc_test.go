@@ -355,13 +355,11 @@ func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
 		Scopes:      provider.Scopes,
 	}
 	
-	// Test with empty state (should generate random)
 	url := provider.GenerateAuthURL("")
 	assert.Contains(t, url, "client_id=client-id")
 	assert.Contains(t, url, "redirect_uri=")
 	assert.Contains(t, url, "state=")
 	
-	// Test with provided state
 	url = provider.GenerateAuthURL("test-state-123")
 	assert.Contains(t, url, "state=test-state-123")
 }

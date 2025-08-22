@@ -1,0 +1,87 @@
+meta {
+  name: Create Tenant Users
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  const clientDomain = bru.getEnvVar("clientTenantDomain1") || "test-curl.example.com";
+  
+  bru.setEnvVar("testUserEmail", `user-${timestamp}@${clientDomain}`);
+  bru.setEnvVar("testUsername", `user-${timestamp}`);
+  
+}
+
+body:json {
+  {
+    "email": "{{testUserEmail}}",
+    "first_name": "Test",
+    "last_name": "User",
+    "username": "{{testUsername}}",
+    "enabled": true,
+    "send_invite": false,
+    "roles": ["tenant-user"],
+    "department": "Engineering",
+    "phone": "+1-555-0199"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    
+    // Store user information
+    bru.setEnvVar("testUserId", body.id);
+    
+    if (body.roles) {
+    }
+    
+    if (body.department) {
+    }
+  }
+}
+
+tests {
+  test("User creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains user data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("email");
+    expect(body).to.have.property("first_name");
+    expect(body).to.have.property("last_name");
+  });
+  
+  test("User email matches request", function() {
+    const body = res.getBody();
+    const expectedEmail = bru.getEnvVar("testUserEmail");
+    expect(body.email).to.equal(expectedEmail);
+  });
+  
+  test("User is enabled by default", function() {
+    const body = res.getBody();
+    expect(body.enabled).to.be.true;
+  });
+  
+  test("User has ID assigned", function() {
+    const body = res.getBody();
+    expect(body.id).to.be.a("string");
+    expect(body.id.length).to.be.greaterThan(0);
+  });
+}

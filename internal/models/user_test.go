@@ -195,7 +195,7 @@ func TestUserSearchRequest_Defaults(t *testing.T) {
 		Page:     1,
 		PageSize: 20,
 		Role:     "tenant-user",
-		Enabled:  nil, // Should work with nil pointer
+		Enabled:  nil,
 	}
 
 	assert.Equal(t, 1, req.Page)

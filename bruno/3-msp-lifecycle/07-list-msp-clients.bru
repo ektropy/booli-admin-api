@@ -1,0 +1,85 @@
+meta {
+  name: List MSP Client Tenants
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/msps/v1/{{mspRealm1}}/clients
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.tenants && body.tenants.length > 0) {
+      body.tenants.forEach((client, index) => {
+      });
+      
+      // Verify our test client is in the list
+      const testClientName = bru.getEnvVar("clientTenantName1");
+      const testClient = body.tenants.find(c => c.name === testClientName);
+      if (testClient) {
+        
+        // Update stored realm if it differs
+        if (testClient.realm && testClient.realm !== bru.getEnvVar("clientTenantRealm1")) {
+          bru.setEnvVar("clientTenantRealm1", testClient.realm);
+        }
+      } else {
+      }
+    } else if (body.tenants && body.tenants.length === 0) {
+    } else {
+    }
+  }
+}
+
+tests {
+  test("Client listing returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains clients array", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("tenants");
+    expect(body.tenants).to.be.an("array");
+  });
+  
+  test("At least one client exists", function() {
+    const body = res.getBody();
+    expect(body.tenants.length).to.be.greaterThan(0);
+  });
+  
+  test("Test client appears in list", function() {
+    const body = res.getBody();
+    const testClientName = bru.getEnvVar("clientTenantName1");
+    const clientExists = body.tenants.some(c => c.name === testClientName);
+    expect(clientExists).to.be.true;
+  });
+  
+  test("Clients have required fields", function() {
+    const body = res.getBody();
+    const firstClient = body.tenants[0];
+    
+    expect(firstClient).to.have.property("name");
+    expect(firstClient).to.have.property("domain");
+    expect(firstClient).to.have.property("realm");
+    expect(firstClient).to.have.property("type");
+  });
+  
+  test("Test client has correct type", function() {
+    const body = res.getBody();
+    const testClientName = bru.getEnvVar("clientTenantName1");
+    const testClient = body.tenants.find(c => c.name === testClientName);
+    
+    expect(testClient).to.not.be.undefined;
+    expect(testClient.type).to.equal("client");
+  });
+}

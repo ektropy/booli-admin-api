@@ -1,0 +1,93 @@
+meta {
+  name: Create User with Email Invitation
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  const clientDomain = bru.getEnvVar("clientTenantDomain1") || "test-curl.example.com";
+  
+  bru.setEnvVar("inviteUserEmail", `invite-${timestamp}@${clientDomain}`);
+  bru.setEnvVar("inviteUsername", `invite-${timestamp}`);
+  
+}
+
+body:json {
+  {
+    "email": "{{inviteUserEmail}}",
+    "first_name": "Invited",
+    "last_name": "User",
+    "username": "{{inviteUsername}}",
+    "enabled": false,
+    "send_invite": true,
+    "roles": ["tenant-user"],
+    "department": "Sales",
+    "phone": "+1-555-0188"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    
+    // Store invite user information
+    bru.setEnvVar("inviteUserId", body.id);
+    
+    if (body.invitation_sent) {
+    }
+    
+    if (body.invitation_link) {
+    }
+    
+    if (body.roles) {
+    }
+  }
+}
+
+tests {
+  test("Invite user creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains user data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("email");
+    expect(body).to.have.property("first_name");
+    expect(body).to.have.property("last_name");
+  });
+  
+  test("User email matches request", function() {
+    const body = res.getBody();
+    const expectedEmail = bru.getEnvVar("inviteUserEmail");
+    expect(body.email).to.equal(expectedEmail);
+  });
+  
+  test("User is disabled until invite accepted", function() {
+    const body = res.getBody();
+    expect(body.enabled).to.be.false;
+  });
+  
+  test("Invitation process initiated", function() {
+    const body = res.getBody();
+    // Should have some indication that invitation was processed
+    const hasInviteInfo = body.hasOwnProperty('invitation_sent') || 
+                         body.hasOwnProperty('invitation_link') ||
+                         body.enabled === false;
+    expect(hasInviteInfo).to.be.true;
+  });
+}

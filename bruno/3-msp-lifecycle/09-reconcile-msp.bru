@@ -1,0 +1,100 @@
+meta {
+  name: Reconcile MSP Configuration
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/msps/v1/{{mspRealm1}}/reconcile
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+}
+
+body:json {
+  {
+    "force_sync": false,
+    "reconcile_clients": true,
+    "reconcile_staff": true,
+    "reconcile_permissions": true,
+    "dry_run": false
+  }
+}
+
+assert {
+  res.status: in [200, 202]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200 || status === 202) {
+    const body = res.getBody();
+    
+    if (body.reconciliation_id) {
+      bru.setEnvVar("reconciliationId", body.reconciliation_id);
+    }
+    
+    if (body.status) {
+    }
+    
+    if (body.changes_detected !== undefined) {
+    }
+    
+    if (body.summary) {
+      if (body.summary.clients_synced !== undefined) {
+      }
+      if (body.summary.staff_synced !== undefined) {
+      }
+      if (body.summary.permissions_updated !== undefined) {
+      }
+      if (body.summary.errors && body.summary.errors.length > 0) {
+      }
+    }
+    
+    if (body.message) {
+    }
+    
+    if (status === 202) {
+    }
+  }
+}
+
+tests {
+  test("Reconciliation request accepted", function() {
+    const status = res.getStatus();
+    expect([200, 202]).to.include(status);
+  });
+  
+  test("Response contains reconciliation info", function() {
+    const body = res.getBody();
+    // Should have at least one of these fields
+    const hasReconInfo = body.hasOwnProperty('status') || 
+                        body.hasOwnProperty('reconciliation_id') ||
+                        body.hasOwnProperty('message') ||
+                        body.hasOwnProperty('summary');
+    expect(hasReconInfo).to.be.true;
+  });
+  
+  test("No critical errors in reconciliation", function() {
+    const body = res.getBody();
+    if (body.error) {
+      expect(body.error).to.not.exist;
+    }
+    
+    // If there's a summary with errors, they should be warnings, not critical
+    if (body.summary && body.summary.errors) {
+      const criticalErrors = body.summary.errors.filter(e => 
+        e.toLowerCase().includes('failed') || 
+        e.toLowerCase().includes('critical')
+      );
+      expect(criticalErrors.length).to.equal(0);
+    }
+  });
+}

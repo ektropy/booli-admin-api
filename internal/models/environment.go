@@ -138,7 +138,7 @@ type InfrastructureIP struct {
 type TenantAccessGrant struct {
 	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	EnvironmentID       uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantRealm         string         `gorm:"not null;size:255;index" json:"tenant_realm"` // Target tenant realm
+	TenantRealm         string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	GrantedToUserID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_user_id"`
 	GrantedToTenantRealm string        `gorm:"not null;size:255;index" json:"granted_to_tenant_realm"` // MSP tenant realm
 	AccessLevel       AccessLevel    `gorm:"not null;size:50" json:"access_level"`

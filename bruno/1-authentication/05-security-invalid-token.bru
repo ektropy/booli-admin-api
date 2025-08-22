@@ -1,0 +1,47 @@
+meta {
+  name: Test Invalid Token
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/tenants/v1/
+}
+
+headers {
+  Authorization: Bearer invalid-token-12345
+}
+
+assert {
+  res.status: eq 401
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 401) {
+    const body = res.getBody();
+  } else {
+  }
+}
+
+tests {
+  test("Invalid token returns 401", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+  
+  test("Returns proper error structure", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("error");
+    expect(body.error).to.have.property("code");
+    expect(body.error).to.have.property("message");
+  });
+  
+  test("Error indicates token validation failure", function() {
+    const body = res.getBody();
+    const message = body.error?.message || body.message || "";
+    expect(message.toLowerCase()).to.satisfy(msg => 
+      msg.includes("token") || msg.includes("unauthorized") || msg.includes("authentication")
+    );
+  });
+}

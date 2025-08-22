@@ -1,0 +1,109 @@
+meta {
+  name: Create Client Tenant for MSP
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/msps/v1/{{mspRealm1}}/clients
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("clientTenantName1", `ACME Corporation ${timestamp}`);
+  bru.setEnvVar("clientTenantDomain1", `acme-corp-${timestamp}.example.com`);
+  
+}
+
+body:json {
+  {
+    "name": "{{clientTenantName1}}",
+    "domain": "{{clientTenantDomain1}}",
+    "type": "client",
+    "admin_email": "admin@{{clientTenantDomain1}}",
+    "contact_email": "contact@{{clientTenantDomain1}}",
+    "contact_phone": "+1-555-0187",
+    "industry": "Manufacturing",
+    "company_size": "medium",
+    "settings": {
+      "enable_sso": true,
+      "enable_mfa": false,
+      "enable_audit": true,
+      "max_users": 100,
+      "max_roles": 15,
+      "max_sso_providers": 3,
+      "allow_user_registration": false,
+      "require_email_verification": true
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    
+    // Store client tenant information
+    bru.setEnvVar("clientTenantId1", body.tenant?.id || body.id || "");
+    bru.setEnvVar("clientTenantRealm1", body.tenant?.realm || "");
+    
+    if (body.tenant?.settings) {
+    }
+    
+    if (body.admin_user) {
+    }
+  }
+}
+
+tests {
+  test("Client tenant creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains tenant data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("tenant");
+    expect(body.tenant).to.have.property("name");
+    expect(body.tenant).to.have.property("domain");
+    expect(body.tenant).to.have.property("realm");
+  });
+  
+  test("Client name matches request", function() {
+    const body = res.getBody();
+    expect(body.tenant.name).to.include("ACME Corporation");
+  });
+  
+  test("Client realm is created", function() {
+    const body = res.getBody();
+    expect(body.tenant.realm).to.be.a("string");
+    expect(body.tenant.realm.length).to.be.greaterThan(5);
+  });
+  
+  test("Client type is set correctly", function() {
+    const body = res.getBody();
+    expect(body.tenant.type).to.equal("client");
+  });
+  
+  test("Settings are applied correctly", function() {
+    const body = res.getBody();
+    expect(body.tenant).to.have.property("settings");
+    expect(body.tenant.settings.enable_sso).to.be.true;
+    expect(body.tenant.settings.enable_mfa).to.be.false;
+    expect(body.tenant.settings.max_users).to.equal(100);
+  });
+  
+  test("Tenant type is set correctly", function() {
+    const body = res.getBody();
+    expect(body.tenant.type).to.equal("client");
+    expect(body.tenant.active).to.be.true;
+  });
+}

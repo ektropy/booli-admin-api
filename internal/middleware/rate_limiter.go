@@ -55,7 +55,6 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		// Add rate limit headers
 		rl.addRateLimitHeaders(c, limiter)
 		c.Next()
 	}
@@ -72,7 +71,6 @@ func (rl *RateLimiter) getLimiter(key string) *rate.Limiter {
 }
 
 func (rl *RateLimiter) addRateLimitHeaders(c *gin.Context, limiter *rate.Limiter) {
-	// Approximation since rate limiter doesn't expose tokens directly
 	remaining := rl.config.BurstSize
 
 	reservation := limiter.Reserve()
@@ -143,7 +141,6 @@ func AuthenticationRateLimit(logger *zap.Logger) gin.HandlerFunc {
 		RequestsPerMinute: 20,
 		BurstSize:         5,
 		KeyFunc: func(c *gin.Context) string {
-			// Use IP address for auth endpoints
 			return c.ClientIP()
 		},
 	}, logger).Middleware()

@@ -1,0 +1,86 @@
+meta {
+  name: Get Client Admin Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{keycloakUrl}}/realms/{{mspRealm1}}/protocol/openid-connect/token
+  body: formUrlEncoded
+}
+
+headers {
+  Content-Type: application/x-www-form-urlencoded
+}
+
+script:pre-request {
+}
+
+body:form-urlencoded {
+  grant_type: password
+  username: admin
+  password: admin
+  client_id: msp-client
+  scope: openid profile email
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    // Store the client admin token
+    bru.setEnvVar("clientAdminToken1", body.access_token);
+    
+    
+    // Parse token to see user info
+    try {
+      const payload = JSON.parse(atob(body.access_token.split('.')[1]));
+      
+      if (payload.realm_access?.roles) {
+        
+        // Check for tenant admin role
+        const hasTenantAdmin = payload.realm_access.roles.some(role => 
+          role.includes('tenant-admin') || role.includes('admin')
+        );
+        if (hasTenantAdmin) {
+          bru.setEnvVar("clientAdminHasRole1", "true");
+        }
+      }
+      
+      // Store additional info
+      bru.setEnvVar("clientAdminUserId1", payload.sub);
+      bru.setEnvVar("clientAdminEmail1", payload.email);
+      
+    } catch (e) {
+    }
+  }
+}
+
+tests {
+  test("Client admin authentication returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains access token", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("access_token");
+    expect(body.access_token).to.be.a("string");
+    expect(body.access_token.length).to.be.greaterThan(100);
+  });
+  
+  test("Token includes required fields", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("token_type", "Bearer");
+    expect(body).to.have.property("expires_in");
+    expect(body).to.have.property("scope");
+  });
+  
+  test("Scope includes OpenID", function() {
+    const body = res.getBody();
+    expect(body.scope).to.include("openid");
+  });
+}

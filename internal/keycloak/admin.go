@@ -180,10 +180,11 @@ type ClientRepresentation struct {
 	Protocol                  string            `json:"protocol,omitempty"`
 	Attributes                map[string]string `json:"attributes,omitempty"`
 	FullScopeAllowed          bool              `json:"fullScopeAllowed"`
-	ServiceAccountsEnabled    bool              `json:"serviceAccountsEnabled"`
-	StandardFlowEnabled       bool              `json:"standardFlowEnabled"`
-	ImplicitFlowEnabled       bool              `json:"implicitFlowEnabled"`
-	DirectAccessGrantsEnabled bool              `json:"directAccessGrantsEnabled"`
+	ServiceAccountsEnabled       bool              `json:"serviceAccountsEnabled"`
+	StandardFlowEnabled          bool              `json:"standardFlowEnabled"`
+	ImplicitFlowEnabled          bool              `json:"implicitFlowEnabled"`
+	DirectAccessGrantsEnabled    bool              `json:"directAccessGrantsEnabled"`
+	AuthorizationServicesEnabled bool              `json:"authorizationServicesEnabled"`
 }
 
 type ProtocolMapperRepresentation struct {
@@ -978,6 +979,22 @@ func (c *AdminClient) GetClient(ctx context.Context, realmName, clientUUID strin
 	}
 
 	return &client, nil
+}
+
+func (c *AdminClient) UpdateClient(ctx context.Context, realmName, clientUUID string, client *ClientRepresentation) error {
+	endpoint := fmt.Sprintf("/admin/realms/%s/clients/%s", realmName, clientUUID)
+
+	resp, err := c.makeRequest(ctx, "PUT", endpoint, client)
+	if err != nil {
+		return fmt.Errorf("failed to update client: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func (c *AdminClient) GetClientUUID(ctx context.Context, realmName, clientID string) (string, error) {

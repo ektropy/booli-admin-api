@@ -166,7 +166,6 @@ func TestResponseStructures(t *testing.T) {
 }
 
 func TestFormatValidationErrors(t *testing.T) {
-	// Create a struct for validation
 	type TestStruct struct {
 		Email    string `validate:"required,email"`
 		Username string `validate:"required,min=3,max=50"`

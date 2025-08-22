@@ -54,10 +54,14 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Scopes: []string{
 			"manage-realm",
 			"manage-users", 
+			"view-users",
 			"manage-clients",
+			"view-clients", 
 			"manage-groups",
+			"view-groups",
 			"manage-smtp",
 			"view-events",
+			"view-realm",
 		},
 		ResourceFilter: "client-realms-pattern",
 		Conditions:     []string{"msp-employee"},
@@ -67,7 +71,9 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Description: "Advanced MSP operations for assigned clients",
 		Scopes: []string{
 			"manage-users",
+			"view-users",
 			"manage-groups", 
+			"view-groups",
 			"view-clients",
 			"view-events",
 		},
@@ -79,7 +85,9 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Description: "Full administrative access within own tenant",
 		Scopes: []string{
 			"manage-users",
+			"view-users",
 			"manage-groups",
+			"view-groups",
 			"view-events",
 		},
 		ResourceFilter: "own-realm-only",
@@ -158,6 +166,19 @@ func (c *AdminClient) AssignRoleWithPermissions(ctx context.Context, realmName, 
 		return fmt.Errorf("permission template not found for role: %s", roleName)
 	}
 
+	roleRep := &RoleRepresentation{
+		Name:        roleName,
+		Description: template.Description,
+	}
+	if err := c.CreateRole(ctx, realmName, roleRep); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			c.logger.Warn("Failed to create role before assignment",
+				zap.String("realm", realmName),
+				zap.String("role", roleName),
+				zap.Error(err))
+		}
+	}
+
 	if err := c.AssignRealmRoleToUser(ctx, realmName, userID, roleName); err != nil {
 		return fmt.Errorf("failed to assign realm role: %w", err)
 	}
@@ -229,11 +250,51 @@ func (c *AdminClient) GetUserEffectiveScopes(ctx context.Context, realmName, use
 }
 
 func (c *AdminClient) getAdminPermissionsClientUUID(ctx context.Context, realmName string) (string, error) {
+	// Try admin-permissions client first (created by Keycloak when adminPermissionsEnabled=true)
 	clientUUID, err := c.GetClientUUID(ctx, realmName, "admin-permissions")
-	if err != nil {
-		return "", fmt.Errorf("admin-permissions client not found in realm %s: %w", realmName, err)
+	if err == nil {
+		return clientUUID, nil
 	}
+	
+	// Fall back to msp-client if admin-permissions doesn't exist
+	c.logger.Debug("admin-permissions client not found, trying msp-client as fallback",
+		zap.String("realm", realmName),
+		zap.Error(err))
+	
+	clientUUID, err = c.GetClientUUID(ctx, realmName, "msp-client")
+	if err != nil {
+		return "", fmt.Errorf("neither admin-permissions nor msp-client found in realm %s: %w", realmName, err)
+	}
+	
+	// Enable authorization services on msp-client
+	if err := c.enableAuthorizationServices(ctx, realmName, clientUUID); err != nil {
+		c.logger.Warn("Failed to enable authorization services on msp-client", 
+			zap.String("realm", realmName),
+			zap.Error(err))
+	}
+	
 	return clientUUID, nil
+}
+
+func (c *AdminClient) enableAuthorizationServices(ctx context.Context, realmName, clientUUID string) error {
+	// Get current client configuration
+	client, err := c.GetClient(ctx, realmName, clientUUID)
+	if err != nil {
+		return fmt.Errorf("failed to get client: %w", err)
+	}
+	
+	// Enable authorization services if not already enabled
+	if !client.AuthorizationServicesEnabled {
+		client.AuthorizationServicesEnabled = true
+		if err := c.UpdateClient(ctx, realmName, clientUUID, client); err != nil {
+			return fmt.Errorf("failed to enable authorization services: %w", err)
+		}
+		c.logger.Info("Authorization services enabled on client",
+			zap.String("realm", realmName),
+			zap.String("client", clientUUID))
+	}
+	
+	return nil
 }
 
 func (c *AdminClient) createFGAPPolicy(ctx context.Context, realmName, clientUUID string, policy *FGAPPolicy) error {
@@ -300,12 +361,16 @@ func (c *AdminClient) grantKeycloakClientRoles(ctx context.Context, realmName, u
 
 func (c *AdminClient) mapScopesToClientRoles(scopes []string) []string {
 	roleMap := map[string]string{
-		"manage-realm":  "realm-admin",
-		"manage-users":  "manage-users",
+		"manage-realm":   "realm-admin",
+		"view-realm":     "view-realm",
+		"manage-users":   "manage-users",
+		"view-users":     "view-users",
 		"manage-clients": "manage-clients",
-		"manage-groups": "manage-users",
-		"manage-smtp":   "manage-realm",
-		"view-events":   "view-events",
+		"view-clients":   "view-clients",
+		"manage-groups":  "manage-users",
+		"view-groups":    "view-users",
+		"manage-smtp":    "manage-realm",
+		"view-events":    "view-events",
 	}
 
 	roleSet := make(map[string]bool)
@@ -374,6 +439,9 @@ func (c *AdminClient) checkResourceFilter(filter, resource, realmName string) bo
 	case "own-realm-only":
 		return resource == realmName
 	case "client-realms-pattern":
+		if resource == realmName {
+			return true
+		}
 		return c.isClientRealmForMSP(resource, realmName)
 	case "assigned-clients-only":
 		return c.isAssignedClient(resource, realmName)

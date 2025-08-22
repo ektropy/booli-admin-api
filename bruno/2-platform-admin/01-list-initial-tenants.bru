@@ -1,0 +1,62 @@
+meta {
+  name: List Initial Tenants
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/tenants/v1/
+}
+
+headers {
+  Authorization: Bearer {{platformAdminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.tenants && body.tenants.length > 0) {
+      body.tenants.forEach((tenant, index) => {
+      });
+      
+      // Store initial state for comparison
+      bru.setEnvVar("initialTenantCount", body.total.toString());
+      bru.setEnvVar("initialTenantNames", body.tenants.map(t => t.name).join(','));
+    } else {
+      bru.setEnvVar("initialTenantCount", "0");
+    }
+  }
+}
+
+tests {
+  test("Tenant listing returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has proper pagination structure", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("tenants");
+    expect(body).to.have.property("total");
+    expect(body).to.have.property("page");
+    expect(body).to.have.property("page_size");
+    expect(body).to.have.property("total_pages");
+  });
+  
+  test("Tenants is an array", function() {
+    const body = res.getBody();
+    expect(body.tenants).to.be.an("array");
+  });
+  
+  test("Default MSP tenant should exist", function() {
+    const body = res.getBody();
+    const hasMSPTenant = body.tenants.some(t => 
+      t.realm.includes('msp-acme-local') || t.name.includes('Acme MSP')
+    );
+    expect(hasMSPTenant).to.be.true;
+  });
+}

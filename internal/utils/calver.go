@@ -44,7 +44,6 @@ func IsVersionDeprecated(version string, deprecationDays int) (bool, error) {
 }
 
 // CompareVersions compares two CalVer versions
-// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
 func CompareVersions(v1, v2 string) (int, error) {
 	t1, err := ParseCalVer(v1)
 	if err != nil {

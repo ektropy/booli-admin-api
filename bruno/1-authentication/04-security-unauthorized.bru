@@ -1,0 +1,41 @@
+meta {
+  name: Test Unauthorized Access
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/tenants/v1/
+}
+
+assert {
+  res.status: eq 401
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 401) {
+    const body = res.getBody();
+  } else {
+  }
+}
+
+tests {
+  test("Endpoint requires authentication", function() {
+    expect(res.getStatus()).to.equal(401);
+  });
+  
+  test("Returns proper error structure", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("error");
+    expect(body.error).to.have.property("code");
+    expect(body.error).to.have.property("message");
+  });
+  
+  test("Error indicates authentication required", function() {
+    const body = res.getBody();
+    const message = body.error?.message || body.message || "";
+    expect(message.toLowerCase()).to.include("authentication");
+  });
+}

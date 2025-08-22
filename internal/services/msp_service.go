@@ -53,17 +53,33 @@ func (m *MSPService) CreateMSP(ctx context.Context, req *models.CreateMSPRequest
 		Name:          req.Name,
 		Domain:        req.Domain,
 		ClientPattern: clientPattern,
-		Status:        models.MSPStatusActive,
+		Active:        true,
 		Settings:      settingsJSON,
 	}
 
-	if err := m.db.Create(msp).Error; err != nil {
+	tx := m.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			m.cleanupKeycloakResources(ctx, msp.RealmName)
+			panic(r)
+		}
+	}()
+
+	if err := tx.Create(msp).Error; err != nil {
+		tx.Rollback()
 		return nil, fmt.Errorf("failed to create MSP in database: %w", err)
 	}
 
 	if err := m.setupMSPInKeycloak(ctx, msp, req); err != nil {
-		m.db.Delete(msp)
+		tx.Rollback()
+		m.cleanupKeycloakResources(ctx, msp.RealmName)
 		return nil, fmt.Errorf("failed to setup MSP in Keycloak: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		m.cleanupKeycloakResources(ctx, msp.RealmName)
+		return nil, fmt.Errorf("failed to commit MSP creation: %w", err)
 	}
 
 	m.logger.Info("MSP created successfully",
@@ -116,8 +132,8 @@ func (m *MSPService) UpdateMSP(ctx context.Context, realmName string, req *model
 	if req.Domain != "" {
 		msp.Domain = req.Domain
 	}
-	if req.Status != "" {
-		msp.Status = req.Status
+	if req.Active != nil {
+		msp.Active = *req.Active
 	}
 	
 	if req.Settings.MaxClientTenants > 0 || req.Settings.MaxAdminUsers > 0 {
@@ -228,6 +244,79 @@ func (m *MSPService) AddMSPStaff(ctx context.Context, mspRealm string, req *mode
 	return staffMember, nil
 }
 
+func (m *MSPService) ListMSPStaff(ctx context.Context, mspRealm string, page, pageSize int) (*models.MSPStaffListResponse, error) {
+	m.logger.Info("Listing MSP staff members",
+		zap.String("msp_realm", mspRealm),
+		zap.Int("page", page),
+		zap.Int("page_size", pageSize))
+
+	msp, err := m.GetMSP(ctx, mspRealm)
+	if err != nil {
+		return nil, err
+	}
+
+	if !msp.IsActive() {
+		return nil, fmt.Errorf("cannot list staff for inactive MSP")
+	}
+
+	// Get users from Keycloak for this realm
+	allUsers, err := m.keycloakAdmin.GetUsers(ctx, mspRealm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users from Keycloak: %w", err)
+	}
+
+	// Apply pagination manually
+	totalCount := len(allUsers)
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if start > totalCount {
+		start = totalCount
+	}
+	if end > totalCount {
+		end = totalCount
+	}
+	
+	var users []keycloak.UserRepresentation
+	if start < totalCount {
+		users = allUsers[start:end]
+	}
+
+	var staff []models.MSPStaffMember
+	for _, user := range users {
+		// Get user roles
+		roles, err := m.keycloakAdmin.GetUserRealmRoles(ctx, mspRealm, user.ID)
+		if err != nil {
+			m.logger.Warn("Failed to get user roles", zap.String("user_id", user.ID), zap.Error(err))
+			continue
+		}
+
+		var roleNames []string
+		for _, role := range roles {
+			roleNames = append(roleNames, role.Name)
+		}
+
+		staffMember := models.MSPStaffMember{
+			UserID:    user.ID,
+			Username:  user.Username,
+			Email:     user.Email,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+			Roles:     roleNames,
+			Status:    "active",
+			CreatedAt: "unknown", // Keycloak doesn't provide creation timestamp in simple format
+		}
+
+		staff = append(staff, staffMember)
+	}
+
+	return &models.MSPStaffListResponse{
+		Staff:      staff,
+		TotalCount: totalCount,
+		Page:       page,
+		PageSize:   pageSize,
+	}, nil
+}
+
 func (m *MSPService) CreateClientTenant(ctx context.Context, mspRealm string, req *models.CreateClientTenantRequest) (*models.Tenant, error) {
 	m.logger.Info("Creating client tenant for MSP",
 		zap.String("msp_realm", mspRealm),
@@ -249,22 +338,30 @@ func (m *MSPService) CreateClientTenant(ctx context.Context, mspRealm string, re
 		return nil, fmt.Errorf("failed to marshal tenant settings: %w", err)
 	}
 
-	// Create tenant in database
 	tenant := &models.Tenant{
 		RealmName:  clientRealmName,
 		Name:       req.Name,
 		Domain:     req.Domain,
 		Type:       models.TenantTypeClient,
 		ParentMSP:  mspRealm,
-		Status:     models.TenantStatusActive,
+		Active:     true,
 		Settings:   settingsJSON,
 	}
 
-	if err := m.db.Create(tenant).Error; err != nil {
+	tx := m.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			m.cleanupKeycloakResources(ctx, clientRealmName)
+			panic(r)
+		}
+	}()
+
+	if err := tx.Create(tenant).Error; err != nil {
+		tx.Rollback()
 		return nil, fmt.Errorf("failed to create tenant in database: %w", err)
 	}
 
-	// Create realm in Keycloak
 	realmRep := &keycloak.RealmRepresentation{
 		Realm:                 clientRealmName,
 		Enabled:               true,
@@ -277,15 +374,19 @@ func (m *MSPService) CreateClientTenant(ctx context.Context, mspRealm string, re
 	}
 
 	if err := m.keycloakAdmin.CreateRealm(ctx, realmRep); err != nil {
-		m.db.Delete(tenant)
+		tx.Rollback()
 		return nil, fmt.Errorf("failed to create realm in Keycloak: %w", err)
 	}
 
-	// Setup permissions for the new realm
 	if err := m.permissionService.SetupRealmPermissions(ctx, clientRealmName); err != nil {
-		m.keycloakAdmin.DeleteRealm(ctx, clientRealmName)
-		m.db.Delete(tenant)
+		tx.Rollback()
+		m.cleanupKeycloakResources(ctx, clientRealmName)
 		return nil, fmt.Errorf("failed to setup realm permissions: %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		m.cleanupKeycloakResources(ctx, clientRealmName)
+		return nil, fmt.Errorf("failed to commit tenant creation: %w", err)
 	}
 
 	m.logger.Info("Client tenant created successfully",
@@ -390,4 +491,18 @@ func (m *MSPService) setupMSPInKeycloak(ctx context.Context, msp *models.MSP, re
 	}
 
 	return nil
+}
+
+func (m *MSPService) cleanupKeycloakResources(ctx context.Context, realmName string) {
+	m.logger.Warn("Cleaning up Keycloak resources due to transaction failure",
+		zap.String("realm", realmName))
+	
+	if err := m.keycloakAdmin.DeleteRealm(ctx, realmName); err != nil {
+		m.logger.Error("Failed to cleanup Keycloak realm",
+			zap.String("realm", realmName),
+			zap.Error(err))
+	} else {
+		m.logger.Info("Keycloak realm cleaned up successfully",
+			zap.String("realm", realmName))
+	}
 }

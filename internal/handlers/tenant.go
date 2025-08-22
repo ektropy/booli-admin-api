@@ -170,9 +170,9 @@ func (h *TenantHandler) Get(c *gin.Context) {
 			}
 		}
 		response.UserCount = userCount
-		response.RoleCount = 0 // Roles are now in Keycloak
-		response.SSOProviderCount = 0 // SSO providers are now in Keycloak
-		response.ChildTenantCount = 0 // Child count would need separate query
+		response.RoleCount = 0
+		response.SSOProviderCount = 0
+		response.ChildTenantCount = 0
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -1,0 +1,86 @@
+meta {
+  name: Add MSP Staff Member
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/msps/v1/{{mspRealm1}}/staff
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("staffEmail", `staff-${timestamp}@${bru.getEnvVar("mspDomain1")}`);
+  bru.setEnvVar("staffUsername", `staff-${timestamp}`);
+  
+}
+
+body:json {
+  {
+    "email": "{{staffEmail}}",
+    "first_name": "John",
+    "last_name": "Staff",
+    "username": "{{staffUsername}}",
+    "role": "msp-power",
+    "department": "Client Services",
+    "phone": "+1-555-0198",
+    "send_invite": true
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    
+    // Store staff information
+    bru.setEnvVar("staffMemberId", body.staff?.user_id || body.staff?.id || body.id || "");
+    
+    if (body.staff.enabled !== undefined) {
+    }
+    
+    if (body.invitation_sent) {
+    }
+  }
+}
+
+tests {
+  test("Staff creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains staff data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("staff");
+    expect(body.staff).to.have.property("email");
+    expect(body.staff).to.have.property("first_name");
+    expect(body.staff).to.have.property("last_name");
+  });
+  
+  test("Staff email matches request", function() {
+    const body = res.getBody();
+    const expectedEmail = bru.getEnvVar("staffEmail");
+    expect(body.staff.email).to.equal(expectedEmail);
+  });
+  
+  test("Staff role is assigned correctly", function() {
+    const body = res.getBody();
+    expect(body.staff.roles).to.include("msp-power");
+  });
+  
+  test("Staff member has ID", function() {
+    const body = res.getBody();
+    const staffId = body.staff?.user_id || body.staff?.id || body.id;
+    expect(staffId).to.be.a("string");
+    expect(staffId.length).to.be.greaterThan(0);
+  });
+}

@@ -118,6 +118,10 @@ func (app *Application) Initialize() error {
 			app.logger.Error("Keycloak initialization failed", zap.Error(err))
 			return fmt.Errorf("keycloak initialization failed: %w", err)
 		}
+		
+		if err := initialization.CreateDefaultMSP(context.Background(), db, app.logger); err != nil {
+			app.logger.Error("Failed to create default MSP", zap.Error(err))
+		}
 	}
 
 	callbackURL := app.config.Keycloak.CallbackURL
@@ -197,15 +201,13 @@ func (app *Application) setupRouter(serviceContainer *services.Container, oidcSe
 }
 
 func (app *Application) setupRoutes(router *gin.Engine, handlers *handlers.Container, oidcService *auth.OIDCService) {
-	// Health and utility endpoints
 	router.GET("/health", handlers.Health.Check)
 	router.GET("/health/keycloak", handlers.Health.ValidateKeycloak)
 	router.GET("/version", handlers.Health.GetVersionInfo)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Setup resource-based API routes
 	rbacMiddleware := middleware.NewRBACMiddleware(app.keycloakAdmin, app.logger)
-	apiRouter := routing.NewAPIRouter(rbacMiddleware, app.logger)
+	apiRouter := routing.NewAPIRouter(rbacMiddleware, oidcService, app.logger)
 	apiRouter.SetupAPIRoutes(router, handlers)
 
 	app.logger.Info("Routes configured with resource-based API structure",

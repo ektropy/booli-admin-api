@@ -1,0 +1,55 @@
+meta {
+  name: Cleanup Test Users
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users/{{testUserId}}
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+}
+
+assert {
+  res.status: in [200, 204, 404]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200 || status === 204) {
+    
+    // Clear test user environment variables
+    bru.setEnvVar("testUserId", "");
+    bru.setEnvVar("testUserEmail", "");
+    bru.setEnvVar("testUsername", "");
+    
+  } else if (status === 404) {
+  } else {
+    const body = res.getBody();
+    if (body && body.error) {
+    }
+  }
+}
+
+script:pre-request {
+}
+
+tests {
+  test("Primary cleanup returns acceptable status", function() {
+    const status = res.getStatus();
+    expect([200, 204, 404]).to.include(status);
+  });
+  
+  test("If successful, no error in response", function() {
+    const status = res.getStatus();
+    if (status === 200 || status === 204) {
+      const body = res.getBody();
+      if (body) {
+        expect(body).to.not.have.property("error");
+      }
+    }
+  });
+}

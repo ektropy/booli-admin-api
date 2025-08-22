@@ -228,12 +228,10 @@ func (r *RBACMiddleware) CrossRealmAccessMiddleware() gin.HandlerFunc {
 }
 
 func (r *RBACMiddleware) extractRealmFromContext(c *gin.Context) string {
-	// Try to get from context first
 	if realmName, exists := c.Get("realm_name"); exists {
 		return realmName.(string)
 	}
 
-	// Extract from URL path
 	path := c.Request.URL.Path
 	if strings.Contains(path, "/realms/") {
 		parts := strings.Split(path, "/")
@@ -244,7 +242,6 @@ func (r *RBACMiddleware) extractRealmFromContext(c *gin.Context) string {
 		}
 	}
 
-	// Extract from MSP/tenant paths
 	if strings.Contains(path, "/msps/") {
 		parts := strings.Split(path, "/")
 		for i, part := range parts {

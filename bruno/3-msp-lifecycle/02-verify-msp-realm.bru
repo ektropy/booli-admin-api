@@ -1,0 +1,66 @@
+meta {
+  name: Verify MSP Realm Creation
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/auth/v1/providers
+}
+
+script:pre-request {
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    const mspRealm = bru.getEnvVar("mspRealm1");
+    
+    
+    if (body.providers && body.providers.length > 0) {
+      let foundMSPProvider = false;
+      
+      body.providers.forEach((provider, index) => {
+        const providerName = provider.name || `Provider ${index + 1}`;
+        const issuerUrl = provider.issuer_url || 'Unknown';
+        
+        
+        // Check if this provider matches our new MSP realm
+        if (issuerUrl.includes(mspRealm) || providerName.includes(mspRealm)) {
+          foundMSPProvider = true;
+          bru.setEnvVar("mspProviderFound", "true");
+        }
+      });
+      
+      if (!foundMSPProvider) {
+      }
+    }
+    
+    // Log current state for verification
+  }
+}
+
+tests {
+  test("Auth providers endpoint accessible", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains providers", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("providers");
+    expect(body.providers).to.be.an("array");
+  });
+  
+  test("MSP realm information is available", function() {
+    const mspRealm = bru.getEnvVar("mspRealm1");
+    const mspId = bru.getEnvVar("mspId1");
+    
+    expect(mspRealm).to.be.a("string");
+    expect(mspRealm.length).to.be.greaterThan(5);
+    expect(mspId).to.be.a("string");
+  });
+}

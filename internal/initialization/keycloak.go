@@ -14,6 +14,7 @@ import (
 	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/constants"
 	"github.com/booli/booli-admin-api/internal/keycloak"
+	"github.com/booli/booli-admin-api/internal/services"
 	"go.uber.org/zap"
 )
 
@@ -60,6 +61,7 @@ type UserConfig struct {
 	LastName  string   `json:"last_name"`
 	Roles     []string `json:"roles"`
 	Enabled   bool     `json:"enabled"`
+	Temporary bool     `json:"temporary"`
 }
 
 type InitializationConfig struct {
@@ -71,18 +73,21 @@ type InitializationConfig struct {
 }
 
 type KeycloakInitializer struct {
-	keycloakAdmin *keycloak.AdminClient
-	oidcService   *auth.OIDCService
-	config        *config.Config
-	logger        *zap.Logger
+	keycloakAdmin     *keycloak.AdminClient
+	oidcService       *auth.OIDCService
+	config            *config.Config
+	logger            *zap.Logger
+	permissionService *services.PermissionService
 }
 
 func NewKeycloakInitializer(keycloakAdmin *keycloak.AdminClient, oidcService *auth.OIDCService, cfg *config.Config, logger *zap.Logger) *KeycloakInitializer {
+	permissionService := services.NewPermissionService(keycloakAdmin, logger)
 	return &KeycloakInitializer{
-		keycloakAdmin: keycloakAdmin,
-		oidcService:   oidcService,
-		config:        cfg,
-		logger:        logger,
+		keycloakAdmin:     keycloakAdmin,
+		oidcService:       oidcService,
+		config:            cfg,
+		logger:            logger,
+		permissionService: permissionService,
 	}
 }
 
@@ -239,9 +244,9 @@ func (k *KeycloakInitializer) TestAuthentication(ctx context.Context) error {
 func (k *KeycloakInitializer) initializeRealm(ctx context.Context, realm RealmConfig) error {
 	k.logger.Info("Initializing realm", zap.String("realm", realm.Name))
 
-	if err := k.validateRealm(ctx, realm.Name); err == nil {
+	realmExists := k.validateRealm(ctx, realm.Name) == nil
+	if realmExists {
 		k.logger.Info("Realm already exists", zap.String("realm", realm.Name))
-		return nil
 	}
 
 	realmRep := &keycloak.RealmRepresentation{
@@ -255,20 +260,28 @@ func (k *KeycloakInitializer) initializeRealm(ctx context.Context, realm RealmCo
 		VerifyEmail:           false,
 	}
 
-	if err := k.keycloakAdmin.CreateRealm(ctx, realmRep); err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("failed to create realm %s: %w", realm.Name, err)
+	if !realmExists {
+		if err := k.keycloakAdmin.CreateRealm(ctx, realmRep); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("failed to create realm %s: %w", realm.Name, err)
+			}
+			k.logger.Info("Realm already exists", zap.String("realm", realm.Name))
+		} else {
+			k.logger.Info("Realm created successfully", zap.String("realm", realm.Name))
 		}
-		k.logger.Info("Realm already exists", zap.String("realm", realm.Name))
-		return nil
 	}
 
-	k.logger.Info("Realm created successfully", zap.String("realm", realm.Name))
-
+	// Always setup permissions and features, even for existing realms
 	if err := k.enableOrganizationsFeature(ctx, realm.Name); err != nil {
 		k.logger.Warn("Failed to enable Organizations feature", zap.String("realm", realm.Name), zap.Error(err))
 	} else {
 		k.logger.Info("Organizations feature enabled", zap.String("realm", realm.Name))
+	}
+
+	if err := k.setupRealmPermissions(ctx, realm.Name); err != nil {
+		k.logger.Warn("Failed to setup FGAPv2 permissions", zap.String("realm", realm.Name), zap.Error(err))
+	} else {
+		k.logger.Info("FGAPv2 permissions setup completed", zap.String("realm", realm.Name))
 	}
 
 	return nil
@@ -410,7 +423,7 @@ func (k *KeycloakInitializer) initializeUser(ctx context.Context, user UserConfi
 			{
 				Type:      "password",
 				Value:     user.Password,
-				Temporary: false,
+				Temporary: user.Temporary,
 			},
 		},
 	}
@@ -689,19 +702,9 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 	}
 	config.Roles = append(config.Roles, mspRoles...)
 
-	username := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_USERNAME")
-	if username == "" {
-		username = "admin"
-	}
-
-	password := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_PASSWORD")
-	if password == "" {
-		password = "admin"
-	}
-
-	email := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_EMAIL")
-	if email == "" {
-		email = "admin@example.com"
+	adminConfig, err := GetDefaultMSPAdminConfig(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MSP admin config: %w", err)
 	}
 
 	firstName := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_FIRST_NAME")
@@ -714,15 +717,9 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 		lastName = "User"
 	}
 
-	userEnabled := true
-	if enabledStr := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_ENABLED"); enabledStr != "" {
-		userEnabled, _ = strconv.ParseBool(enabledStr)
-	}
-
 	roles := []string{"msp-admin"}
 	if rolesStr := os.Getenv("KEYCLOAK_MSP_DEFAULT_USER_ROLES"); rolesStr != "" {
 		roles = strings.Split(rolesStr, ",")
-
 		for i, role := range roles {
 			roles[i] = strings.TrimSpace(role)
 		}
@@ -730,13 +727,14 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 
 	user := UserConfig{
 		RealmName: realmName,
-		Username:  username,
-		Password:  password,
-		Email:     email,
+		Username:  adminConfig.Username,
+		Password:  adminConfig.Password,
+		Email:     adminConfig.Email,
 		FirstName: firstName,
 		LastName:  lastName,
 		Roles:     roles,
-		Enabled:   userEnabled,
+		Enabled:   true,
+		Temporary: adminConfig.ForcePasswordChange,
 	}
 
 	config.Users = append(config.Users, user)
@@ -751,6 +749,10 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 	config.OIDCProviders = append(config.OIDCProviders, oidcProvider)
 
 	return config, nil
+}
+
+func (k *KeycloakInitializer) setupRealmPermissions(ctx context.Context, realmName string) error {
+	return k.permissionService.SetupRealmPermissions(ctx, realmName)
 }
 
 func (k *KeycloakInitializer) addAudienceMapper(ctx context.Context, realmName, clientID, apiAudience string) error {

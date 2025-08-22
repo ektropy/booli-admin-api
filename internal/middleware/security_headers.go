@@ -60,16 +60,13 @@ func CORSHeaders(allowedOrigins []string) gin.HandlerFunc {
 // BulkOperationHeaders adds specific security headers for bulk operations
 func BulkOperationHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Additional security for bulk operations
 		c.Header("X-Request-Type", "bulk-operation")
 		
-		// Prevent caching of bulk operation responses
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
 		
-		// Add timing information for monitoring
-		c.Header("X-Process-Time-Limit", "300") // 5 minutes max
+		c.Header("X-Process-Time-Limit", "300")
 		
 		c.Next()
 	}

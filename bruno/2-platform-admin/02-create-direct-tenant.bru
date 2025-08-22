@@ -1,0 +1,91 @@
+meta {
+  name: Create Direct Tenant
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/tenants/v1/
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{platformAdminToken}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const timestamp = Date.now();
+  bru.setEnvVar("testTenantName", `Platform Test Tenant ${timestamp}`);
+  bru.setEnvVar("testTenantDomain", `platform-test-${timestamp}.example.com`);
+  
+}
+
+body:json {
+  {
+    "name": "{{testTenantName}}",
+    "domain": "{{testTenantDomain}}",
+    "type": "direct",
+    "settings": {
+      "enable_sso": true,
+      "enable_mfa": false,
+      "enable_audit": true,
+      "max_users": 50,
+      "max_roles": 5,
+      "max_sso_providers": 2
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    
+    // Store tenant information for later tests
+    bru.setEnvVar("testTenantRealm", body.realm);
+    bru.setEnvVar("testTenantId", body.realm); // Using realm as ID for now
+    
+    // Log settings
+    if (body.settings) {
+    }
+  }
+}
+
+tests {
+  test("Direct tenant creation returns 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains tenant data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("realm");
+    expect(body).to.have.property("name");
+    expect(body).to.have.property("domain");
+    expect(body).to.have.property("type", "direct");
+    expect(body).to.have.property("active", true);
+  });
+  
+  test("Tenant name matches request", function() {
+    const body = res.getBody();
+    expect(body.name).to.include("Platform Test Tenant");
+  });
+  
+  test("Settings are applied correctly", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("settings");
+    expect(body.settings.enable_mfa).to.equal(false);
+    if (body.settings.max_users) {
+      expect(body.settings.max_users).to.equal(50);
+    }
+  });
+  
+  test("Timestamps are present", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("created_at");
+    expect(body).to.have.property("updated_at");
+  });
+}

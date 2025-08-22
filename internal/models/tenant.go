@@ -21,7 +21,7 @@ type Tenant struct {
 	Name      string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
 	Domain    string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
 	Type      TenantType     `gorm:"default:'client'" json:"type"`
-	Status    TenantStatus   `gorm:"default:'active';check:status IN ('active','provisioning','suspended','deactivated')" json:"status"`
+	Active    bool           `gorm:"default:true" json:"active"`
 	ParentMSP string         `gorm:"index;size:255" json:"parent_msp,omitempty"`
 	Settings  datatypes.JSON `gorm:"type:jsonb" json:"settings"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -29,20 +29,12 @@ type Tenant struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
-type TenantStatus string
-
-const (
-	TenantStatusActive       TenantStatus = "active"
-	TenantStatusProvisioning TenantStatus = "provisioning"
-	TenantStatusSuspended    TenantStatus = "suspended"
-	TenantStatusDeactivated  TenantStatus = "deactivated"
-)
 
 type TenantSettings struct {
 	LogoURL        string `json:"logo_url,omitempty"`
 	PrimaryColor   string `json:"primary_color,omitempty"`
 	SecondaryColor string `json:"secondary_color,omitempty"`
-	ThemeMode      string `json:"theme_mode,omitempty"` // light, dark, auto
+	ThemeMode      string `json:"theme_mode,omitempty"`
 
 	EnableSSO   bool `json:"enable_sso"`
 	EnableMFA   bool `json:"enable_mfa"`
@@ -66,7 +58,7 @@ type TenantSettings struct {
 
 
 func (t *Tenant) IsActive() bool {
-	return t.Status == TenantStatusActive
+	return t.Active
 }
 
 func (t *Tenant) CanProvisionUsers(currentUserCount int) bool {
@@ -115,7 +107,7 @@ func (t *Tenant) HasParentMSP() bool {
 }
 
 func (t *Tenant) CanManageChildTenants() bool {
-	return t.IsMSP() && t.IsActive()
+	return t.IsMSP() && t.Active
 }
 
 func (t *Tenant) HasMSPSSO() bool {
@@ -127,7 +119,7 @@ func (t *Tenant) HasMSPSSO() bool {
 }
 
 func (t *Tenant) CanAccessAdminPanel() bool {
-	return t.IsMSP() && t.IsActive()
+	return t.IsMSP() && t.Active
 }
 
 func (t *Tenant) IsEmailDomainAllowed(email string) bool {
@@ -169,7 +161,7 @@ type CreateTenantRequest struct {
 type UpdateTenantRequest struct {
 	Name     *string         `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
 	Domain   *string         `json:"domain,omitempty" validate:"omitempty,fqdn"`
-	Status   *TenantStatus   `json:"status,omitempty"`
+	Active   *bool           `json:"active,omitempty"`
 	Settings *datatypes.JSON `json:"settings,omitempty"`
 }
 
@@ -178,7 +170,7 @@ type TenantResponse struct {
 	Name             string         `json:"name"`
 	Domain           string         `json:"domain"`
 	Type             TenantType     `json:"type"`
-	Status           TenantStatus   `json:"status"`
+	Active           bool           `json:"active"`
 	Settings         TenantSettings `json:"settings"`
 	UserCount        int            `json:"user_count,omitempty"`
 	RoleCount        int            `json:"role_count,omitempty"`
@@ -207,7 +199,7 @@ func (t *Tenant) ToResponse() *TenantResponse {
 		Name:      t.Name,
 		Domain:    t.Domain,
 		Type:      t.Type,
-		Status:    t.Status,
+		Active:    t.Active,
 		Settings:  settings,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,

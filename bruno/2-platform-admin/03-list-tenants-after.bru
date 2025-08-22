@@ -1,0 +1,65 @@
+meta {
+  name: List Tenants After Creation
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/tenants/v1/
+}
+
+headers {
+  Authorization: Bearer {{platformAdminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    const initialCount = parseInt(bru.getEnvVar("initialTenantCount") || "0");
+    
+    
+    if (body.tenants && body.tenants.length > 0) {
+      body.tenants.forEach((tenant, index) => {
+        const isNew = !bru.getEnvVar("initialTenantNames")?.includes(tenant.name);
+        const marker = isNew ? " 🆕" : "";
+      });
+      
+      // Verify our test tenant is in the list
+      const testTenantName = bru.getEnvVar("testTenantName");
+      const testTenant = body.tenants.find(t => t.name === testTenantName);
+      if (testTenant) {
+      } else {
+      }
+    }
+  }
+}
+
+tests {
+  test("Tenant count increased", function() {
+    const body = res.getBody();
+    const initialCount = parseInt(bru.getEnvVar("initialTenantCount") || "0");
+    expect(body.total).to.be.greaterThan(initialCount);
+  });
+  
+  test("New test tenant appears in list", function() {
+    const body = res.getBody();
+    const testTenantName = bru.getEnvVar("testTenantName");
+    const tenantExists = body.tenants.some(t => t.name === testTenantName);
+    expect(tenantExists).to.be.true;
+  });
+  
+  test("Test tenant has correct properties", function() {
+    const body = res.getBody();
+    const testTenantName = bru.getEnvVar("testTenantName");
+    const testTenant = body.tenants.find(t => t.name === testTenantName);
+    
+    expect(testTenant).to.not.be.undefined;
+    expect(testTenant.type).to.equal("direct");
+    expect(testTenant.active).to.be.true;
+    expect(testTenant.domain).to.include("platform-test-");
+  });
+}

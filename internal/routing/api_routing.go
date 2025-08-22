@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"github.com/booli/booli-admin-api/internal/auth"
 	"github.com/booli/booli-admin-api/internal/handlers"
 	"github.com/booli/booli-admin-api/internal/middleware"
 	"github.com/gin-gonic/gin"
@@ -8,14 +9,16 @@ import (
 )
 
 type APIRouter struct {
-	rbac   *middleware.RBACMiddleware
-	logger *zap.Logger
+	rbac        *middleware.RBACMiddleware
+	oidcService *auth.OIDCService
+	logger      *zap.Logger
 }
 
-func NewAPIRouter(rbac *middleware.RBACMiddleware, logger *zap.Logger) *APIRouter {
+func NewAPIRouter(rbac *middleware.RBACMiddleware, oidcService *auth.OIDCService, logger *zap.Logger) *APIRouter {
 	return &APIRouter{
-		rbac:   rbac,
-		logger: logger,
+		rbac:        rbac,
+		oidcService: oidcService,
+		logger:      logger,
 	}
 }
 
@@ -29,77 +32,75 @@ func (r *APIRouter) SetupAPIRoutes(router *gin.Engine, handlers *handlers.Contai
 }
 
 func (r *APIRouter) setupMSPRoutes(group *gin.RouterGroup, mspHandler *handlers.MSPHandler) {
+	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
 	group.Use(r.rbac.RequirePermissionScopes("manage-realm"))
 	
-	// MSP management endpoints
-	group.POST("/", mspHandler.CreateMSP)              // Create MSP
-	group.GET("/", mspHandler.ListMSPs)                // List MSPs
-	group.GET("/:msp_id", mspHandler.GetMSP)           // Get MSP details
-	group.PUT("/:msp_id", mspHandler.UpdateMSP)        // Update MSP
-	group.DELETE("/:msp_id", mspHandler.DeleteMSP)     // Delete MSP
+	group.POST("/", mspHandler.CreateMSP)
+	group.GET("/", mspHandler.ListMSPs)
+	group.GET("/:msp_id", mspHandler.GetMSP)
+	group.PUT("/:msp_id", mspHandler.UpdateMSP)
+	group.DELETE("/:msp_id", mspHandler.DeleteMSP)
 	
-	// MSP staff management
-	group.POST("/:msp_id/staff", mspHandler.AddMSPStaff)                // Add MSP staff
+	group.POST("/:msp_id/staff", mspHandler.AddMSPStaff)
+	group.GET("/:msp_id/staff", mspHandler.ListMSPStaff)
 	
-	// Client tenant management
-	group.POST("/:msp_id/clients", mspHandler.CreateClientTenant)   // Create client tenant
-	group.GET("/:msp_id/clients", mspHandler.ListMSPClients)        // List MSP's clients
+	group.POST("/:msp_id/clients", mspHandler.CreateClientTenant)
+	group.GET("/:msp_id/clients", mspHandler.ListMSPClients)
+	
+	group.GET("/health", mspHandler.HealthCheck)
+	group.POST("/:msp_id/reconcile", mspHandler.Reconcile)
 }
 
 func (r *APIRouter) setupTenantRoutes(group *gin.RouterGroup, tenantHandler *handlers.TenantHandler) {
+	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
 	group.Use(r.rbac.RequireReadAccess())
 	
-	// Tenant management endpoints
-	group.GET("/", tenantHandler.List)                      // List accessible tenants
-	group.POST("/", tenantHandler.Create)                   // Create tenant
-	group.GET("/:id", tenantHandler.Get)                    // Get tenant details
-	group.PUT("/:id", tenantHandler.Update)                 // Update tenant
-	group.DELETE("/:id", tenantHandler.Delete)              // Delete tenant
+	group.GET("/", tenantHandler.List)
+	group.POST("/", tenantHandler.Create)
+	group.GET("/:id", tenantHandler.Get)
+	group.PUT("/:id", tenantHandler.Update)
+	group.DELETE("/:id", tenantHandler.Delete)
 	
-	// Tenant-scoped user management using tenant ID as identifier
 	usersGroup := group.Group("/:id/users")
-	usersGroup.POST("", tenantHandler.CreateTenantUser)         // Create user in tenant
-	usersGroup.GET("", tenantHandler.ListTenantUsers)           // List tenant users
-	usersGroup.GET("/:user_id", tenantHandler.GetTenantUser)    // Get tenant user
-	usersGroup.PUT("/:user_id", tenantHandler.UpdateTenantUser) // Update tenant user
-	usersGroup.DELETE("/:user_id", tenantHandler.DeleteTenantUser) // Delete tenant user
+	usersGroup.POST("", tenantHandler.CreateTenantUser)
+	usersGroup.GET("", tenantHandler.ListTenantUsers)
+	usersGroup.GET("/:user_id", tenantHandler.GetTenantUser)
+	usersGroup.PUT("/:user_id", tenantHandler.UpdateTenantUser)
+	usersGroup.DELETE("/:user_id", tenantHandler.DeleteTenantUser)
 }
 
 func (r *APIRouter) setupAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {
-	// Authentication endpoints - no auth required for most auth endpoints
-	group.GET("/providers", authHandler.GetProviders)           // List auth providers
-	group.POST("/login", authHandler.InitiateLogin)             // Initiate login
-	group.GET("/callback", authHandler.HandleCallback)          // OAuth callback
-	group.POST("/validate", authHandler.ValidateToken)          // Validate token
-	group.POST("/logout", authHandler.Logout)                   // Logout
-	group.GET("/userinfo", authHandler.GetUserInfo)             // Get user info
+	group.GET("/providers", authHandler.GetProviders)
+	group.POST("/login", authHandler.InitiateLogin)
+	group.GET("/callback", authHandler.HandleCallback)
+	group.POST("/validate", authHandler.ValidateToken)
+	group.POST("/logout", authHandler.Logout)
+	group.GET("/userinfo", authHandler.GetUserInfo)
 }
 
 func (r *APIRouter) setupUserRoutes(group *gin.RouterGroup, userHandler *handlers.UserHandler) {
+	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
 	group.Use(r.rbac.RequireReadAccess())
 	
-	// User management endpoints
-	group.GET("/", userHandler.List)                             // List users
-	group.POST("/", userHandler.Create)                          // Create user
-	group.GET("/:id", userHandler.Get)                           // Get user details
-	group.PUT("/:id", userHandler.Update)                        // Update user
-	group.DELETE("/:id", userHandler.Delete)                     // Delete user
+	group.GET("/", userHandler.List)
+	group.POST("/", userHandler.Create)
+	group.GET("/:id", userHandler.Get)
+	group.PUT("/:id", userHandler.Update)
+	group.DELETE("/:id", userHandler.Delete)
 }
 
 func (r *APIRouter) setupIdentityRoutes(group *gin.RouterGroup, idpHandler *handlers.IdentityProviderHandler) {
 	group.Use(r.rbac.RequireReadAccess())
 	
-	// Identity provider (SSO) endpoints
-	group.GET("/", idpHandler.ListIdentityProviders)             // List identity providers
-	group.POST("/", idpHandler.CreateIdentityProvider)           // Create identity provider
-	group.GET("/:alias", idpHandler.GetIdentityProvider)         // Get provider details
-	group.PUT("/:alias", idpHandler.UpdateIdentityProvider)      // Update provider
-	group.DELETE("/:alias", idpHandler.DeleteIdentityProvider)   // Delete provider
+	group.GET("/", idpHandler.ListIdentityProviders)
+	group.POST("/", idpHandler.CreateIdentityProvider)
+	group.GET("/:alias", idpHandler.GetIdentityProvider)
+	group.PUT("/:alias", idpHandler.UpdateIdentityProvider)
+	group.DELETE("/:alias", idpHandler.DeleteIdentityProvider)
 }
 
 func (r *APIRouter) setupAdminRoutes(group *gin.RouterGroup, handlersContainer *handlers.Container) {
-	// System administration endpoints
-	group.GET("/health", handlersContainer.Health.Check)         // System health check
-	group.GET("/environments", handlersContainer.Environment.ListEnvironments) // List environments
-	group.GET("/audit", handlersContainer.Audit.List)            // Audit logs
+	group.GET("/health", handlersContainer.Health.Check)
+	group.GET("/environments", handlersContainer.Environment.ListEnvironments)
+	group.GET("/audit", handlersContainer.Audit.List)
 }

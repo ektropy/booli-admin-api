@@ -32,7 +32,7 @@ func (s *SSOService) ListProviders(ctx context.Context, realmName string, page, 
 	var providers []*models.SSOProvider
 	for _, idp := range idps {
 		provider := &models.SSOProvider{
-			ID:           idp.Alias, // Use alias as ID for now
+			ID:           idp.Alias,
 			Alias:        idp.Alias,
 			DisplayName:  idp.DisplayName,
 			ProviderType: s.mapProviderType(idp.ProviderId),
@@ -188,6 +188,6 @@ func (s *SSOService) mapProviderType(keycloakProviderId string) models.SSOProvid
 	case "oidc":
 		return models.SSOProviderTypeOIDC
 	default:
-		return models.SSOProviderTypeOIDC // Default fallback
+		return models.SSOProviderTypeOIDC
 	}
 }

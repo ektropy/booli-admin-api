@@ -1,0 +1,32 @@
+meta {
+  name: System Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/v1/health
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("System health check returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Health response contains service info", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("status");
+    expect(body.status).to.equal("healthy");
+    expect(body).to.have.property("service");
+    expect(body.service).to.equal("booli-admin-api");
+  });
+  
+  test("Health response includes timestamp", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("timestamp");
+  });
+}

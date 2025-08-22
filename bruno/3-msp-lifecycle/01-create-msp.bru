@@ -1,0 +1,73 @@
+meta {
+  name: Use Existing MSP
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/msps/v1/
+}
+
+headers {
+  Authorization: Bearer {{platformAdminToken}}
+}
+
+script:pre-request {
+  bru.setEnvVar("mspName1", "Acme MSP");
+  bru.setEnvVar("mspDomain1", "acme.local");
+  bru.setEnvVar("mspRealmName1", "msp-acme-local");
+  bru.setEnvVar("mspRealm1", "msp-acme-local");
+  
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.msps && body.msps.length > 0) {
+      const acmeMsp = body.msps.find(msp => msp.name === "Acme MSP");
+      if (acmeMsp) {
+        
+        bru.setEnvVar("mspId1", acmeMsp.id || "acme-msp");
+        bru.setEnvVar("mspRealm1", acmeMsp.realm_name);
+        
+      }
+    }
+  }
+}
+
+tests {
+  test("MSP listing returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains MSP data", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("msps");
+    expect(body.msps).to.be.an("array");
+    expect(body.total_count).to.be.greaterThan(0);
+  });
+  
+  test("Acme MSP exists in list", function() {
+    const body = res.getBody();
+    const acmeMsp = body.msps.find(msp => msp.name === "Acme MSP");
+    expect(acmeMsp).to.exist;
+    expect(acmeMsp.realm_name).to.equal("msp-acme-local");
+    expect(acmeMsp.domain).to.equal("acme.local");
+  });
+  
+  test("MSP has required fields", function() {
+    const body = res.getBody();
+    const acmeMsp = body.msps.find(msp => msp.name === "Acme MSP");
+    if (acmeMsp) {
+      expect(acmeMsp).to.have.property("realm_name");
+      expect(acmeMsp).to.have.property("name");
+      expect(acmeMsp).to.have.property("domain");
+      expect(acmeMsp).to.have.property("active");
+    }
+  });
+}

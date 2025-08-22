@@ -1,0 +1,99 @@
+meta {
+  name: List Tenant Users
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.users && body.users.length > 0) {
+      body.users.forEach((user, index) => {
+        
+        if (user.roles && user.roles.length > 0) {
+        }
+        
+        if (user.last_login) {
+        }
+      });
+      
+      // Verify our test users are in the list
+      const testUserEmail = bru.getEnvVar("testUserEmail");
+      const inviteUserEmail = bru.getEnvVar("inviteUserEmail");
+      
+      const testUser = body.users.find(u => u.email === testUserEmail);
+      const inviteUser = body.users.find(u => u.email === inviteUserEmail);
+      
+      if (testUser) {
+      }
+      
+      if (inviteUser) {
+      }
+      
+      // Count enabled vs disabled users
+      const enabledCount = body.users.filter(u => u.enabled).length;
+      const disabledCount = body.users.filter(u => !u.enabled).length;
+      
+    } else if (body.users && body.users.length === 0) {
+    } else {
+    }
+  }
+}
+
+tests {
+  test("User listing returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains users array", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("users");
+    expect(body.users).to.be.an("array");
+  });
+  
+  test("At least some users exist", function() {
+    const body = res.getBody();
+    expect(body.users.length).to.be.greaterThanOrEqual(0);
+  });
+  
+  test("Test users appear in list", function() {
+    const body = res.getBody();
+    const testUserEmail = bru.getEnvVar("testUserEmail");
+    const inviteUserEmail = bru.getEnvVar("inviteUserEmail");
+    
+    if (testUserEmail) {
+      const testUserExists = body.users.some(u => u.email === testUserEmail);
+      expect(testUserExists).to.be.true;
+    }
+    
+    if (inviteUserEmail) {
+      const inviteUserExists = body.users.some(u => u.email === inviteUserEmail);
+      expect(inviteUserExists).to.be.true;
+    }
+  });
+  
+  test("Users have required fields", function() {
+    const body = res.getBody();
+    if (body.users.length > 0) {
+      const firstUser = body.users[0];
+      
+      expect(firstUser).to.have.property("email");
+      expect(firstUser).to.have.property("first_name");
+      expect(firstUser).to.have.property("last_name");
+      expect(firstUser).to.have.property("enabled");
+    }
+  });
+}

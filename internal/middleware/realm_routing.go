@@ -105,26 +105,26 @@ func (r *MSPRealmRouter) SetupRealmRoutes(router *gin.Engine) {
 	
 	auditRoutes := realmRoutes.Group("/audit")
 	{
-		auditRoutes.GET("/logs", r.rbac.RequireReadAccess()) // List audit logs - read access
-		auditRoutes.GET("/logs/:id", r.rbac.RequireReadAccess()) // Get audit log - read access
-		auditRoutes.POST("/export", r.rbac.RequireReadAccess()) // Export audit logs - read access
+		auditRoutes.GET("/logs", r.rbac.RequireReadAccess())
+		auditRoutes.GET("/logs/:id", r.rbac.RequireReadAccess())
+		auditRoutes.POST("/export", r.rbac.RequireReadAccess())
 	}
 	
 	mspRoutes := v1.Group("/msp")
 	mspRoutes.Use(r.rbac.RequireMSPAdminAccess())
 	{
-		mspRoutes.GET("/realms", r.rbac.RequireMSPAdminAccess()) // List all realms - MSP admin only
-		mspRoutes.POST("/realms", r.rbac.RequireMSPAdminAccess()) // Create realm - MSP admin only
-		mspRoutes.GET("/stats", r.rbac.RequireMSPAdminAccess()) // Get MSP statistics - MSP admin only
-		mspRoutes.GET("/health", r.rbac.RequireMSPAdminAccess()) // MSP health check - MSP admin only
+		mspRoutes.GET("/realms", r.rbac.RequireMSPAdminAccess())
+		mspRoutes.POST("/realms", r.rbac.RequireMSPAdminAccess())
+		mspRoutes.GET("/stats", r.rbac.RequireMSPAdminAccess())
+		mspRoutes.GET("/health", r.rbac.RequireMSPAdminAccess())
 	}
 	
 	defaultRoutes := v1.Group("")
 	defaultRoutes.Use(r.rbac.RequireRealmAccess())
 	{
-		defaultRoutes.GET("/profile", r.rbac.RequireReadAccess()) // User profile
-		defaultRoutes.PUT("/profile", r.rbac.RequireWriteAccess()) // Update profile
-		defaultRoutes.GET("/dashboard", r.rbac.RequireReadAccess()) // Dashboard data
+		defaultRoutes.GET("/profile", r.rbac.RequireReadAccess())
+		defaultRoutes.PUT("/profile", r.rbac.RequireWriteAccess())
+		defaultRoutes.GET("/dashboard", r.rbac.RequireReadAccess())
 	}
 }
 

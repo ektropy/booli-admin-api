@@ -7,21 +7,13 @@ import (
 	"gorm.io/gorm"
 )
 
-type MSPStatus string
-
-const (
-	MSPStatusActive      MSPStatus = "active"
-	MSPStatusInactive    MSPStatus = "inactive"
-	MSPStatusSuspended   MSPStatus = "suspended"
-	MSPStatusTerminated  MSPStatus = "terminated"
-)
 
 type MSP struct {
 	RealmName     string         `gorm:"primaryKey;size:255" json:"realm_name" validate:"required,min=1,max=255"`
 	Name          string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
 	Domain        string         `gorm:"size:255" json:"domain,omitempty" validate:"omitempty,fqdn"`
 	ClientPattern string         `gorm:"not null;size:255" json:"client_pattern" validate:"required"`
-	Status        MSPStatus      `gorm:"default:'active'" json:"status"`
+	Active        bool           `gorm:"default:true" json:"active"`
 	Settings      datatypes.JSON `gorm:"type:jsonb" json:"settings,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
@@ -53,7 +45,7 @@ type CreateMSPRequest struct {
 type UpdateMSPRequest struct {
 	Name     string      `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
 	Domain   string      `json:"domain,omitempty" validate:"omitempty,fqdn"`
-	Status   MSPStatus   `json:"status,omitempty"`
+	Active   *bool       `json:"active,omitempty"`
 	Settings MSPSettings `json:"settings,omitempty"`
 }
 
@@ -110,11 +102,11 @@ type ClientTenantListResponse struct {
 }
 
 func (m *MSP) IsActive() bool {
-	return m.Status == MSPStatusActive
+	return m.Active
 }
 
 func (m *MSP) CanManageClients() bool {
-	return m.IsActive()
+	return m.Active
 }
 
 func (m *MSP) GetClientRealmPrefix() string {
@@ -122,7 +114,6 @@ func (m *MSP) GetClientRealmPrefix() string {
 		return m.ClientPattern
 	}
 	
-	// Default pattern based on MSP realm name
 	if len(m.RealmName) > 4 && m.RealmName[:4] == "msp-" {
 		mspName := m.RealmName[4:]
 		return mspName + "-client-"

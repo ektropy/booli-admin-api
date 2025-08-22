@@ -64,7 +64,7 @@ func GetTestConfig() *TestConfig {
 		ShutdownTimeout: getDurationOrDefault("TEST_SHUTDOWN_TIMEOUT", 30*time.Second),
 		PollInterval:    getDurationOrDefault("TEST_POLL_INTERVAL", 5*time.Second),
 
-		APIBasePath: "/api/2025-08-01",
+		APIBasePath: "/api",
 		APIAudience: getEnvOrDefault("TEST_API_AUDIENCE", "booli-admin-api"),
 		BackendHost: getEnvOrDefault("TEST_BACKEND_HOST", "localhost"),
 		BackendPort: getEnvOrDefault("TEST_BACKEND_PORT", "8749"),

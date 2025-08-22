@@ -3,13 +3,13 @@ package models
 import "time"
 
 type SSOProvider struct {
-	ID           string                 `json:"id"`            // Keycloak Identity Provider ID
-	Alias        string                 `json:"alias"`         // Identity Provider alias
-	DisplayName  string                 `json:"display_name"`  // Display name
-	ProviderType SSOProviderType        `json:"provider_type"` // saml or oidc
-	Enabled      bool                   `json:"enabled"`       // Whether the provider is enabled
-	Config       map[string]interface{} `json:"config"`        // Keycloak Identity Provider config
-	RealmName    string                 `json:"realm_name"`    // Which realm this provider belongs to
+	ID           string                 `json:"id"`
+	Alias        string                 `json:"alias"`
+	DisplayName  string                 `json:"display_name"`
+	ProviderType SSOProviderType        `json:"provider_type"`
+	Enabled      bool                   `json:"enabled"`
+	Config       map[string]interface{} `json:"config"`
+	RealmName    string                 `json:"realm_name"`
 }
 
 type SSOProviderType string

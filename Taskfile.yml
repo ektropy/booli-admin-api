@@ -130,9 +130,11 @@ tasks:
     deps: [test, lint, tidy]
 
   clean:
-    desc: Clean build artifacts
+    desc: Clean build artifacts and generated files
     cmds:
       - rm -rf bin/ dist/ coverage.out coverage.html
+      - rm -f *.out *.log booli-admin-api booli-admin-api-test
+      - rm -f docs/swagger.json docs/swagger.yaml
 
   dev:
     desc: Build and run for development
@@ -219,20 +221,29 @@ tasks:
     desc: Run Bruno API tests with docker-compose
     deps: [docker-test]
     cmds:
-      - echo "Starting services and running Bruno tests..."
+      - echo "Starting services for Bruno tests..."
       - docker-compose -f docker-compose.bruno.yml --env-file .env.bruno up -d
-      - echo "Waiting for backend to be ready..."
+      - echo "Waiting for all services to be ready..."
       - |
         for i in {1..60}; do
-          if curl -f http://localhost:8081/health >/dev/null 2>&1; then
+          if curl -f http://localhost:8082/api/admin/v1/health >/dev/null 2>&1; then
             echo "Backend is ready!"
             break
           fi
           echo "Waiting for backend... ($i/60)"
+          sleep 3
+        done
+      - |
+        for i in {1..30}; do
+          if curl -f http://localhost:8026/api/v1/info >/dev/null 2>&1; then
+            echo "Mailpit is ready!"
+            break
+          fi
+          echo "Waiting for Mailpit... ($i/30)"
           sleep 2
         done
       - echo "Running Bruno tests..."
-      - cd bruno && bru run --env local
+      - cd bruno && bru run --env docker
       - echo "Stopping services..."
       - docker-compose -f docker-compose.bruno.yml --env-file .env.bruno down -v
 
@@ -240,6 +251,21 @@ tasks:
     desc: Run Bruno API tests against running development environment
     cmds:
       - cd bruno && bru run --env local
+
+  bruno-test-auth:
+    desc: Run Bruno authentication tests only
+    cmds:
+      - cd bruno && bru run 1-authentication --env local
+
+  bruno-install:
+    desc: Install Bruno CLI
+    cmds:
+      - npm install -g @usebruno/cli
+
+  bruno-test-core:
+    desc: Run core Bruno tests (auth, MSP lifecycle, client operations)
+    cmds:
+      - cd bruno && bru run --env docker 1-authentication 3-msp-lifecycle 4-client-operations
 
   dev-env-start:
     desc: Start development environment

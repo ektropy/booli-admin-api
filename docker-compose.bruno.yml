@@ -1,0 +1,180 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: booli-postgres-bruno
+    environment:
+      POSTGRES_DB: booli_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_bruno_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8.0
+    container_name: booli-valkey-bruno
+    ports:
+      - "6380:6379"
+    command: ["valkey-server", "--port", "6379"]
+    volumes:
+      - valkey_bruno_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: booli-keycloak-bruno
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KC_HOSTNAME_STRICT: false
+      KC_FRONTEND_URL: http://localhost:8084
+      KC_HTTP_ENABLED: true
+      KC_HTTP_PORT: 8084
+      KC_HTTP_MANAGEMENT_PORT: 9004
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - keycloak_bruno_data:/opt/keycloak/data
+    command: ["start-dev"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8084 && echo -e 'GET /admin/ HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'HTTP/1.1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: booli-mailpit-bruno
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+    environment:
+      - MP_MAX_MESSAGES=5000
+      - MP_DATA_FILE=/data/mailpit.db
+      - MP_SMTP_AUTH_DISABLED=1
+    volumes:
+      - mailpit_bruno_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8025/api/v1/info || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  booli-admin-api:
+    build: .
+    container_name: booli-admin-api-bruno
+    network_mode: host
+    environment:
+      BOOLI_ENVIRONMENT: production
+      BOOLI_SERVER_PORT: 8083
+      BOOLI_DATABASE_HOST: localhost
+      BOOLI_DATABASE_PORT: 5434
+      BOOLI_DATABASE_USER: postgres
+      BOOLI_DATABASE_PASSWORD: postgres
+      BOOLI_DATABASE_DBNAME: booli_test
+      BOOLI_DATABASE_SSLMODE: disable
+      BOOLI_REDIS_HOST: localhost
+      BOOLI_REDIS_PORT: 6380
+      BOOLI_KEYCLOAK_URL: http://localhost:8084
+      BOOLI_KEYCLOAK_ADMIN_REALM: master
+      BOOLI_KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      BOOLI_KEYCLOAK_ADMIN_USERNAME: admin
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
+      BOOLI_KEYCLOAK_MSP_REALM: msp-acme-local
+      BOOLI_KEYCLOAK_CLIENT_ID: msp-client
+      BOOLI_KEYCLOAK_CLIENT_SECRET: test-secret
+      BOOLI_KEYCLOAK_INIT_TIMEOUT: 60
+      BOOLI_LOG_LEVEL: debug
+      KEYCLOAK_DEFAULT_MSP_ENABLED: true
+      KEYCLOAK_DEFAULT_MSP_NAME: Acme MSP
+      KEYCLOAK_DEFAULT_MSP_DOMAIN: acme.local
+      KEYCLOAK_DEFAULT_MSP_REALM: msp-acme-local
+      KEYCLOAK_MSP_REALM: msp-acme-local
+      KEYCLOAK_MSP_REALM_ENABLED: true
+      KEYCLOAK_MSP_REALM_DISPLAY_NAME: Acme MSP Platform
+      KEYCLOAK_MSP_CLIENT_ID: msp-client
+      KEYCLOAK_MSP_CLIENT_SECRET: test-secret
+      KEYCLOAK_MSP_CLIENT_REDIRECT_URIS: http://localhost:8083/auth/callback
+      KEYCLOAK_MSP_CLIENT_WEB_ORIGINS: http://localhost:8083
+      KEYCLOAK_MSP_CLIENT_STANDARD_FLOW: true
+      KEYCLOAK_MSP_CLIENT_SERVICE_ACCOUNTS: true
+      KEYCLOAK_MSP_CLIENT_DIRECT_ACCESS: true
+      KEYCLOAK_MSP_DEFAULT_USER_USERNAME: admin
+      KEYCLOAK_MSP_DEFAULT_USER_PASSWORD: admin
+      KEYCLOAK_MSP_DEFAULT_USER_EMAIL: admin@booli.test
+      KEYCLOAK_MSP_DEFAULT_USER_FIRST_NAME: Admin
+      KEYCLOAK_MSP_DEFAULT_USER_LAST_NAME: User
+      KEYCLOAK_MSP_DEFAULT_USER_ROLES: msp-admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/api/admin/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: booli-pgadmin-bruno
+    ports:
+      - "5051:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_bruno_data:/var/lib/pgadmin
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: booli-redis-commander-bruno
+    ports:
+      - "8085:8081"
+    environment:
+      REDIS_HOSTS: local:valkey:6379
+    depends_on:
+      - valkey
+
+volumes:
+  postgres_bruno_data:
+    driver: local
+  valkey_bruno_data:
+    driver: local
+  keycloak_bruno_data:
+    driver: local
+  mailpit_bruno_data:
+    driver: local
+  pgadmin_bruno_data:
+    driver: local

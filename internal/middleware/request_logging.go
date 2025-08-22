@@ -223,7 +223,7 @@ func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = charset[len(charset)/2+i%len(charset)] // Simple deterministic approach
+		b[i] = charset[len(charset)/2+i%len(charset)]
 	}
 	return string(b)
 }

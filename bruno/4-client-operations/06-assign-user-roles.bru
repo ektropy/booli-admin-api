@@ -1,0 +1,66 @@
+meta {
+  name: Assign User Roles
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/tenants/v1/{{clientTenantRealm1}}/users/{{testUserId}}
+  body: json
+}
+
+headers {
+  Authorization: Bearer {{clientAdminToken1}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+}
+
+body:json {
+  {
+    "roles": ["tenant-user"]
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200) {
+    const body = res.getBody();
+    
+    if (body.roles) {
+    }
+    
+    if (body.message) {
+    }
+  } else if (status === 204) {
+  }
+}
+
+tests {
+  test("Role assignment returns success status", function() {
+    const status = res.getStatus();
+    expect([200, 204]).to.include(status);
+  });
+  
+  test("If response has body, shows role information", function() {
+    const body = res.getBody();
+    const status = res.getStatus();
+    if (body && status === 200) {
+      expect(body).to.have.property("roles");
+      expect(body.roles).to.be.an("array");
+    }
+  });
+  
+  test("No error in response", function() {
+    const body = res.getBody();
+    if (body) {
+      expect(body).to.not.have.property("error");
+    }
+  });
+}

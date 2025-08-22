@@ -19,7 +19,7 @@ Multi-tenant administrative portal with Keycloak authentication and MSP support.
 - **Docker containerization** with development and production setups
 - **PostgreSQL** with Valkey/Redis caching for performance
 - **Advanced audit logging** with configuration change tracking
-- **Bruno API testing** suite for comprehensive integration testing
+- **Bruno API testing** suite for workflow integration testing
 - **JSON-based configuration** with validation and security controls
 - **SSO provider management** with OIDC and SAML support
 
@@ -127,20 +127,16 @@ cp config.yaml.example config.yaml
 
 ## API Documentation
 
-Once running, access the comprehensive OpenAPI documentation at:
+Once running, access the OpenAPI documentation at:
 - **Swagger UI**: `http://localhost:8081/swagger/`
-- **OpenAPI JSON**: `http://localhost:8081/swagger/doc.json`
-- **Health Check**: `http://localhost:8081/health`
-- **Keycloak Health**: `http://localhost:8081/health/keycloak`
+- **Health Check**: `http://localhost:8081/api/admin/v1/health`
 
 ### API Endpoints
 
-- **Authentication**: `/api/v1/auth/*` - OIDC authentication, token validation
-- **Admin**: `/api/v1/admin/*` - MSP admin operations (tenants, users, roles)
-- **Tenant-scoped**: `/api/v1/*` - Tenant-specific operations
-- **Infrastructure**: Environment, domain, network, IP management
-- **Audit**: Logging and CSV export capabilities
-- **SSO**: Provider management and testing with OIDC/SAML support
+- **Authentication**: `/api/auth/v1/*` - OIDC authentication, token validation
+- **MSP Management**: `/api/msps/v1/*` - MSP operations, staff, client tenants
+- **Tenant Operations**: `/api/tenants/v1/*` - Tenant-specific user management
+- **Admin**: `/api/admin/v1/*` - System administration and health checks
 
 ## Development
 
@@ -218,12 +214,10 @@ task bruno-test
 ```
 
 Test categories:
-- **Health checks**: Basic connectivity
-- **Authentication**: OIDC flows, token validation
-- **Security tests**: Invalid tokens, unauthorized access
-- **Admin workflows**: Tenant and user management
-- **Tenant workflows**: Role management, SSO configuration
-- **Validation tests**: Configuration validation and error handling
+- **System setup**: Health checks and basic connectivity
+- **Authentication**: OIDC flows, token validation, security tests
+- **MSP lifecycle**: MSP management, staff, client tenant creation
+- **Client operations**: User management, role assignment, cleanup
 
 ## Architecture
 

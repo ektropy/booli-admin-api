@@ -1,0 +1,71 @@
+meta {
+  name: MSP Health Check
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/msps/v1/health
+}
+
+headers {
+  Authorization: Bearer {{mspAdminToken1}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.msps) {
+      
+      body.msps.forEach((msp, index) => {
+        
+        if (msp.last_activity) {
+        }
+        
+        if (msp.issues && msp.issues.length > 0) {
+        }
+        
+        // Check if this is our test MSP
+        if (msp.realm === bru.getEnvVar("mspRealm1")) {
+          bru.setEnvVar("testMSPHealthStatus", msp.status);
+        }
+      });
+    } else if (Array.isArray(body)) {
+      body.forEach((item, index) => {
+      });
+    } else {
+      
+      if (body.status) {
+      }
+      if (body.healthy !== undefined) {
+      }
+    }
+  }
+}
+
+tests {
+  test("MSP health check returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains health data", function() {
+    const body = res.getBody();
+    // The response should have details, overall_status, and summary
+    const hasHealthData = body.hasOwnProperty('details') || 
+                         body.hasOwnProperty('overall_status') || 
+                         body.hasOwnProperty('summary');
+    expect(hasHealthData).to.be.true;
+  });
+  
+  test("No critical errors in response", function() {
+    const body = res.getBody();
+    if (body.error) {
+      expect(body.error).to.not.exist;
+    }
+  });
+}

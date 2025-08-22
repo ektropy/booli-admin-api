@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/booli/booli-admin-api/internal/models"
@@ -28,7 +27,6 @@ func (suite *TenantUsersTestSuite) SetupTest() {
 
 	require.NotEmpty(suite.T(), suite.adminToken, "Admin token should not be empty")
 	
-	// Create a test tenant
 	suite.createTestTenant()
 }
 
@@ -39,14 +37,11 @@ func (suite *TenantUsersTestSuite) createTestTenant() {
 		Type:   models.TenantTypeClient,
 	}
 
-	body, err := json.Marshal(tenantRequest)
-	require.NoError(suite.T(), err)
-
 	resp, err := suite.MakeRequest("POST", "/api/tenants/v1", map[string]string{
 		"Authorization":   "Bearer " + suite.adminToken,
 		"X-Auth-Provider": "keycloak",
 		"Content-Type":    "application/json",
-	}, strings.NewReader(string(body)))
+	}, tenantRequest)
 	require.NoError(suite.T(), err)
 	defer resp.Body.Close()
 
@@ -75,17 +70,13 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserCreation() {
 		Enabled:   true,
 	}
 
-	body, err := json.Marshal(userRequest)
-	require.NoError(suite.T(), err)
-
-	// Test user creation
 	resp, err := suite.MakeRequest("POST", 
 		fmt.Sprintf("/api/tenants/v1/%s/users", suite.testTenantID),
 		map[string]string{
 			"Authorization":   "Bearer " + suite.adminToken,
 			"X-Auth-Provider": "keycloak",
 			"Content-Type":    "application/json",
-		}, strings.NewReader(string(body)))
+		}, userRequest)
 	require.NoError(suite.T(), err)
 	defer resp.Body.Close()
 
@@ -106,7 +97,6 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserListing() {
 		suite.T().Skip("No test tenant available")
 	}
 
-	// List users in tenant
 	resp, err := suite.MakeRequest("GET",
 		fmt.Sprintf("/api/tenants/v1/%s/users", suite.testTenantID),
 		map[string]string{
@@ -131,7 +121,6 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserOperations() {
 		suite.T().Skip("No test tenant available")
 	}
 
-	// Create a user first
 	userRequest := models.CreateUserRequest{
 		Username:  "testuser002",
 		Email:     "testuser002@example.com",
@@ -140,16 +129,13 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserOperations() {
 		Enabled:   true,
 	}
 
-	body, err := json.Marshal(userRequest)
-	require.NoError(suite.T(), err)
-
 	resp, err := suite.MakeRequest("POST",
 		fmt.Sprintf("/api/tenants/v1/%s/users", suite.testTenantID),
 		map[string]string{
 			"Authorization":   "Bearer " + suite.adminToken,
 			"X-Auth-Provider": "keycloak",
 			"Content-Type":    "application/json",
-		}, strings.NewReader(string(body)))
+		}, userRequest)
 	require.NoError(suite.T(), err)
 	resp.Body.Close()
 
@@ -157,10 +143,8 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserOperations() {
 		suite.T().Skipf("Cannot create user for operations test, status: %d", resp.StatusCode)
 	}
 
-	// For simplicity, let's just test with a mock user ID since we closed the response body
 	mockUserID := "test-user-id-123"
 
-	// Test getting user
 	resp, err = suite.MakeRequest("GET",
 		fmt.Sprintf("/api/tenants/v1/%s/users/%s", suite.testTenantID, mockUserID),
 		map[string]string{
@@ -170,13 +154,11 @@ func (suite *TenantUsersTestSuite) TestTenantScopedUserOperations() {
 	require.NoError(suite.T(), err)
 	defer resp.Body.Close()
 
-	// This might return 404 if user doesn't exist, which is expected for a mock ID
 	assert.Contains(suite.T(), []int{http.StatusOK, http.StatusNotFound}, resp.StatusCode,
 		"Get user should return OK or Not Found")
 }
 
 func (suite *TenantUsersTestSuite) TestTenantScopedInvalidTenant() {
-	// Test with non-existent tenant
 	resp, err := suite.MakeRequest("GET", "/api/tenants/v1/non-existent-tenant/users",
 		map[string]string{
 			"Authorization":   "Bearer " + suite.adminToken,
@@ -194,18 +176,13 @@ func (suite *TenantUsersTestSuite) TestAutoRealmDetection() {
 		suite.T().Skip("No test tenant available")
 	}
 
-	// Test that we don't need to provide tenant_realm in the request body
 	userRequest := map[string]interface{}{
 		"username":   "testuser003",
 		"email":      "testuser003@example.com",
 		"firstName":  "Test",
 		"lastName":   "User3",
 		"enabled":    true,
-		// NOTE: No tenant_realm field needed!
 	}
-
-	body, err := json.Marshal(userRequest)
-	require.NoError(suite.T(), err)
 
 	resp, err := suite.MakeRequest("POST",
 		fmt.Sprintf("/api/tenants/v1/%s/users", suite.testTenantID),
@@ -213,11 +190,10 @@ func (suite *TenantUsersTestSuite) TestAutoRealmDetection() {
 			"Authorization":   "Bearer " + suite.adminToken,
 			"X-Auth-Provider": "keycloak",
 			"Content-Type":    "application/json",
-		}, strings.NewReader(string(body)))
+		}, userRequest)
 	require.NoError(suite.T(), err)
 	defer resp.Body.Close()
 
-	// Should succeed without tenant_realm in body
 	assert.True(suite.T(), resp.StatusCode < 500,
 		"Auto-realm detection should work without tenant_realm in request body")
 }

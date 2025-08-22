@@ -1,0 +1,41 @@
+meta {
+  name: System Information
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/auth/v1/providers
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    
+    if (body.providers && body.providers.length > 0) {
+      body.providers.forEach(provider => {
+      });
+    }
+  }
+}
+
+tests {
+  test("Auth providers endpoint accessible", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains providers array", function() {
+    const body = res.getBody();
+    expect(body).to.have.property("providers");
+    expect(body.providers).to.be.an("array");
+  });
+  
+  test("At least one provider configured", function() {
+    const body = res.getBody();
+    expect(body.providers.length).to.be.greaterThan(0);
+  });
+}
