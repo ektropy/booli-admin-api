@@ -1,8 +1,10 @@
-# GoReleaser configuration
-# https://goreleaser.com/customization/
 version: 2
 
 project_name: booli-admin-api
+
+git:
+  tag_sort: -version:refname
+  prerelease_suffix: "-"
 
 before:
   hooks:
