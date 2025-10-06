@@ -108,8 +108,8 @@ docker_manifests:
 
 release:
   github:
-    owner: booli
-    name: booli-auth-keycloak
+    owner: ektropy
+    name: booli-admin-api
   
   name_template: "v{{ .Version }}"
   
