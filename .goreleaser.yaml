@@ -71,16 +71,6 @@ signs:
     artifacts: all
     output: true
 
-sboms:
-  - artifacts: archive
-    documents:
-      - '{{ .ArtifactName }}.sbom.json'
-    cmd: syft
-    args: 
-      - "${artifact}"
-      - "--output"
-      - "json=${document}"
-
 dockers:
   - goos: linux
     goarch: amd64
