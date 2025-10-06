@@ -61,10 +61,10 @@ dockers:
   - goos: linux
     goarch: amd64
     image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
       - "ghcr.io/booli/{{ .ProjectName }}:latest-amd64"
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
     build_flag_templates:
+      - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.description=Booli Admin API"
       - "--label=org.opencontainers.image.url=https://github.com/booli/booli-auth-keycloak"
@@ -73,17 +73,16 @@ dockers:
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.licenses=CC-BY-NC-ND-4.0"
-      - "--platform=linux/amd64"
     dockerfile: Dockerfile.goreleaser
     use: buildx
-  
+
   - goos: linux
     goarch: arm64
     image_templates:
+      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
       - "ghcr.io/booli/{{ .ProjectName }}:latest-arm64"
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
     build_flag_templates:
+      - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.description=Booli Admin API"
       - "--label=org.opencontainers.image.url=https://github.com/booli/booli-auth-keycloak"
@@ -92,7 +91,6 @@ dockers:
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.licenses=CC-BY-NC-ND-4.0"
-      - "--platform=linux/arm64"
     dockerfile: Dockerfile.goreleaser
     use: buildx
 
