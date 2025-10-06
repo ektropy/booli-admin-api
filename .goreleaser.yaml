@@ -61,8 +61,8 @@ dockers:
   - goos: linux
     goarch: amd64
     image_templates:
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/booli/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:latest-amd64"
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
@@ -79,8 +79,8 @@ dockers:
   - goos: linux
     goarch: arm64
     image_templates:
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
-      - "ghcr.io/booli/{{ .ProjectName }}:latest-arm64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:{{ .Version }}-arm64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:latest-arm64"
     build_flag_templates:
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
@@ -95,15 +95,15 @@ dockers:
     use: buildx
 
 docker_manifests:
-  - name_template: "ghcr.io/booli/{{ .ProjectName }}:latest"
+  - name_template: "ghcr.io/ektropy/{{ .ProjectName }}:latest"
     image_templates:
-      - "ghcr.io/booli/{{ .ProjectName }}:latest-amd64"
-      - "ghcr.io/booli/{{ .ProjectName }}:latest-arm64"
-  
-  - name_template: "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:latest-arm64"
+
+  - name_template: "ghcr.io/ektropy/{{ .ProjectName }}:{{ .Version }}"
     image_templates:
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/booli/{{ .ProjectName }}:{{ .Version }}-arm64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/ektropy/{{ .ProjectName }}:{{ .Version }}-arm64"
   
 
 release:
@@ -123,7 +123,7 @@ release:
 
     Pull the latest image:
     ```bash
-    docker pull ghcr.io/booli/booli-admin-api:{{ .Version }}
+    docker pull ghcr.io/ektropy/booli-admin-api:{{ .Version }}
     ```
 
 changelog:
