@@ -36,9 +36,6 @@ script:post-response {
   }
 }
 
-script:pre-request {
-}
-
 tests {
   test("Primary cleanup returns acceptable status", function() {
     const status = res.getStatus();

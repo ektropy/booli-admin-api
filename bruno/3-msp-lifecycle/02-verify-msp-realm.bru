@@ -8,9 +8,6 @@ get {
   url: {{baseUrl}}/api/auth/v1/providers
 }
 
-script:pre-request {
-}
-
 assert {
   res.status: eq 200
 }

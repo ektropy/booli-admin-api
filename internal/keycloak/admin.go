@@ -983,7 +983,7 @@ func (c *AdminClient) GetClient(ctx context.Context, realmName, clientUUID strin
 }
 
 func (c *AdminClient) UpdateClient(ctx context.Context, realmName, clientUUID string, client *ClientRepresentation) error {
-	endpoint := fmt.Sprintf("/admin/realms/%s/clients/%s", realmName, clientUUID)
+	endpoint := fmt.Sprintf("/%s/clients/%s", realmName, clientUUID)
 
 	resp, err := c.makeRequest(ctx, "PUT", endpoint, client)
 	if err != nil {
