@@ -139,11 +139,11 @@ func (s *SSOService) DeleteProvider(ctx context.Context, realmName, alias string
 }
 
 func (s *SSOService) TestProvider(ctx context.Context, realmName, alias string, req *models.TestSSOProviderRequest) (*models.SSOTestResult, error) {
-	
+
 	result := &models.SSOTestResult{
 		Success:      true,
 		TestedAt:     ctx.Value("current_time").(time.Time),
-		ResponseTime: 100, // Mock response time
+		ResponseTime: 100,
 	}
 
 	s.logger.Info("Tested SSO provider",

@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// UserService manages users through Keycloak (no database dependencies)
 type UserService struct {
 	keycloakAdmin *keycloak.AdminClient
 	logger        *zap.Logger
@@ -116,7 +115,6 @@ func (s *UserService) CreateUser(ctx context.Context, realmName string, req *mod
 		return nil, fmt.Errorf("failed to create user in Keycloak: %w", err)
 	}
 
-	// Assign default role if specified
 	if req.DefaultRole != "" {
 		if err := s.keycloakAdmin.AssignRealmRoleToUser(ctx, realmName, createdUser.ID, req.DefaultRole); err != nil {
 			s.logger.Warn("Failed to assign default role to user",
@@ -133,8 +131,8 @@ func (s *UserService) CreateUser(ctx context.Context, realmName string, req *mod
 
 	if req.SendInvite {
 		actions := []string{"UPDATE_PASSWORD", "VERIFY_EMAIL"}
-		lifespan := 259200 // 72 hours in seconds
-		
+		lifespan := 259200
+
 		if err := s.keycloakAdmin.ExecuteActionsEmail(ctx, realmName, createdUser.ID, actions, lifespan, "", ""); err != nil {
 			s.logger.Warn("Failed to send invitation email",
 				zap.String("user_id", createdUser.ID),
@@ -193,7 +191,6 @@ func (s *UserService) DeleteUser(ctx context.Context, realmName, userID string) 
 	return nil
 }
 
-// AssignRole assigns a role to a user
 func (s *UserService) AssignRole(ctx context.Context, realmName, userID, roleName string) error {
 	if err := s.keycloakAdmin.AssignRealmRoleToUser(ctx, realmName, userID, roleName); err != nil {
 		return fmt.Errorf("failed to assign role to user: %w", err)
@@ -207,7 +204,6 @@ func (s *UserService) AssignRole(ctx context.Context, realmName, userID, roleNam
 	return nil
 }
 
-// RevokeRole revokes a role from a user
 func (s *UserService) RevokeRole(ctx context.Context, realmName, userID, roleName string) error {
 	if err := s.keycloakAdmin.RevokeRealmRoleFromUser(ctx, realmName, userID, roleName); err != nil {
 		return fmt.Errorf("failed to revoke role from user: %w", err)
@@ -221,7 +217,6 @@ func (s *UserService) RevokeRole(ctx context.Context, realmName, userID, roleNam
 	return nil
 }
 
-// ResetPassword resets a user's password
 func (s *UserService) ResetPassword(ctx context.Context, realmName, userID, newPassword string, temporary bool) error {
 	if err := s.keycloakAdmin.ResetUserPassword(ctx, realmName, userID, newPassword, temporary); err != nil {
 		return fmt.Errorf("failed to reset user password: %w", err)
@@ -235,7 +230,6 @@ func (s *UserService) ResetPassword(ctx context.Context, realmName, userID, newP
 	return nil
 }
 
-// EnableUser enables a user account
 func (s *UserService) EnableUser(ctx context.Context, realmName, userID string) error {
 	_, err := s.UpdateUser(ctx, realmName, userID, &models.UpdateUserRequest{
 		Enabled: &[]bool{true}[0],
@@ -243,7 +237,6 @@ func (s *UserService) EnableUser(ctx context.Context, realmName, userID string) 
 	return err
 }
 
-// DisableUser disables a user account
 func (s *UserService) DisableUser(ctx context.Context, realmName, userID string) error {
 	_, err := s.UpdateUser(ctx, realmName, userID, &models.UpdateUserRequest{
 		Enabled: &[]bool{false}[0],
@@ -265,7 +258,6 @@ func (s *UserService) GetUserRoles(ctx context.Context, realmName, userID string
 	return roleNames, nil
 }
 
-// SearchUsers searches for users by username or email
 func (s *UserService) SearchUsers(ctx context.Context, realmName, query string, max int) ([]models.User, error) {
 	keycloakUsers, err := s.keycloakAdmin.SearchUsers(ctx, realmName, query, max)
 	if err != nil {
@@ -336,20 +328,20 @@ func (s *UserService) BulkCreateUsers(ctx context.Context, realmName string, use
 		Successful:     make([]*models.User, 0),
 		Failed:         make([]models.BulkError, 0),
 	}
-	
+
 	for i, userReq := range users {
-		s.logger.Info("Creating user", 
+		s.logger.Info("Creating user",
 			zap.String("realm", realmName),
 			zap.String("email", userReq.Email),
 			zap.Int("progress", i+1),
 			zap.Int("total", len(users)))
-		
+
 		createdUser, err := s.CreateUser(ctx, realmName, &userReq)
 		if err != nil {
 			result.Failed = append(result.Failed, models.BulkError{
-				Row:    i + 2,
-				Email:  userReq.Email,
-				Error:  err.Error(),
+				Row:   i + 2,
+				Email: userReq.Email,
+				Error: err.Error(),
 			})
 			result.FailureCount++
 		} else {
@@ -357,35 +349,34 @@ func (s *UserService) BulkCreateUsers(ctx context.Context, realmName string, use
 			result.SuccessCount++
 		}
 	}
-	
+
 	return result, nil
 }
 
-// ImportUsersFromCSV imports users from parsed CSV records
 func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, csvRecords [][]string) (*models.CSVImportResult, error) {
 	if len(csvRecords) < 2 {
 		return nil, fmt.Errorf("CSV must contain at least header row and one data row")
 	}
-	
+
 	headers := csvRecords[0]
 	columnMap := make(map[string]int)
 	for i, header := range headers {
 		columnMap[strings.ToLower(strings.TrimSpace(header))] = i
 	}
-	
+
 	requiredColumns := []string{"email", "first_name", "last_name"}
 	for _, col := range requiredColumns {
 		if _, exists := columnMap[col]; !exists {
 			return nil, fmt.Errorf("required column '%s' not found in CSV", col)
 		}
 	}
-	
+
 	var users []models.CreateUserRequest
 	var parseErrors []models.CSVError
-	
+
 	for i, row := range csvRecords[1:] {
 		rowNum := i + 2
-		
+
 		if len(row) != len(headers) {
 			parseErrors = append(parseErrors, models.CSVError{
 				Row:   rowNum,
@@ -393,19 +384,19 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			})
 			continue
 		}
-		
+
 		user := models.CreateUserRequest{
 			Email:     getColumnValue(row, columnMap, "email"),
 			FirstName: getColumnValue(row, columnMap, "first_name"),
 			LastName:  getColumnValue(row, columnMap, "last_name"),
 		}
-		
+
 		if username := getColumnValue(row, columnMap, "username"); username != "" {
 			user.Username = username
 		} else {
 			user.Username = user.Email
 		}
-		
+
 		if password := getColumnValue(row, columnMap, "password"); password != "" {
 			user.Password = password
 		} else {
@@ -415,18 +406,18 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			}
 			user.Password = generatedPassword
 		}
-		
+
 		if role := getColumnValue(row, columnMap, "role"); role != "" {
 			user.DefaultRole = role
 		}
-		
+
 		if enabled := getColumnValue(row, columnMap, "enabled"); enabled != "" {
 			enabledBool := strings.ToLower(enabled) == "true" || enabled == "1"
 			user.Enabled = enabledBool
 		} else {
 			user.Enabled = true
 		}
-		
+
 		if user.Email == "" || user.FirstName == "" || user.LastName == "" {
 			parseErrors = append(parseErrors, models.CSVError{
 				Row:   rowNum,
@@ -434,22 +425,22 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			})
 			continue
 		}
-		
+
 		users = append(users, user)
 	}
-	
+
 	if len(parseErrors) > 0 {
 		return &models.CSVImportResult{
 			TotalProcessed: len(csvRecords) - 1,
 			ParseErrors:    parseErrors,
 		}, nil
 	}
-	
+
 	bulkResult, err := s.BulkCreateUsers(ctx, realmName, users)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	csvResult := &models.CSVImportResult{
 		TotalProcessed:  bulkResult.TotalProcessed,
 		SuccessCount:    bulkResult.SuccessCount,
@@ -457,11 +448,11 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 		SuccessfulUsers: make([]models.User, 0, len(bulkResult.Successful)),
 		FailedUsers:     make([]models.CSVError, 0, len(bulkResult.Failed)),
 	}
-	
+
 	for _, user := range bulkResult.Successful {
 		csvResult.SuccessfulUsers = append(csvResult.SuccessfulUsers, *user)
 	}
-	
+
 	for _, failed := range bulkResult.Failed {
 		csvResult.FailedUsers = append(csvResult.FailedUsers, models.CSVError{
 			Row:   failed.Row,
@@ -469,7 +460,7 @@ func (s *UserService) ImportUsersFromCSV(ctx context.Context, realmName string, 
 			Error: failed.Error,
 		})
 	}
-	
+
 	return csvResult, nil
 }
 
@@ -483,7 +474,7 @@ func getColumnValue(row []string, columnMap map[string]int, columnName string) s
 func generateRandomPassword() (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
 	const length = 12
-	
+
 	password := make([]byte, length)
 	for i := range password {
 		n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(len(charset))))

@@ -64,7 +64,7 @@ func SetupTestContainers(ctx context.Context) (*TestContainerSetup, error) {
 
 func (s *TestContainerSetup) setupPostgresContainer(ctx context.Context) error {
 	container, err := postgresContainer.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:18-alpine",
 		postgresContainer.WithDatabase("booli_admin_test"),
 		postgresContainer.WithUsername("test"),
 		postgresContainer.WithPassword("test"),
@@ -271,10 +271,10 @@ func (s *TestContainerSetup) ResetValkey(ctx context.Context) error {
 
 func (s *TestContainerSetup) RunMigrations() error {
 	return s.DB.Exec(`
-		-- Create extensions
+		-- Create extensions (PostgreSQL 18+ has built-in uuidv7() function)
 		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 		CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-		
+
 		-- Create application role
 		DO $$
 		BEGIN
@@ -283,7 +283,7 @@ func (s *TestContainerSetup) RunMigrations() error {
 			END IF;
 		END
 		$$;
-		
+
 		-- Grant permissions
 		GRANT CONNECT ON DATABASE booli_admin_test TO application_role;
 		GRANT USAGE ON SCHEMA public TO application_role;
@@ -295,7 +295,7 @@ func (s *TestContainerSetup) CreateTestTenant() error {
 	return s.DB.Exec(`
 		INSERT INTO tenants (id, name, domain, keycloak_realm, status, settings, created_at, updated_at)
 		VALUES (
-			gen_random_uuid(),
+			uuidv7(),
 			'Test Tenant',
 			'test.example.com',
 			'test-realm',

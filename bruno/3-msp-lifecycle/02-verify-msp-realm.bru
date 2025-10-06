@@ -37,10 +37,12 @@ script:post-response {
       });
       
       if (!foundMSPProvider) {
+        console.log("MSP provider not found in the response");
       }
     }
     
     // Log current state for verification
+    console.log("MSP realm verification completed for realm:", mspRealm);
   }
 }
 

@@ -135,7 +135,7 @@ func (m *MSPService) UpdateMSP(ctx context.Context, realmName string, req *model
 	if req.Active != nil {
 		msp.Active = *req.Active
 	}
-	
+
 	if req.Settings.MaxClientTenants > 0 || req.Settings.MaxAdminUsers > 0 {
 		settingsJSON, err := json.Marshal(req.Settings)
 		if err != nil {
@@ -259,13 +259,11 @@ func (m *MSPService) ListMSPStaff(ctx context.Context, mspRealm string, page, pa
 		return nil, fmt.Errorf("cannot list staff for inactive MSP")
 	}
 
-	// Get users from Keycloak for this realm
 	allUsers, err := m.keycloakAdmin.GetUsers(ctx, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users from Keycloak: %w", err)
 	}
 
-	// Apply pagination manually
 	totalCount := len(allUsers)
 	start := (page - 1) * pageSize
 	end := start + pageSize
@@ -275,7 +273,7 @@ func (m *MSPService) ListMSPStaff(ctx context.Context, mspRealm string, page, pa
 	if end > totalCount {
 		end = totalCount
 	}
-	
+
 	var users []keycloak.UserRepresentation
 	if start < totalCount {
 		users = allUsers[start:end]
@@ -283,7 +281,6 @@ func (m *MSPService) ListMSPStaff(ctx context.Context, mspRealm string, page, pa
 
 	var staff []models.MSPStaffMember
 	for _, user := range users {
-		// Get user roles
 		roles, err := m.keycloakAdmin.GetUserRealmRoles(ctx, mspRealm, user.ID)
 		if err != nil {
 			m.logger.Warn("Failed to get user roles", zap.String("user_id", user.ID), zap.Error(err))
@@ -303,7 +300,7 @@ func (m *MSPService) ListMSPStaff(ctx context.Context, mspRealm string, page, pa
 			LastName:  user.LastName,
 			Roles:     roleNames,
 			Status:    "active",
-			CreatedAt: "unknown", // Keycloak doesn't provide creation timestamp in simple format
+			CreatedAt: "unknown",
 		}
 
 		staff = append(staff, staffMember)
@@ -339,13 +336,13 @@ func (m *MSPService) CreateClientTenant(ctx context.Context, mspRealm string, re
 	}
 
 	tenant := &models.Tenant{
-		RealmName:  clientRealmName,
-		Name:       req.Name,
-		Domain:     req.Domain,
-		Type:       models.TenantTypeClient,
-		ParentMSP:  mspRealm,
-		Active:     true,
-		Settings:   settingsJSON,
+		RealmName: clientRealmName,
+		Name:      req.Name,
+		Domain:    req.Domain,
+		Type:      models.TenantTypeClient,
+		ParentMSP: mspRealm,
+		Active:    true,
+		Settings:  settingsJSON,
 	}
 
 	tx := m.db.Begin()
@@ -404,7 +401,7 @@ func (m *MSPService) GetMSPClientTenants(ctx context.Context, mspRealm string, p
 	var tenants []models.Tenant
 	var totalCount int64
 
-	query := m.db.Model(&models.Tenant{}).Where("type = ? AND realm_name LIKE ?", 
+	query := m.db.Model(&models.Tenant{}).Where("type = ? AND realm_name LIKE ?",
 		models.TenantTypeClient, msp.GetClientRealmPrefix()+"%")
 
 	if err := query.Count(&totalCount).Error; err != nil {
@@ -496,7 +493,7 @@ func (m *MSPService) setupMSPInKeycloak(ctx context.Context, msp *models.MSP, re
 func (m *MSPService) cleanupKeycloakResources(ctx context.Context, realmName string) {
 	m.logger.Warn("Cleaning up Keycloak resources due to transaction failure",
 		zap.String("realm", realmName))
-	
+
 	if err := m.keycloakAdmin.DeleteRealm(ctx, realmName); err != nil {
 		m.logger.Error("Failed to cleanup Keycloak realm",
 			zap.String("realm", realmName),

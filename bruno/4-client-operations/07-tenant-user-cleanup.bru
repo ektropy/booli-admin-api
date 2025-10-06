@@ -27,9 +27,11 @@ script:post-response {
     bru.setEnvVar("testUsername", "");
     
   } else if (status === 404) {
+    console.log("User not found - already deleted or doesn't exist");
   } else {
     const body = res.getBody();
     if (body && body.error) {
+      console.log("Cleanup error:", body.error);
     }
   }
 }

@@ -150,7 +150,7 @@ func isHealthCheck(path string) bool {
 
 func shouldLogBody(req *http.Request) bool {
 	contentType := req.Header.Get("Content-Type")
-	
+
 	if strings.Contains(contentType, "multipart/form-data") ||
 		strings.Contains(contentType, "application/octet-stream") ||
 		strings.Contains(contentType, "image/") ||
@@ -203,7 +203,6 @@ func (w *responseCapture) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// RequestID middleware adds a unique request ID to each request
 func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := generateRequestID()
@@ -213,12 +212,10 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// generateRequestID generates a unique request ID
 func generateRequestID() string {
 	return generateRandomString(16)
 }
 
-// generateRandomString generates a random string of specified length
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, length)

@@ -140,6 +140,14 @@ func (k *KeycloakInitializer) Initialize(ctx context.Context, initConfig *Initia
 		}
 	}
 
+	for _, realm := range initConfig.Realms {
+		if err := k.setupRealmPermissions(ctx, realm.Name); err != nil {
+			k.logger.Warn("Failed to setup FGAPv2 permissions", zap.String("realm", realm.Name), zap.Error(err))
+		} else {
+			k.logger.Info("FGAPv2 permissions setup completed", zap.String("realm", realm.Name))
+		}
+	}
+
 	for _, provider := range initConfig.OIDCProviders {
 		if err := k.registerOIDCProvider(ctx, provider); err != nil {
 			k.logger.Error("Failed to register OIDC provider",
@@ -207,12 +215,12 @@ func (k *KeycloakInitializer) waitForKeycloak(ctx context.Context, timeout time.
 
 func (k *KeycloakInitializer) isKeycloakReady(ctx context.Context) bool {
 	if k.config.Keycloak.URL == "" {
-		k.logger.Error("Keycloak URL is not configured - application cannot start", 
+		k.logger.Error("Keycloak URL is not configured - application cannot start",
 			zap.String("keycloak_url", k.config.Keycloak.URL),
 			zap.String("required_env_var", "BOOLI_KEYCLOAK_URL"))
 		os.Exit(1)
 	}
-	
+
 	url := fmt.Sprintf("%s/realms/master/.well-known/openid-configuration", k.config.Keycloak.URL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -271,17 +279,10 @@ func (k *KeycloakInitializer) initializeRealm(ctx context.Context, realm RealmCo
 		}
 	}
 
-	// Always setup permissions and features, even for existing realms
 	if err := k.enableOrganizationsFeature(ctx, realm.Name); err != nil {
 		k.logger.Warn("Failed to enable Organizations feature", zap.String("realm", realm.Name), zap.Error(err))
 	} else {
 		k.logger.Info("Organizations feature enabled", zap.String("realm", realm.Name))
-	}
-
-	if err := k.setupRealmPermissions(ctx, realm.Name); err != nil {
-		k.logger.Warn("Failed to setup FGAPv2 permissions", zap.String("realm", realm.Name), zap.Error(err))
-	} else {
-		k.logger.Info("FGAPv2 permissions setup completed", zap.String("realm", realm.Name))
 	}
 
 	return nil
@@ -310,29 +311,69 @@ func (k *KeycloakInitializer) initializeClient(ctx context.Context, client Clien
 		zap.String("realm", client.RealmName),
 		zap.String("client", client.ClientID))
 
-	if err := k.validateClient(ctx, client.RealmName, client.ClientID); err == nil {
-		k.logger.Info("Client already exists",
+	existingClientUUID, err := k.keycloakAdmin.GetClientUUID(ctx, client.RealmName, client.ClientID)
+	k.logger.Debug("Checking for existing client",
+		zap.String("realm", client.RealmName),
+		zap.String("client", client.ClientID),
+		zap.Bool("found", err == nil),
+		zap.Error(err))
+	if err == nil {
+		k.logger.Info("Client already exists, updating configuration",
 			zap.String("realm", client.RealmName),
 			zap.String("client", client.ClientID))
+
+		clientRep := &keycloak.ClientRepresentation{
+			ClientID:                     client.ClientID,
+			Enabled:                      true,
+			StandardFlowEnabled:          client.StandardFlowEnabled,
+			ServiceAccountsEnabled:       client.ServiceAccountsEnabled,
+			DirectAccessGrantsEnabled:    client.DirectAccessGrantsEnabled,
+			ImplicitFlowEnabled:          client.ImplicitFlowEnabled,
+			RedirectUris:                 client.RedirectURIs,
+			WebOrigins:                   client.WebOrigins,
+			Protocol:                     "openid-connect",
+			FullScopeAllowed:             true,
+			Secret:                       client.Secret,
+			ClientAuthenticatorType:      "client-secret",
+			PublicClient:                 false,
+			AuthorizationServicesEnabled: true,
+		}
+
+		if err := k.keycloakAdmin.UpdateClient(ctx, client.RealmName, existingClientUUID, clientRep); err != nil {
+			return fmt.Errorf("failed to update client %s in realm %s: %w", client.ClientID, client.RealmName, err)
+		}
+
+		k.logger.Info("Client updated successfully",
+			zap.String("realm", client.RealmName),
+			zap.String("client", client.ClientID))
+
+		if client.APIAudience != "" {
+			if err := k.addAudienceMapper(ctx, client.RealmName, client.ClientID, client.APIAudience); err != nil {
+				k.logger.Warn("Failed to add audience mapper",
+					zap.String("client", client.ClientID),
+					zap.String("audience", client.APIAudience),
+					zap.Error(err))
+			}
+		}
+
 		return nil
 	}
 
 	clientRep := &keycloak.ClientRepresentation{
-		ClientID:                  client.ClientID,
-		Enabled:                   true,
-		StandardFlowEnabled:       client.StandardFlowEnabled,
-		ServiceAccountsEnabled:    client.ServiceAccountsEnabled,
-		DirectAccessGrantsEnabled: client.DirectAccessGrantsEnabled,
-		ImplicitFlowEnabled:       client.ImplicitFlowEnabled,
-		RedirectUris:              client.RedirectURIs,
-		WebOrigins:                client.WebOrigins,
-		Protocol:                  "openid-connect",
-		FullScopeAllowed:          true,
-	}
-
-	if !client.PublicClient && client.Secret != "" {
-		clientRep.Secret = client.Secret
-		clientRep.ClientAuthenticatorType = "client-secret"
+		ClientID:                     client.ClientID,
+		Enabled:                      true,
+		StandardFlowEnabled:          client.StandardFlowEnabled,
+		ServiceAccountsEnabled:       client.ServiceAccountsEnabled,
+		DirectAccessGrantsEnabled:    client.DirectAccessGrantsEnabled,
+		ImplicitFlowEnabled:          client.ImplicitFlowEnabled,
+		RedirectUris:                 client.RedirectURIs,
+		WebOrigins:                   client.WebOrigins,
+		Protocol:                     "openid-connect",
+		FullScopeAllowed:             true,
+		Secret:                       client.Secret,
+		ClientAuthenticatorType:      "client-secret",
+		PublicClient:                 false,
+		AuthorizationServicesEnabled: true,
 	}
 
 	if _, err := k.keycloakAdmin.CreateClient(ctx, client.RealmName, clientRep); err != nil {
@@ -699,6 +740,7 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 		{RealmName: realmName, Name: "msp-admin", Description: "MSP Administrator - Cross-organization management"},
 		{RealmName: realmName, Name: "msp-power", Description: "MSP Power User - Advanced MSP features"},
 		{RealmName: realmName, Name: "msp-basic", Description: "MSP Basic User - Standard MSP features"},
+		{RealmName: realmName, Name: "tenant-admin", Description: "Tenant Administrator - Full administrative access within own tenant"},
 	}
 	config.Roles = append(config.Roles, mspRoles...)
 

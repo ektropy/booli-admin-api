@@ -54,7 +54,7 @@ func TestRespondWithError(t *testing.T) {
 			assert.Equal(t, tt.statusCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.message)
 			assert.Contains(t, w.Body.String(), tt.errorCode)
-			
+
 			if tt.details != nil {
 				assert.Contains(t, w.Body.String(), "details")
 			}
@@ -82,7 +82,7 @@ func TestRespondWithSuccess(t *testing.T) {
 
 func TestGetRequestID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name     string
 		setupCtx func(*gin.Context)
@@ -112,7 +112,6 @@ func TestGetRequestID(t *testing.T) {
 		{
 			name: "No request ID",
 			setupCtx: func(c *gin.Context) {
-				// No setup
 			},
 			expected: "",
 		},
@@ -123,9 +122,9 @@ func TestGetRequestID(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/", nil)
-			
+
 			tt.setupCtx(c)
-			
+
 			result := GetRequestID(c)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -133,7 +132,6 @@ func TestGetRequestID(t *testing.T) {
 }
 
 func TestResponseStructures(t *testing.T) {
-	// Test ErrorResponse structure
 	errorResp := ErrorResponse{
 		Error: ErrorDetail{
 			Code:    "TEST_ERROR",
@@ -152,7 +150,6 @@ func TestResponseStructures(t *testing.T) {
 	assert.Equal(t, 400, errorResp.Status)
 	assert.Equal(t, "/test/path", errorResp.Path)
 
-	// Test SuccessResponse structure
 	successResp := SuccessResponse{
 		Data:      map[string]string{"key": "value"},
 		Status:    200,
@@ -209,13 +206,12 @@ func TestFormatValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validate.Struct(tt.data)
-			
+
 			if tt.hasError {
 				assert.Error(t, err)
 				formatted := FormatValidationErrors(err)
 				assert.NotEmpty(t, formatted)
-				
-				// Check that formatted errors contain lowercase field information
+
 				for _, message := range formatted {
 					assert.NotEmpty(t, message)
 				}
@@ -227,16 +223,14 @@ func TestFormatValidationErrors(t *testing.T) {
 }
 
 func TestFormatValidationErrors_NonValidationError(t *testing.T) {
-	// Test with a non-validation error
 	regularError := assert.AnError
-	
+
 	formatted := FormatValidationErrors(regularError)
-	assert.NotEmpty(t, formatted) // The function includes all errors, not just validation ones
+	assert.NotEmpty(t, formatted)
 	assert.Equal(t, "assert.AnError general error for testing", formatted[0])
 }
 
 func TestErrorCodes(t *testing.T) {
-	// Test that all error codes are properly defined
 	errorCodes := []string{
 		ErrCodeBadRequest,
 		ErrCodeUnauthorized,
@@ -256,6 +250,5 @@ func TestErrorCodes(t *testing.T) {
 
 	for _, code := range errorCodes {
 		assert.NotEmpty(t, code, "Error code should not be empty")
-		// Many error codes are single words, so not all follow the underscore convention
 	}
 }

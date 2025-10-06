@@ -21,6 +21,7 @@ body:form-urlencoded {
   username: admin
   password: admin
   client_id: msp-client
+  client_secret: {{clientSecret}}
   scope: openid profile email
 }
 
@@ -56,6 +57,7 @@ script:post-response {
       bru.setEnvVar("clientAdminEmail1", payload.email);
       
     } catch (e) {
+      console.log("Failed to parse client admin token:", e.message);
     }
   }
 }

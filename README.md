@@ -27,10 +27,10 @@ Multi-tenant administrative portal with Keycloak authentication and MSP support.
 
 ### Prerequisites
 
-- **PostgreSQL 15+**
+- **PostgreSQL 18+**
 - **Keycloak 26+**
 - **Valkey/Redis 8+**
-- **Go 1.24+** (for development)
+- **Go 1.25+** (for development)
 
 ### Using Docker (Recommended)
 
@@ -40,12 +40,12 @@ git clone <repository>
 cd booli-admin-api/backend
 
 # Start development environment
-docker-compose up -d
+docker-compose -f docker-compose.bruno.yml up -d
 
-# The API will be available at http://localhost:8081
-# Keycloak admin: http://localhost:8083 (admin/admin)
-# PostgreSQL: localhost:5432
-# Valkey: localhost:6379
+# The API will be available at http://localhost:8083
+# Keycloak admin: http://localhost:8084 (admin/admin)
+# PostgreSQL: localhost:5434
+# Valkey: localhost:6380
 ```
 
 ### Manual Setup
@@ -107,29 +107,29 @@ cp config.yaml.example config.yaml
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `BOOLI_ENVIRONMENT` | Application environment (`development`, `production`, `test`) | `production` |
-| `BOOLI_SERVER_PORT` | Server port | `8081` |
-| `BOOLI_DATABASE_HOST` | PostgreSQL host | `localhost` |
+| `BOOLI_SERVER_PORT` | Server port | `8080` |
+| `BOOLI_DATABASE_HOST` | PostgreSQL host | - |
 | `BOOLI_DATABASE_PORT` | PostgreSQL port | `5432` |
 | `BOOLI_DATABASE_USER` | Database user | - |
 | `BOOLI_DATABASE_PASSWORD` | Database password | - |
-| `BOOLI_DATABASE_DBNAME` | Database name | `booli_admin` |
-| `BOOLI_DATABASE_SSLMODE` | SSL mode | `disable` |
-| `BOOLI_REDIS_HOST` | Valkey/Redis host | `localhost` |
+| `BOOLI_DATABASE_DBNAME` | Database name | - |
+| `BOOLI_DATABASE_SSLMODE` | SSL mode | `require` |
+| `BOOLI_REDIS_HOST` | Valkey/Redis host | - |
 | `BOOLI_REDIS_PORT` | Valkey/Redis port | `6379` |
-| `BOOLI_KEYCLOAK_URL` | Keycloak base URL | - |
-| `BOOLI_KEYCLOAK_ADMIN_USER` | Keycloak admin user | - |
-| `BOOLI_KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | - |
-| `BOOLI_KEYCLOAK_MSP_REALM` | MSP realm name | `msp-platform` |
-| `BOOLI_KEYCLOAK_CLIENT_ID` | OAuth client ID | - |
-| `BOOLI_KEYCLOAK_CLIENT_SECRET` | OAuth client secret | - |
+| `BOOLI_KEYCLOAK_URL` | Keycloak base URL | `http://localhost:8083` |
+| `BOOLI_KEYCLOAK_ADMIN_USER` | Keycloak admin user | `admin` |
+| `BOOLI_KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | `admin` |
+| `BOOLI_KEYCLOAK_MSP_REALM` | MSP realm name | `master` |
+| `BOOLI_KEYCLOAK_CLIENT_ID` | OAuth client ID | `msp-client` |
+| `BOOLI_KEYCLOAK_CLIENT_SECRET` | OAuth client secret | `test-secret` |
 | `BOOLI_KEYCLOAK_CALLBACK_URL` | OAuth callback URL | - |
 | `BOOLI_KEYCLOAK_API_AUDIENCE` | JWT audience | `booli-admin-api` |
 
 ## API Documentation
 
 Once running, access the OpenAPI documentation at:
-- **Swagger UI**: `http://localhost:8081/swagger/`
-- **Health Check**: `http://localhost:8081/api/admin/v1/health`
+- **Swagger UI**: `http://localhost:8080/swagger/`
+- **Health Check**: `http://localhost:8080/api/admin/v1/health`
 
 ### API Endpoints
 
@@ -339,7 +339,7 @@ docker build -t booli-admin-api:latest .
 # Run with environment variables
 docker run -d \
   --name booli-admin-api \
-  -p 8081:8081 \
+  -p 8080:8080 \
   -e BOOLI_ENVIRONMENT=production \
   -e BOOLI_DATABASE_HOST=your-db-host \
   -e BOOLI_KEYCLOAK_URL=https://your-keycloak \

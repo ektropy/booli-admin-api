@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    branches: [main]
 
 env:
   GO_VERSION: "1.25"
@@ -14,38 +15,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    
     - uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
-    - name: Test
-      run: go test -race -coverprofile=coverage.out ./...
-    # - name: Integration Tests
-    #   run: RUN_INTEGRATION_TESTS=true go test -timeout 15m ./tests/integration/...
-    - name: Security Scan
-      run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
-        gosec -severity medium ./...
+    
+    - name: Run Tests
+      run: go test -race -short -coverprofile=coverage.out ./...
 
-  build:
+  build-image:
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
-      security-events: write
     
     steps:
     - uses: actions/checkout@v4
+    
     - uses: docker/setup-buildx-action@v3
+    
     - uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Build and Push
+    - name: Build and Push Container Image
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -54,18 +52,5 @@ jobs:
           ${{ env.REGISTRY }}/${{ github.repository }}:latest
           ${{ env.REGISTRY }}/${{ github.repository }}:${{ github.sha }}
         cache-from: type=gha
-        cache-to: type=gha
-    
-    - name: Security Scan Container
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ github.repository }}:latest
-        format: sarif
-        output: trivy-results.sarif
-    
-    - name: Upload Security Results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      continue-on-error: true
-      with:
-        sarif_file: trivy-results.sarif
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64

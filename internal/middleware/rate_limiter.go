@@ -94,14 +94,13 @@ func defaultKeyFunc(c *gin.Context) string {
 
 func defaultOnRateLimited(c *gin.Context) {
 	c.JSON(http.StatusTooManyRequests, gin.H{
-		"error":   "Rate limit exceeded",
-		"code":    "RATE_LIMITED",
-		"message": "Too many requests, please try again later",
+		"error":       "Rate limit exceeded",
+		"code":        "RATE_LIMITED",
+		"message":     "Too many requests, please try again later",
 		"retry_after": 60,
 	})
 	c.Abort()
 }
-
 
 func StandardAPIRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	return NewRateLimiter(RateLimiterConfig{
@@ -127,7 +126,6 @@ func CSVImportRateLimit(logger *zap.Logger) gin.HandlerFunc {
 		RequestsPerMinute: 5,
 		BurstSize:         1,
 		KeyFunc: func(c *gin.Context) string {
-			// Use user ID + realm for CSV imports
 			userID, _ := c.Get("user_id")
 			realm, _ := c.Get("realm")
 			return fmt.Sprintf("csv_%v_%v", userID, realm)
@@ -135,7 +133,6 @@ func CSVImportRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	}, logger).Middleware()
 }
 
-// AuthenticationRateLimit provides rate limiting for auth endpoints (20 req/min, burst 5)
 func AuthenticationRateLimit(logger *zap.Logger) gin.HandlerFunc {
 	return NewRateLimiter(RateLimiterConfig{
 		RequestsPerMinute: 20,

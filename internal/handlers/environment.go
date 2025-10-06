@@ -37,7 +37,6 @@ func NewEnvironmentHandler(environmentService EnvironmentService, logger *zap.Lo
 	}
 }
 
-
 // @Summary Create environment
 // @Description Create a new tenant environment with network ranges, IPs, domains, and infrastructure
 // @Tags environments
@@ -288,7 +287,7 @@ func (h *EnvironmentHandler) GrantAccess(c *gin.Context) {
 	if userUUID, err := uuid.Parse(userID); err == nil {
 		req.GrantedBy = userUUID
 	} else {
-		req.GrantedBy = uuid.New() // fallback for non-UUID user IDs
+		req.GrantedBy = uuid.New()
 	}
 
 	grant, err := h.environmentService.GrantTenantAccess(c.Request.Context(), &req, granterRealmName)

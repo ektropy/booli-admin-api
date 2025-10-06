@@ -137,7 +137,7 @@ func TestCreateIdentityProviderRequest_ToKeycloakRepresentation_Microsoft(t *tes
 
 	assert.Equal(t, "test-microsoft", keycloakRep.Alias)
 	assert.Equal(t, "Test Microsoft Provider", keycloakRep.DisplayName)
-	assert.Equal(t, "oidc", keycloakRep.ProviderId) // Microsoft uses OIDC under the hood
+	assert.Equal(t, "oidc", keycloakRep.ProviderId)
 	assert.True(t, keycloakRep.Enabled)
 	assert.True(t, keycloakRep.TrustEmail)
 	assert.True(t, keycloakRep.StoreToken)

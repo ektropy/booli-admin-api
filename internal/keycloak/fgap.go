@@ -4,11 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
 )
+
+type FGAPPolicyRole struct {
+	ID       string `json:"id"`
+	Required bool   `json:"required"`
+}
 
 type FGAPPolicy struct {
 	ID          string                 `json:"id,omitempty"`
@@ -16,7 +23,7 @@ type FGAPPolicy struct {
 	Type        string                 `json:"type"`
 	Logic       string                 `json:"logic,omitempty"`
 	Config      map[string]interface{} `json:"config,omitempty"`
-	Roles       []string               `json:"roles,omitempty"`
+	Roles       []FGAPPolicyRole       `json:"roles,omitempty"`
 	Scopes      []string               `json:"scopes,omitempty"`
 	Resources   []string               `json:"resources,omitempty"`
 	Description string                 `json:"description,omitempty"`
@@ -47,16 +54,24 @@ type PermissionTemplate struct {
 	Conditions     []string `json:"conditions,omitempty"`
 }
 
+type ServerInfo struct {
+	SystemInfo SystemInfo `json:"systemInfo"`
+}
+
+type SystemInfo struct {
+	Version string `json:"version"`
+}
+
 var MSPPermissionTemplates = map[string]PermissionTemplate{
 	"msp-admin": {
 		Name:        "MSP Administrator",
 		Description: "Full administrative access to MSP and client tenants",
 		Scopes: []string{
 			"manage-realm",
-			"manage-users", 
+			"manage-users",
 			"view-users",
 			"manage-clients",
-			"view-clients", 
+			"view-clients",
 			"manage-groups",
 			"view-groups",
 			"manage-smtp",
@@ -72,7 +87,7 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Scopes: []string{
 			"manage-users",
 			"view-users",
-			"manage-groups", 
+			"manage-groups",
 			"view-groups",
 			"view-clients",
 			"view-events",
@@ -81,7 +96,7 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Conditions:     []string{"business-hours", "assigned-clients"},
 	},
 	"tenant-admin": {
-		Name:        "Tenant Administrator", 
+		Name:        "Tenant Administrator",
 		Description: "Full administrative access within own tenant",
 		Scopes: []string{
 			"manage-users",
@@ -96,23 +111,131 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 }
 
 func (c *AdminClient) EnableFGAPv2(ctx context.Context, realmName string) error {
-	c.logger.Info("Enabling FGAPv2 for realm", zap.String("realm", realmName))
-
-	realmRep, err := c.GetRealm(ctx, realmName)
+	serverInfo, err := c.GetServerInfo(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get realm %s: %w", realmName, err)
+		return fmt.Errorf("failed to get Keycloak version: %w", err)
 	}
 
-	if realmRep.Attributes == nil {
-		realmRep.Attributes = make(map[string]string)
+	if !c.isVersionSupported(serverInfo.SystemInfo.Version) {
+		return fmt.Errorf("Keycloak version %s does not support FGAP V2. Minimum required version is 26.2.0", serverInfo.SystemInfo.Version)
 	}
-	realmRep.Attributes["adminPermissionsEnabled"] = "true"
 
-	if err := c.UpdateRealm(ctx, realmName, realmRep); err != nil {
+	c.logger.Info("Enabling FGAP for realm",
+		zap.String("realm", realmName),
+		zap.String("keycloak_version", serverInfo.SystemInfo.Version))
+
+	realmUpdate := map[string]interface{}{
+		"adminPermissionsEnabled": true,
+		"adminPermissionsClient": map[string]interface{}{
+			"clientId": "admin-permissions",
+		},
+	}
+
+	if err := c.updateRealmPartial(ctx, realmName, realmUpdate); err != nil {
 		return fmt.Errorf("failed to enable FGAP v2 for realm %s: %w", realmName, err)
 	}
 
+	adminPermClientID, err := c.GetClientUUID(ctx, realmName, "admin-permissions")
+	if err == nil {
+		c.logger.Info("admin-permissions client was created successfully",
+			zap.String("realm", realmName),
+			zap.String("client_uuid", adminPermClientID))
+	} else {
+		c.logger.Warn("admin-permissions client was not created after enabling FGAP",
+			zap.String("realm", realmName),
+			zap.Error(err))
+	}
+
 	c.logger.Info("FGAPv2 enabled successfully", zap.String("realm", realmName))
+	return nil
+}
+
+func (c *AdminClient) GetServerInfo(ctx context.Context) (*ServerInfo, error) {
+	resp, err := c.makeRequestToPath(ctx, "GET", "/admin/serverinfo", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get server info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		c.logger.Debug("Server info request failed",
+			zap.Int("status", resp.StatusCode),
+			zap.String("response", string(bodyBytes)))
+		return nil, fmt.Errorf("get server info failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var serverInfo ServerInfo
+	if err := json.NewDecoder(resp.Body).Decode(&serverInfo); err != nil {
+		return nil, fmt.Errorf("failed to decode server info: %w", err)
+	}
+
+	return &serverInfo, nil
+}
+
+func (c *AdminClient) makeRequestToPath(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyReader = strings.NewReader(string(jsonBody))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if err := c.getAccessToken(ctx); err != nil {
+		return nil, fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
+	if bodyReader != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	return c.httpClient.Do(req)
+}
+
+func (c *AdminClient) isVersionSupported(version string) bool {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false
+	}
+
+	return major > 26 || (major == 26 && minor >= 2)
+}
+
+func (c *AdminClient) updateRealmPartial(ctx context.Context, realmName string, updates map[string]interface{}) error {
+	jsonBody, err := json.Marshal(updates)
+	if err != nil {
+		return fmt.Errorf("failed to marshal realm updates: %w", err)
+	}
+
+	resp, err := c.makeRequestToPath(ctx, "PUT", "/admin/realms/"+realmName, json.RawMessage(jsonBody))
+	if err != nil {
+		return fmt.Errorf("failed to update realm: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("update realm failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
 	return nil
 }
 
@@ -127,11 +250,16 @@ func (c *AdminClient) CreatePermissionPolicy(ctx context.Context, realmName, rol
 		return fmt.Errorf("failed to get admin permissions client: %w", err)
 	}
 
+	roleID, err := c.getRoleID(ctx, realmName, roleName)
+	if err != nil {
+		return fmt.Errorf("failed to get role ID for %s: %w", roleName, err)
+	}
+
 	policy := FGAPPolicy{
 		Name:        fmt.Sprintf("%s-policy", roleName),
 		Type:        "role",
 		Logic:       "POSITIVE",
-		Roles:       []string{roleName},
+		Roles:       []FGAPPolicyRole{{ID: roleID, Required: false}},
 		Description: template.Description,
 	}
 
@@ -139,6 +267,7 @@ func (c *AdminClient) CreatePermissionPolicy(ctx context.Context, realmName, rol
 		return fmt.Errorf("failed to create policy: %w", err)
 	}
 
+	// Create scope permissions for each scope in the template
 	for _, scope := range template.Scopes {
 		if err := c.createScopePermission(ctx, realmName, clientUUID, roleName, scope, template.ResourceFilter); err != nil {
 			c.logger.Warn("Failed to create scope permission",
@@ -146,12 +275,14 @@ func (c *AdminClient) CreatePermissionPolicy(ctx context.Context, realmName, rol
 				zap.String("role", roleName),
 				zap.String("scope", scope),
 				zap.Error(err))
+			// Continue creating other permissions even if one fails
 		}
 	}
 
-	c.logger.Info("Permission policy created successfully",
+	c.logger.Info("Permission policy and permissions created successfully",
 		zap.String("realm", realmName),
-		zap.String("role", roleName))
+		zap.String("role", roleName),
+		zap.Strings("scopes", template.Scopes))
 	return nil
 }
 
@@ -250,40 +381,40 @@ func (c *AdminClient) GetUserEffectiveScopes(ctx context.Context, realmName, use
 }
 
 func (c *AdminClient) getAdminPermissionsClientUUID(ctx context.Context, realmName string) (string, error) {
-	// Try admin-permissions client first (created by Keycloak when adminPermissionsEnabled=true)
+	c.logger.Debug("Looking for admin-permissions client", zap.String("realm", realmName))
+
 	clientUUID, err := c.GetClientUUID(ctx, realmName, "admin-permissions")
 	if err == nil {
+		c.logger.Debug("Found admin-permissions client",
+			zap.String("realm", realmName),
+			zap.String("uuid", clientUUID))
 		return clientUUID, nil
 	}
-	
-	// Fall back to msp-client if admin-permissions doesn't exist
-	c.logger.Debug("admin-permissions client not found, trying msp-client as fallback",
+
+	c.logger.Debug("admin-permissions client not found, trying realm-management client",
 		zap.String("realm", realmName),
 		zap.Error(err))
-	
-	clientUUID, err = c.GetClientUUID(ctx, realmName, "msp-client")
+
+	clientUUID, err = c.GetClientUUID(ctx, realmName, "realm-management")
 	if err != nil {
-		return "", fmt.Errorf("neither admin-permissions nor msp-client found in realm %s: %w", realmName, err)
+		return "", fmt.Errorf("neither admin-permissions nor realm-management found in realm %s: %w", realmName, err)
 	}
-	
-	// Enable authorization services on msp-client
+
 	if err := c.enableAuthorizationServices(ctx, realmName, clientUUID); err != nil {
-		c.logger.Warn("Failed to enable authorization services on msp-client", 
+		c.logger.Warn("Failed to enable authorization services on msp-client",
 			zap.String("realm", realmName),
 			zap.Error(err))
 	}
-	
+
 	return clientUUID, nil
 }
 
 func (c *AdminClient) enableAuthorizationServices(ctx context.Context, realmName, clientUUID string) error {
-	// Get current client configuration
 	client, err := c.GetClient(ctx, realmName, clientUUID)
 	if err != nil {
 		return fmt.Errorf("failed to get client: %w", err)
 	}
-	
-	// Enable authorization services if not already enabled
+
 	if !client.AuthorizationServicesEnabled {
 		client.AuthorizationServicesEnabled = true
 		if err := c.UpdateClient(ctx, realmName, clientUUID, client); err != nil {
@@ -293,7 +424,7 @@ func (c *AdminClient) enableAuthorizationServices(ctx context.Context, realmName
 			zap.String("realm", realmName),
 			zap.String("client", clientUUID))
 	}
-	
+
 	return nil
 }
 
@@ -314,23 +445,73 @@ func (c *AdminClient) createFGAPPolicy(ctx context.Context, realmName, clientUUI
 }
 
 func (c *AdminClient) createScopePermission(ctx context.Context, realmName, clientUUID, roleName, scope, resourceFilter string) error {
-	permission := FGAPPolicy{
-		Name:        fmt.Sprintf("%s-%s-permission", roleName, scope),
-		Type:        "scope",
-		Logic:       "POSITIVE",
-		Scopes:      []string{scope},
-		Description: fmt.Sprintf("Permission for %s to %s", roleName, scope),
+	rolePolicyID, err := c.getPolicyID(ctx, realmName, clientUUID, fmt.Sprintf("%s-policy", roleName))
+	if err != nil {
+		return fmt.Errorf("failed to get role policy ID: %w", err)
+	}
+
+	availableScopes, err := c.listAvailableScopes(ctx, realmName, clientUUID)
+	if err != nil {
+		c.logger.Debug("Failed to get available scopes", zap.Error(err))
+	} else {
+		c.logger.Debug("Available scopes in authorization server",
+			zap.String("realm", realmName),
+			zap.Int("scope_count", len(availableScopes)))
+
+		scopeExists := false
+		for _, availableScope := range availableScopes {
+			c.logger.Debug("Found scope",
+				zap.String("scope_name", availableScope.Name),
+				zap.String("scope_id", availableScope.ID))
+			if availableScope.Name == scope {
+				scopeExists = true
+			}
+		}
+
+		if !scopeExists {
+			c.logger.Debug("Required scope does not exist in authorization server, creating it",
+				zap.String("required_scope", scope))
+			if err := c.createScope(ctx, realmName, clientUUID, scope); err != nil {
+				c.logger.Warn("Failed to create scope",
+					zap.String("scope", scope),
+					zap.Error(err))
+				return fmt.Errorf("failed to create scope %s: %w", scope, err)
+			}
+		}
+	}
+
+	permissionData := map[string]interface{}{
+		"name":        fmt.Sprintf("%s-%s-permission", roleName, scope),
+		"type":        "scope",
+		"logic":       "POSITIVE",
+		"scopes":      []string{scope},
+		"description": fmt.Sprintf("Permission for %s to %s", roleName, scope),
+		"policies":    []string{rolePolicyID},
 	}
 
 	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/permission/scope", realmName, clientUUID)
 
-	resp, err := c.makeRequest(ctx, "POST", endpoint, permission)
+	c.logger.Debug("Creating scope permission",
+		zap.String("realm", realmName),
+		zap.String("role", roleName),
+		zap.String("scope", scope),
+		zap.String("endpoint", endpoint),
+		zap.Any("permission", permissionData))
+
+	resp, err := c.makeRequest(ctx, "POST", endpoint, permissionData)
 	if err != nil {
 		return fmt.Errorf("failed to create scope permission: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		c.logger.Debug("Scope permission creation failed",
+			zap.String("realm", realmName),
+			zap.String("role", roleName),
+			zap.String("scope", scope),
+			zap.Int("status", resp.StatusCode),
+			zap.String("response", string(bodyBytes)))
 		return fmt.Errorf("create scope permission failed with status %d", resp.StatusCode)
 	}
 
@@ -345,7 +526,7 @@ func (c *AdminClient) grantKeycloakClientRoles(ctx context.Context, realmName, u
 	}
 
 	clientRoles := c.mapScopesToClientRoles(scopes)
-	
+
 	for _, roleName := range clientRoles {
 		if err := c.assignClientRoleToUser(ctx, realmName, userID, realmMgmtClientUUID, roleName); err != nil {
 			c.logger.Warn("Failed to assign client role",
@@ -454,13 +635,124 @@ func (c *AdminClient) isClientRealmForMSP(clientRealm, mspRealm string) bool {
 	if !strings.HasPrefix(mspRealm, "msp-") {
 		return false
 	}
-	
+
 	mspName := strings.TrimPrefix(mspRealm, "msp-")
 	expectedPrefix := fmt.Sprintf("%s-client-", mspName)
-	
+
 	return strings.HasPrefix(clientRealm, expectedPrefix)
 }
 
 func (c *AdminClient) isAssignedClient(clientRealm, userRealm string) bool {
 	return c.isClientRealmForMSP(clientRealm, userRealm)
+}
+
+func (c *AdminClient) getRoleID(ctx context.Context, realmName, roleName string) (string, error) {
+	endpoint := fmt.Sprintf("/%s/roles/%s", realmName, roleName)
+
+	c.logger.Debug("Looking up role ID",
+		zap.String("realm", realmName),
+		zap.String("role", roleName),
+		zap.String("endpoint", endpoint))
+
+	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		c.logger.Error("Role lookup request failed",
+			zap.String("realm", realmName),
+			zap.String("role", roleName),
+			zap.Error(err))
+		return "", fmt.Errorf("failed to get role: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		c.logger.Error("Role lookup failed",
+			zap.String("realm", realmName),
+			zap.String("role", roleName),
+			zap.Int("status", resp.StatusCode),
+			zap.String("response", string(bodyBytes)))
+		return "", fmt.Errorf("get role failed with status %d", resp.StatusCode)
+	}
+
+	var role RoleRepresentation
+	if err := json.NewDecoder(resp.Body).Decode(&role); err != nil {
+		return "", fmt.Errorf("failed to decode role: %w", err)
+	}
+
+	return role.ID, nil
+}
+
+func (c *AdminClient) getPolicyID(ctx context.Context, realmName, clientUUID, policyName string) (string, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/policy", realmName, clientUUID)
+
+	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to get policies: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("get policies failed with status %d", resp.StatusCode)
+	}
+
+	var policies []FGAPPolicy
+	if err := json.NewDecoder(resp.Body).Decode(&policies); err != nil {
+		return "", fmt.Errorf("failed to decode policies: %w", err)
+	}
+
+	for _, policy := range policies {
+		if policy.Name == policyName {
+			return policy.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("policy %s not found", policyName)
+}
+
+func (c *AdminClient) listAvailableScopes(ctx context.Context, realmName, clientUUID string) ([]FGAPScope, error) {
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/scope", realmName, clientUUID)
+
+	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get scopes: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get scopes failed with status %d", resp.StatusCode)
+	}
+
+	var scopes []FGAPScope
+	if err := json.NewDecoder(resp.Body).Decode(&scopes); err != nil {
+		return nil, fmt.Errorf("failed to decode scopes: %w", err)
+	}
+
+	return scopes, nil
+}
+
+func (c *AdminClient) createScope(ctx context.Context, realmName, clientUUID, scopeName string) error {
+	scope := FGAPScope{
+		Name:        scopeName,
+		DisplayName: scopeName,
+	}
+
+	endpoint := fmt.Sprintf("/%s/clients/%s/authz/resource-server/scope", realmName, clientUUID)
+
+	resp, err := c.makeRequest(ctx, "POST", endpoint, scope)
+	if err != nil {
+		return fmt.Errorf("failed to create scope: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		c.logger.Debug("Scope creation failed",
+			zap.String("scope", scopeName),
+			zap.Int("status", resp.StatusCode),
+			zap.String("response", string(bodyBytes)))
+		return fmt.Errorf("create scope failed with status %d", resp.StatusCode)
+	}
+
+	c.logger.Debug("Scope created successfully", zap.String("scope", scopeName))
+	return nil
 }

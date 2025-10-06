@@ -44,7 +44,6 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 			fields = append(fields, zap.String("realm_name", realmName.(string)))
 		}
 
-		// Always log requests, including health checks
 		switch {
 		case statusCode >= 500:
 			logger.Error("Server error", fields...)

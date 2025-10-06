@@ -107,9 +107,7 @@ func TestCreateUserRequest_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This would require a validator instance to test properly
-			// The validation logic is tested through the handler tests
-			assert.NotNil(t, tt.request.Email) // Basic assertion to make the test meaningful
+			assert.NotNil(t, tt.request.Email)
 		})
 	}
 }
@@ -203,7 +201,6 @@ func TestUserSearchRequest_Defaults(t *testing.T) {
 	assert.Equal(t, "tenant-user", req.Role)
 	assert.Nil(t, req.Enabled)
 
-	// Test with enabled filter
 	enabled := true
 	req.Enabled = &enabled
 	assert.NotNil(t, req.Enabled)

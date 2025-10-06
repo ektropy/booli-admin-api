@@ -16,11 +16,10 @@ func TestTenantEnvironment_BeforeCreate(t *testing.T) {
 		Description: "Test environment",
 		Environment: "development",
 	}
-	
-	// Simulate GORM's BeforeCreate hook
-	db := &gorm.DB{} // Mock DB for the hook
+
+	db := &gorm.DB{}
 	err := env.BeforeCreate(db)
-	
+
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, env.ID)
 }
@@ -28,7 +27,7 @@ func TestTenantEnvironment_BeforeCreate(t *testing.T) {
 func TestTenantEnvironment_Structure(t *testing.T) {
 	envID := uuid.New()
 	now := time.Now()
-	
+
 	env := &TenantEnvironment{
 		ID:          envID,
 		TenantRealm: "production-tenant",
@@ -39,7 +38,7 @@ func TestTenantEnvironment_Structure(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	
+
 	assert.Equal(t, envID, env.ID)
 	assert.Equal(t, "production-tenant", env.TenantRealm)
 	assert.Equal(t, "production", env.Name)
@@ -51,7 +50,7 @@ func TestTenantEnvironment_Structure(t *testing.T) {
 }
 
 func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
-	
+
 	tests := []struct {
 		name    string
 		request CreateTenantEnvironmentRequest
@@ -87,10 +86,10 @@ func TestCreateTenantEnvironmentRequest_Structure(t *testing.T) {
 			valid: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-					if tt.valid {
+			if tt.valid {
 				assert.NotEmpty(t, tt.request.Name)
 				assert.NotEmpty(t, tt.request.TenantRealm)
 			}
@@ -103,14 +102,14 @@ func TestUpdateTenantEnvironmentRequest_Structure(t *testing.T) {
 	description := "Updated description"
 	environment := "staging"
 	isActive := false
-	
+
 	req := UpdateTenantEnvironmentRequest{
 		Name:        &name,
 		Description: &description,
 		Environment: &environment,
 		IsActive:    &isActive,
 	}
-	
+
 	assert.NotNil(t, req.Name)
 	assert.Equal(t, "updated-env", *req.Name)
 	assert.NotNil(t, req.Description)
@@ -126,7 +125,7 @@ func TestTenantEnvironmentListResponse_Structure(t *testing.T) {
 		{ID: uuid.New(), Name: "dev", IsActive: true},
 		{ID: uuid.New(), Name: "prod", IsActive: true},
 	}
-	
+
 	response := TenantEnvironmentListResponse{
 		Environments: environments,
 		Total:        100,
@@ -134,7 +133,7 @@ func TestTenantEnvironmentListResponse_Structure(t *testing.T) {
 		PageSize:     20,
 		TotalPages:   5,
 	}
-	
+
 	assert.Len(t, response.Environments, 2)
 	assert.Equal(t, int64(100), response.Total)
 	assert.Equal(t, 1, response.Page)
@@ -150,10 +149,10 @@ func TestNetworkRange_BeforeCreate(t *testing.T) {
 		CIDR:          "192.168.1.0/24",
 		NetworkType:   "internal",
 	}
-	
+
 	db := &gorm.DB{}
 	err := nr.BeforeCreate(db)
-	
+
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, nr.ID)
 }
@@ -161,7 +160,7 @@ func TestNetworkRange_BeforeCreate(t *testing.T) {
 func TestNetworkRange_Structure(t *testing.T) {
 	envID := uuid.New()
 	vlan := 100
-	
+
 	networkRange := NetworkRange{
 		EnvironmentID: envID,
 		TenantRealm:   "test-tenant",
@@ -172,7 +171,7 @@ func TestNetworkRange_Structure(t *testing.T) {
 		Description:   "Internal network",
 		IsMonitored:   true,
 	}
-	
+
 	assert.Equal(t, envID, networkRange.EnvironmentID)
 	assert.Equal(t, "test-tenant", networkRange.TenantRealm)
 	assert.Equal(t, "10.0.0.0/24", networkRange.CIDR)
@@ -194,7 +193,7 @@ func TestPublicIP_Structure(t *testing.T) {
 		Region:        "us-east-1",
 		IsActive:      true,
 	}
-	
+
 	assert.Equal(t, "203.0.113.1", publicIP.IPAddress)
 	assert.Equal(t, "ipv4", publicIP.IPType)
 	assert.Equal(t, "web", publicIP.Purpose)
@@ -213,7 +212,7 @@ func TestEgressIP_Structure(t *testing.T) {
 		Provider:      "NAT Gateway",
 		IsActive:      true,
 	}
-	
+
 	assert.Equal(t, "203.0.113.2", egressIP.IPAddress)
 	assert.Equal(t, "ipv4", egressIP.IPType)
 	assert.Equal(t, "api_calls", egressIP.Purpose)
@@ -223,7 +222,7 @@ func TestEgressIP_Structure(t *testing.T) {
 
 func TestDomain_Structure(t *testing.T) {
 	expiresAt := time.Now().Add(365 * 24 * time.Hour)
-	
+
 	domain := Domain{
 		EnvironmentID: uuid.New(),
 		TenantRealm:   "test-tenant",
@@ -235,7 +234,7 @@ func TestDomain_Structure(t *testing.T) {
 		IsActive:      true,
 		ExpiresAt:     &expiresAt,
 	}
-	
+
 	assert.Equal(t, "example.com", domain.DomainName)
 	assert.Equal(t, "primary", domain.DomainType)
 	assert.Equal(t, "website", domain.Purpose)
@@ -247,7 +246,7 @@ func TestDomain_Structure(t *testing.T) {
 
 func TestInfrastructureIP_Structure(t *testing.T) {
 	port := 443
-	
+
 	infraIP := InfrastructureIP{
 		EnvironmentID: uuid.New(),
 		TenantRealm:   "test-tenant",
@@ -259,7 +258,7 @@ func TestInfrastructureIP_Structure(t *testing.T) {
 		IsActive:      true,
 		IsCritical:    true,
 	}
-	
+
 	assert.Equal(t, "10.0.1.10", infraIP.IPAddress)
 	assert.Equal(t, "dns-server-1", infraIP.Hostname)
 	assert.Equal(t, InfrastructureTypeDNS, infraIP.ServiceType)
@@ -280,7 +279,7 @@ func TestNamingConvention_Structure(t *testing.T) {
 		Description:   "Standard server naming convention",
 		IsActive:      true,
 	}
-	
+
 	assert.Equal(t, "Server Naming", nc.Name)
 	assert.Equal(t, "{location}-{env}-{service}-{number}", nc.Pattern)
 	assert.Equal(t, "server", nc.ResourceType)
@@ -293,18 +292,18 @@ func TestTenantAccessGrant_Structure(t *testing.T) {
 	userID := uuid.New()
 	grantedBy := uuid.New()
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
-	
+
 	grant := TenantAccessGrant{
-		EnvironmentID:         envID,
-		TenantRealm:           "test-tenant",
-		GrantedToUserID:       userID,
-		GrantedToTenantRealm:  "msp-tenant",
-		AccessLevel:       AccessLevelReadWrite,
-		GrantedBy:         grantedBy,
-		ExpiresAt:         &expiresAt,
-		IsActive:          true,
+		EnvironmentID:        envID,
+		TenantRealm:          "test-tenant",
+		GrantedToUserID:      userID,
+		GrantedToTenantRealm: "msp-tenant",
+		AccessLevel:          AccessLevelReadWrite,
+		GrantedBy:            grantedBy,
+		ExpiresAt:            &expiresAt,
+		IsActive:             true,
 	}
-	
+
 	assert.Equal(t, envID, grant.EnvironmentID)
 	assert.Equal(t, "test-tenant", grant.TenantRealm)
 	assert.Equal(t, userID, grant.GrantedToUserID)
@@ -319,16 +318,16 @@ func TestCreateTenantAccessGrantRequest_Structure(t *testing.T) {
 	userID := uuid.New()
 	grantedBy := uuid.New()
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
-	
+
 	req := CreateTenantAccessGrantRequest{
-		EnvironmentID:         envID,
-		GrantedToUserID:       userID,
-		GrantedToTenantRealm:  "msp-tenant",
-		AccessLevel:       AccessLevelRead,
-		GrantedBy:         grantedBy,
-		ExpiresAt:         &expiresAt,
+		EnvironmentID:        envID,
+		GrantedToUserID:      userID,
+		GrantedToTenantRealm: "msp-tenant",
+		AccessLevel:          AccessLevelRead,
+		GrantedBy:            grantedBy,
+		ExpiresAt:            &expiresAt,
 	}
-	
+
 	assert.Equal(t, envID, req.EnvironmentID)
 	assert.Equal(t, userID, req.GrantedToUserID)
 	assert.Equal(t, "msp-tenant", req.GrantedToTenantRealm)
@@ -352,7 +351,7 @@ func TestInfrastructureTypeConstants(t *testing.T) {
 		InfrastructureTypeLoadBalancer,
 		InfrastructureTypeFirewall,
 	}
-	
+
 	for _, infraType := range types {
 		assert.NotEmpty(t, infraType, "Infrastructure type should not be empty")
 		assert.True(t, len(string(infraType)) > 0, "Infrastructure type should have content")
@@ -365,12 +364,12 @@ func TestAccessLevelConstants(t *testing.T) {
 		AccessLevelReadWrite,
 		AccessLevelFullAccess,
 	}
-	
+
 	for _, level := range levels {
 		assert.NotEmpty(t, level, "Access level should not be empty")
 		assert.True(t, len(string(level)) > 0, "Access level should have content")
 	}
-	
+
 	assert.Equal(t, AccessLevel("read"), AccessLevelRead)
 	assert.Equal(t, AccessLevel("read_write"), AccessLevelReadWrite)
 	assert.Equal(t, AccessLevel("full_access"), AccessLevelFullAccess)
@@ -387,7 +386,7 @@ func TestValidateIPAddress(t *testing.T) {
 		{"Invalid IP", "not.an.ip", true},
 		{"Empty string", "", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateIPAddress(tt.ip)
@@ -411,7 +410,7 @@ func TestValidateCIDR(t *testing.T) {
 		{"Invalid CIDR", "not.a.cidr/24", true},
 		{"Missing prefix", "192.168.1.0", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateCIDR(tt.cidr)
@@ -428,18 +427,18 @@ func TestNetworkRange_IsIPInRange(t *testing.T) {
 	nr := &NetworkRange{
 		CIDR: "192.168.1.0/24",
 	}
-	
+
 	tests := []struct {
-		name        string
-		ip          string
+		name          string
+		ip            string
 		expectInRange bool
-		expectErr   bool
+		expectErr     bool
 	}{
 		{"IP in range", "192.168.1.100", true, false},
 		{"IP not in range", "10.0.0.1", false, false},
 		{"Invalid IP", "not.an.ip", false, true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			inRange, err := nr.IsIPInRange(tt.ip)
@@ -463,7 +462,7 @@ func TestGetIPType(t *testing.T) {
 		{"IPv6", "2001:db8::1", "ipv6"},
 		{"Invalid IP", "not.an.ip", ""},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetIPType(tt.ip)
@@ -483,7 +482,7 @@ func TestIsPrivateIP(t *testing.T) {
 		{"Private IPv6", "fd00::1", true},
 		{"Invalid IP", "not.an.ip", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsPrivateIP(tt.ip)
@@ -504,7 +503,7 @@ func TestValidateDomainName(t *testing.T) {
 		{"Single label", "localhost", true},
 		{"Too long domain", string(make([]byte, 254)), true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateDomainName(tt.domain)
@@ -524,7 +523,7 @@ func TestSIEMEnrichmentData_Structure(t *testing.T) {
 		PublicIPs:     []PublicIP{{IPAddress: "203.0.113.1"}},
 		LastUpdated:   time.Now(),
 	}
-	
+
 	assert.Equal(t, "test-tenant", enrichment.TenantRealm)
 	assert.Len(t, enrichment.NetworkRanges, 1)
 	assert.Len(t, enrichment.PublicIPs, 1)
@@ -545,7 +544,7 @@ func TestEnrichmentLookupResult_Structure(t *testing.T) {
 		Tags:            map[string]interface{}{"team": "backend"},
 		AdditionalInfo:  map[string]interface{}{"service": "postgresql"},
 	}
-	
+
 	assert.Equal(t, "ip", result.Type)
 	assert.Equal(t, "192.168.1.1", result.Value)
 	assert.Equal(t, "production", result.EnvironmentName)

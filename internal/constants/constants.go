@@ -35,7 +35,6 @@ const (
 
 	TenantIDKey = "tenant_id"
 
-	// Resource-based API versioning
 	APIVersion  = "v1"
 	APIBasePath = "/api"
 
@@ -53,15 +52,13 @@ const (
 	PathAuthServiceToken       = "/service-token"
 	PathAuthServiceValidate    = "/service-validate"
 
-	// Resource-based API paths
-	PathMSPs              = APIBasePath + "/msps/" + APIVersion
-	PathTenantAPI         = APIBasePath + "/tenants/" + APIVersion  
-	PathUsersAPI          = APIBasePath + "/users/" + APIVersion
-	PathAuthAPI           = APIBasePath + "/auth/" + APIVersion
-	PathIdentityAPI       = APIBasePath + "/identity/" + APIVersion
-	PathAdminAPI          = APIBasePath + "/admin/" + APIVersion
-	
-	// Legacy admin paths for backward compatibility in tests
+	PathMSPs        = APIBasePath + "/msps/" + APIVersion
+	PathTenantAPI   = APIBasePath + "/tenants/" + APIVersion
+	PathUsersAPI    = APIBasePath + "/users/" + APIVersion
+	PathAuthAPI     = APIBasePath + "/auth/" + APIVersion
+	PathIdentityAPI = APIBasePath + "/identity/" + APIVersion
+	PathAdminAPI    = APIBasePath + "/admin/" + APIVersion
+
 	PathAdmin             = "/admin"
 	PathAdminTenants      = PathTenantAPI
 	PathAdminUsers        = PathUsersAPI
@@ -90,7 +87,7 @@ const (
 	PathEnvironmentSecurityData   = "/environments/security-data"
 	PathEnvironmentNetworks       = "/environments/networks"
 	PathEnvironmentInfrastructure = "/environments/infrastructure"
-	
+
 	PathIdentityProviders   = "/identity-providers"
 	PathIdentityProvidersID = "/identity-providers/:alias"
 

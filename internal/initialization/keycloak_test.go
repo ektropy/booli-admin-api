@@ -47,7 +47,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		assert.Equal(t, "master", config.Realms[0].Name)
 		assert.Len(t, config.Clients, 1)
 		assert.Equal(t, "msp-client", config.Clients[0].ClientID)
-		assert.Len(t, config.Roles, 3)
+		assert.Len(t, config.Roles, 4)
 		assert.Len(t, config.Users, 1)
 		assert.Equal(t, "msp-admin", config.Users[0].Username)
 		assert.Len(t, config.OIDCProviders, 1)
@@ -84,7 +84,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		assert.Equal(t, "test-secret", client.Secret)
 		assert.Equal(t, "booli-admin-api", client.APIAudience)
 
-		assert.Len(t, config.Roles, 3)
+		assert.Len(t, config.Roles, 4)
 		roleNames := make([]string, len(config.Roles))
 		for i, role := range config.Roles {
 			roleNames[i] = role.Name
@@ -93,6 +93,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		assert.Contains(t, roleNames, "msp-admin")
 		assert.Contains(t, roleNames, "msp-power")
 		assert.Contains(t, roleNames, "msp-basic")
+		assert.Contains(t, roleNames, "tenant-admin")
 	})
 
 	t.Run("MSP realm disabled", func(t *testing.T) {
@@ -112,7 +113,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 
 		assert.Len(t, config.Realms, 0)
 		assert.Len(t, config.Clients, 1)
-		assert.Len(t, config.Roles, 3)
+		assert.Len(t, config.Roles, 4)
 	})
 
 	t.Run("Client with default realm", func(t *testing.T) {
@@ -303,9 +304,10 @@ func TestMSPRoleDefinitions(t *testing.T) {
 	require.NotNil(t, config)
 
 	expectedRoles := map[string]string{
-		"msp-admin": "MSP Administrator - Cross-organization management",
-		"msp-power": "MSP Power User - Advanced MSP features",
-		"msp-basic": "MSP Basic User - Standard MSP features",
+		"msp-admin":    "MSP Administrator - Cross-organization management",
+		"msp-power":    "MSP Power User - Advanced MSP features",
+		"msp-basic":    "MSP Basic User - Standard MSP features",
+		"tenant-admin": "Tenant Administrator - Full administrative access within own tenant",
 	}
 
 	assert.Len(t, config.Roles, len(expectedRoles))
@@ -341,7 +343,7 @@ func TestOrganizationsArchitecture_SingleRealmConfig(t *testing.T) {
 	assert.Equal(t, "master", config.Clients[0].RealmName)
 	assert.Equal(t, "msp-client", config.Clients[0].ClientID)
 
-	assert.Len(t, config.Roles, 3)
+	assert.Len(t, config.Roles, 4)
 	for _, role := range config.Roles {
 		assert.Equal(t, "master", role.RealmName)
 	}

@@ -330,14 +330,14 @@ func (s *EnvironmentService) GrantTenantAccess(ctx context.Context, req *models.
 	}
 
 	grant := &models.TenantAccessGrant{
-		EnvironmentID:         req.EnvironmentID,
-		TenantRealm:           environment.TenantRealm,
-		GrantedToUserID:       req.GrantedToUserID,
-		GrantedToTenantRealm:  req.GrantedToTenantRealm,
-		AccessLevel:           req.AccessLevel,
-		GrantedBy:             req.GrantedBy,
-		ExpiresAt:             req.ExpiresAt,
-		IsActive:              true,
+		EnvironmentID:        req.EnvironmentID,
+		TenantRealm:          environment.TenantRealm,
+		GrantedToUserID:      req.GrantedToUserID,
+		GrantedToTenantRealm: req.GrantedToTenantRealm,
+		AccessLevel:          req.AccessLevel,
+		GrantedBy:            req.GrantedBy,
+		ExpiresAt:            req.ExpiresAt,
+		IsActive:             true,
 	}
 
 	if err := s.db.WithContext(ctx).Create(grant).Error; err != nil {
@@ -416,7 +416,7 @@ func (s *EnvironmentService) GetSIEMEnrichmentData(ctx context.Context, tenantRe
 		EgressIPs:         []models.EgressIP{},
 		Domains:           []models.Domain{},
 		InfrastructureIPs: []models.InfrastructureIP{},
-		LastUpdated:       time.Now(), // Default to current time if no environments exist
+		LastUpdated:       time.Now(),
 	}
 
 	if len(environments) > 0 {
@@ -446,7 +446,6 @@ func (s *EnvironmentService) validateTenantAccess(ctx context.Context, userTenan
 	if userTenantRealm == targetTenantRealm {
 		return nil
 	}
-
 
 	var grant models.TenantAccessGrant
 	err := s.db.WithContext(ctx).

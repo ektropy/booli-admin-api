@@ -29,7 +29,7 @@ func NewIdentityProviderHandler(identityProviderService *keycloak.IdentityProvid
 // @Description
 // @Description **Supported Provider Types:**
 // @Description - **oidc**: OpenID Connect providers (requires issuer_url, client_id, client_secret)
-// @Description - **oauth2**: OAuth 2.0 providers (requires authorization_url, token_url, client_id, client_secret)  
+// @Description - **oauth2**: OAuth 2.0 providers (requires authorization_url, token_url, client_id, client_secret)
 // @Description - **saml**: SAML 2.0 providers (requires sso_service_url, entity_id)
 // @Description - **microsoft**: Microsoft Azure AD (requires client_id, client_secret, azure_tenant_id)
 // @Description
@@ -73,10 +73,9 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Invalid identity provider configuration", nil)
 		return
 	}
-	
-	// Add mappers to the provider for creation
+
 	keycloakProvider.Mappers = req.BuildAttributeMappers()
-	
+
 	err = h.identityProviderService.CreateIdentityProvider(c.Request.Context(), realmName, keycloakProvider)
 	if err != nil {
 		h.logger.Error("Failed to create identity provider",
@@ -84,7 +83,7 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 			zap.String("alias", req.Alias),
 			zap.String("type", string(req.Type)),
 			zap.Error(err))
-			
+
 		if strings.Contains(err.Error(), "already exists") {
 			utils.RespondWithError(c, http.StatusConflict, utils.ErrCodeConflict, err.Error(), nil)
 		} else {
@@ -138,7 +137,7 @@ func (h *IdentityProviderHandler) CreateIdentityProvider(c *gin.Context) {
 // @Router /identity-providers/{alias} [get]
 func (h *IdentityProviderHandler) GetIdentityProvider(c *gin.Context) {
 	alias := c.Param("alias")
-	
+
 	if alias == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Alias is required", nil)
 		return
@@ -156,12 +155,12 @@ func (h *IdentityProviderHandler) GetIdentityProvider(c *gin.Context) {
 			zap.String("realm", realmName),
 			zap.String("alias", alias),
 			zap.Error(err))
-		
+
 		if err.Error() == "identity provider not found" {
 			utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "Identity provider not found", nil)
 			return
 		}
-		
+
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to get identity provider", nil)
 		return
 	}
@@ -202,7 +201,7 @@ func (h *IdentityProviderHandler) GetIdentityProvider(c *gin.Context) {
 // @Router /identity-providers/{alias} [put]
 func (h *IdentityProviderHandler) UpdateIdentityProvider(c *gin.Context) {
 	alias := c.Param("alias")
-	
+
 	if alias == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Alias is required", nil)
 		return
@@ -231,10 +230,9 @@ func (h *IdentityProviderHandler) UpdateIdentityProvider(c *gin.Context) {
 		return
 	}
 	keycloakProvider.Alias = alias
-	
-	// Add mappers to the provider for update
+
 	keycloakProvider.Mappers = req.BuildAttributeMappers()
-	
+
 	err = h.identityProviderService.UpdateIdentityProvider(c.Request.Context(), realmName, alias, keycloakProvider)
 	if err != nil {
 		h.logger.Error("Failed to update identity provider",
@@ -290,7 +288,7 @@ func (h *IdentityProviderHandler) UpdateIdentityProvider(c *gin.Context) {
 // @Router /identity-providers/{alias} [delete]
 func (h *IdentityProviderHandler) DeleteIdentityProvider(c *gin.Context) {
 	alias := c.Param("alias")
-	
+
 	if alias == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Alias is required", nil)
 		return

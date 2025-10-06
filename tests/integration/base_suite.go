@@ -259,7 +259,6 @@ func (suite *BaseIntegrationTestSuite) initializeKeycloak() {
 		Users: []initialization.UserConfig{},
 	}
 
-	// Only create realm if it's not the master realm
 	if suite.Config.KeycloakMSPRealm != "master" {
 		setupConfig.Realms = append(setupConfig.Realms, initialization.RealmConfig{
 			Name:        suite.Config.KeycloakMSPRealm,
@@ -315,10 +314,9 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 		suite.T().Fatalf("Failed to build backend binary: %v", err)
 	}
 
-
 	env := []string{
 		"BOOLI_ENVIRONMENT=test",
-		"BOOLI_LOG_LEVEL=debug", // Enable debug logging
+		"BOOLI_LOG_LEVEL=debug",
 		fmt.Sprintf("BOOLI_SERVER_PORT=%s", suite.Config.BackendPort),
 		fmt.Sprintf("BOOLI_DATABASE_HOST=%s", suite.postgresHost),
 		fmt.Sprintf("BOOLI_DATABASE_PORT=%s", suite.postgresPort),
@@ -375,7 +373,6 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 
 	suite.backendProcess = startCmd.Process
 
-
 	time.Sleep(2 * time.Second)
 
 	suite.waitForBackendHealth()
@@ -383,7 +380,6 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 
 func (suite *BaseIntegrationTestSuite) waitForBackendHealth() {
 	healthURL := fmt.Sprintf("http://%s:%s/health", suite.backendHost, suite.backendPort)
-
 
 	for i := 0; i < 30; i++ {
 

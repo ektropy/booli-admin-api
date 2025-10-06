@@ -10,11 +10,10 @@ import (
 
 func TestNewIdentityProviderHandler(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	
-	// Create a mock client for the service
+
 	mockClient := &keycloak.AdminClient{}
 	service := keycloak.NewIdentityProviderService(mockClient, logger)
-	
+
 	handler := NewIdentityProviderHandler(service, logger)
 
 	assert.NotNil(t, handler)

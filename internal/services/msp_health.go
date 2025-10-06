@@ -10,14 +10,14 @@ import (
 )
 
 type MSPHealth struct {
-	RealmName      string   `json:"realm_name"`
-	InDatabase     bool     `json:"in_database"`
-	InKeycloak     bool     `json:"in_keycloak"`
-	RealmEnabled   bool     `json:"realm_enabled"`
-	RolesCreated   []string `json:"roles_created"`
-	MissingRoles   []string `json:"missing_roles"`
-	Issues         []string `json:"issues,omitempty"`
-	Status         string   `json:"status"` // healthy, warning, error
+	RealmName    string   `json:"realm_name"`
+	InDatabase   bool     `json:"in_database"`
+	InKeycloak   bool     `json:"in_keycloak"`
+	RealmEnabled bool     `json:"realm_enabled"`
+	RolesCreated []string `json:"roles_created"`
+	MissingRoles []string `json:"missing_roles"`
+	Issues       []string `json:"issues,omitempty"`
+	Status       string   `json:"status"`
 }
 
 func (m *MSPService) HealthCheck(ctx context.Context) ([]MSPHealth, error) {
@@ -123,7 +123,7 @@ func (m *MSPService) getKeycloakMSPRealms(ctx context.Context) ([]string, error)
 
 	var mspRealms []string
 	for _, realm := range realms {
-		if realm.Realm != "master" && (realm.Realm == "msp-platform-local" || 
+		if realm.Realm != "master" && (realm.Realm == "msp-platform-local" ||
 			(len(realm.Realm) > 4 && realm.Realm[:4] == "msp-")) {
 			mspRealms = append(mspRealms, realm.Realm)
 		}
@@ -146,7 +146,7 @@ func (m *MSPService) Reconcile(ctx context.Context, realmName string) (*MSPHealt
 
 	var msp models.MSP
 	err := m.db.Where("realm_name = ?", realmName).First(&msp).Error
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("MSP not found in database: %s", realmName)
 	}
@@ -154,7 +154,7 @@ func (m *MSPService) Reconcile(ctx context.Context, realmName string) (*MSPHealt
 	health := m.checkMSPHealth(ctx, &msp)
 
 	if len(health.MissingRoles) > 0 {
-		m.logger.Info("Creating missing roles", 
+		m.logger.Info("Creating missing roles",
 			zap.String("realm", realmName),
 			zap.Strings("roles", health.MissingRoles))
 
@@ -185,7 +185,7 @@ func (m *MSPService) Reconcile(ctx context.Context, realmName string) (*MSPHealt
 	}
 
 	finalHealth := m.checkMSPHealth(ctx, &msp)
-	m.logger.Info("MSP reconciliation completed", 
+	m.logger.Info("MSP reconciliation completed",
 		zap.String("realm", realmName),
 		zap.String("status", finalHealth.Status))
 

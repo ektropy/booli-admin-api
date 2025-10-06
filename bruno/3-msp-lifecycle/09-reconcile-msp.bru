@@ -18,13 +18,11 @@ script:pre-request {
 }
 
 body:json {
-  {
-    "force_sync": false,
-    "reconcile_clients": true,
-    "reconcile_staff": true,
-    "reconcile_permissions": true,
-    "dry_run": false
-  }
+  "force_sync": false,
+  "reconcile_clients": true,
+  "reconcile_staff": true,
+  "reconcile_permissions": true,
+  "dry_run": false
 }
 
 assert {
@@ -42,26 +40,34 @@ script:post-response {
     }
     
     if (body.status) {
+      console.log("Reconciliation status:", body.status);
     }
     
     if (body.changes_detected !== undefined) {
+      console.log("Changes detected:", body.changes_detected);
     }
     
     if (body.summary) {
       if (body.summary.clients_synced !== undefined) {
+        console.log("Clients synced:", body.summary.clients_synced);
       }
       if (body.summary.staff_synced !== undefined) {
+        console.log("Staff synced:", body.summary.staff_synced);
       }
       if (body.summary.permissions_updated !== undefined) {
+        console.log("Permissions updated:", body.summary.permissions_updated);
       }
       if (body.summary.errors && body.summary.errors.length > 0) {
+        console.log("Reconciliation errors:", body.summary.errors);
       }
     }
     
     if (body.message) {
+      console.log("Reconciliation message:", body.message);
     }
     
     if (status === 202) {
+      console.log("Reconciliation accepted - processing asynchronously");
     }
   }
 }

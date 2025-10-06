@@ -36,7 +36,7 @@ func TestParseCalVer(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) {
 		version := "2025-08-01"
 		expected := time.Date(2025, 8, 1, 0, 0, 0, 0, time.UTC)
-		
+
 		result, err := ParseCalVer(version)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, result)
@@ -44,7 +44,7 @@ func TestParseCalVer(t *testing.T) {
 
 	t.Run("invalid version", func(t *testing.T) {
 		version := "invalid"
-		
+
 		_, err := ParseCalVer(version)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid CalVer format")
@@ -53,14 +53,12 @@ func TestParseCalVer(t *testing.T) {
 
 func TestCurrentCalVer(t *testing.T) {
 	result := CurrentCalVer()
-	
-	// Should be a valid CalVer format
+
 	assert.True(t, ValidateCalVer(result))
-	
-	// Should be parseable as today's date
+
 	parsed, err := ParseCalVer(result)
 	assert.NoError(t, err)
-	
+
 	now := time.Now().UTC()
 	assert.Equal(t, now.Year(), parsed.Year())
 	assert.Equal(t, now.Month(), parsed.Month())
@@ -69,10 +67,10 @@ func TestCurrentCalVer(t *testing.T) {
 
 func TestIsVersionDeprecated(t *testing.T) {
 	today := time.Now().UTC()
-	
+
 	t.Run("recent version", func(t *testing.T) {
 		recentVersion := today.AddDate(0, 0, -5).Format(CalVerFormat)
-		
+
 		deprecated, err := IsVersionDeprecated(recentVersion, 30)
 		assert.NoError(t, err)
 		assert.False(t, deprecated)
@@ -80,7 +78,7 @@ func TestIsVersionDeprecated(t *testing.T) {
 
 	t.Run("old version", func(t *testing.T) {
 		oldVersion := today.AddDate(0, 0, -60).Format(CalVerFormat)
-		
+
 		deprecated, err := IsVersionDeprecated(oldVersion, 30)
 		assert.NoError(t, err)
 		assert.True(t, deprecated)
@@ -123,9 +121,9 @@ func TestCompareVersions(t *testing.T) {
 func TestGetAPIVersionInfo(t *testing.T) {
 	t.Run("valid version", func(t *testing.T) {
 		version := "2025-08-01"
-		
+
 		info := GetAPIVersionInfo(version)
-		
+
 		assert.Equal(t, version, info["current_version"])
 		assert.Equal(t, "CalVer (YYYY-MM-DD)", info["version_format"])
 		assert.Contains(t, info["description"], "Calendar versioning")
@@ -136,9 +134,9 @@ func TestGetAPIVersionInfo(t *testing.T) {
 
 	t.Run("invalid version", func(t *testing.T) {
 		version := "invalid"
-		
+
 		info := GetAPIVersionInfo(version)
-		
+
 		assert.Equal(t, version, info["current_version"])
 		assert.NotContains(t, info, "version_date")
 		assert.NotContains(t, info, "days_since_release")

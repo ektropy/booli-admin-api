@@ -175,6 +175,7 @@ type ClientRepresentation struct {
 	Enabled                   bool              `json:"enabled"`
 	ClientAuthenticatorType   string            `json:"clientAuthenticatorType,omitempty"`
 	Secret                    string            `json:"secret,omitempty"`
+	PublicClient              bool              `json:"publicClient"`
 	RedirectUris              []string          `json:"redirectUris,omitempty"`
 	WebOrigins                []string          `json:"webOrigins,omitempty"`
 	Protocol                  string            `json:"protocol,omitempty"`

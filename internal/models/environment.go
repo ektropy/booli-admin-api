@@ -11,11 +11,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// SwaggerJSONType represents JSON data type for swagger docs
 // swagger:ignore
 type SwaggerJSONType map[string]interface{}
 
-// SwaggerDeletedAt represents soft delete timestamp for swagger docs
 // swagger:ignore
 type SwaggerDeletedAt *time.Time
 
@@ -24,7 +22,7 @@ type TenantEnvironment struct {
 	TenantRealm string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name        string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
 	Description string         `gorm:"size:1000" json:"description"`
-	Environment string         `gorm:"size:100" json:"environment"` // production, staging, development, etc.
+	Environment string         `gorm:"size:100" json:"environment"`
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
@@ -45,7 +43,7 @@ type NetworkRange struct {
 	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name          string         `gorm:"not null;size:255" json:"name"`
 	CIDR          string         `gorm:"not null;size:50" json:"cidr" validate:"required,cidr"`
-	NetworkType   string         `gorm:"size:50" json:"network_type"` // internal, dmz, management, guest, etc.
+	NetworkType   string         `gorm:"size:50" json:"network_type"`
 	VLAN          *int           `json:"vlan,omitempty"`
 	Description   string         `gorm:"size:500" json:"description"`
 	IsMonitored   bool           `gorm:"default:true" json:"is_monitored"`
@@ -60,9 +58,9 @@ type PublicIP struct {
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
 	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	IPAddress     string         `gorm:"not null;size:45" json:"ip_address" validate:"required,ip"`
-	IPType        string         `gorm:"size:20" json:"ip_type"`   // ipv4, ipv6
-	Purpose       string         `gorm:"size:100" json:"purpose"`  // web, mail, dns, vpn, etc.
-	Provider      string         `gorm:"size:100" json:"provider"` // AWS, Azure, GCP, ISP name, etc.
+	IPType        string         `gorm:"size:20" json:"ip_type"`
+	Purpose       string         `gorm:"size:100" json:"purpose"`
+	Provider      string         `gorm:"size:100" json:"provider"`
 	Region        string         `gorm:"size:100" json:"region"`
 	IsActive      bool           `gorm:"default:true" json:"is_active"`
 	Tags          datatypes.JSON `gorm:"type:jsonb" json:"tags"`
@@ -76,9 +74,9 @@ type EgressIP struct {
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
 	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	IPAddress     string         `gorm:"not null;size:45" json:"ip_address" validate:"required,ip"`
-	IPType        string         `gorm:"size:20" json:"ip_type"`   // ipv4, ipv6
-	Purpose       string         `gorm:"size:100" json:"purpose"`  // general, api_calls, email, etc.
-	Provider      string         `gorm:"size:100" json:"provider"` // NAT Gateway, Proxy, VPN, etc.
+	IPType        string         `gorm:"size:20" json:"ip_type"`
+	Purpose       string         `gorm:"size:100" json:"purpose"`
+	Provider      string         `gorm:"size:100" json:"provider"`
 	IsActive      bool           `gorm:"default:true" json:"is_active"`
 	Tags          datatypes.JSON `gorm:"type:jsonb" json:"tags"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -91,8 +89,8 @@ type Domain struct {
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
 	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	DomainName    string         `gorm:"not null;size:255" json:"domain_name" validate:"required,fqdn"`
-	DomainType    string         `gorm:"size:50" json:"domain_type"` // primary, subdomain, wildcard
-	Purpose       string         `gorm:"size:100" json:"purpose"`    // website, email, api, internal, etc.
+	DomainType    string         `gorm:"size:50" json:"domain_type"`
+	Purpose       string         `gorm:"size:100" json:"purpose"`
 	Registrar     string         `gorm:"size:100" json:"registrar"`
 	DNSProvider   string         `gorm:"size:100" json:"dns_provider"`
 	IsActive      bool           `gorm:"default:true" json:"is_active"`
@@ -108,8 +106,8 @@ type NamingConvention struct {
 	EnvironmentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
 	TenantRealm   string         `gorm:"not null;size:255;index" json:"tenant_realm"`
 	Name          string         `gorm:"not null;size:255" json:"name"`
-	Pattern       string         `gorm:"not null;size:500" json:"pattern"` // e.g., "{location}-{env}-{service}-{number}"
-	ResourceType  string         `gorm:"size:100" json:"resource_type"`    // server, vm, container, service, etc.
+	Pattern       string         `gorm:"not null;size:500" json:"pattern"`
+	ResourceType  string         `gorm:"size:100" json:"resource_type"`
 	Examples      datatypes.JSON `gorm:"type:jsonb" json:"examples"`
 	Description   string         `gorm:"size:500" json:"description"`
 	IsActive      bool           `gorm:"default:true" json:"is_active"`
@@ -136,18 +134,18 @@ type InfrastructureIP struct {
 }
 
 type TenantAccessGrant struct {
-	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	EnvironmentID       uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
-	TenantRealm         string         `gorm:"not null;size:255;index" json:"tenant_realm"`
-	GrantedToUserID     uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_user_id"`
-	GrantedToTenantRealm string        `gorm:"not null;size:255;index" json:"granted_to_tenant_realm"` // MSP tenant realm
-	AccessLevel       AccessLevel    `gorm:"not null;size:50" json:"access_level"`
-	GrantedBy         uuid.UUID      `gorm:"type:uuid;not null" json:"granted_by"`
-	ExpiresAt         *time.Time     `json:"expires_at,omitempty"`
-	IsActive          bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	ID                   uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EnvironmentID        uuid.UUID      `gorm:"type:uuid;not null;index" json:"environment_id"`
+	TenantRealm          string         `gorm:"not null;size:255;index" json:"tenant_realm"`
+	GrantedToUserID      uuid.UUID      `gorm:"type:uuid;not null;index" json:"granted_to_user_id"`
+	GrantedToTenantRealm string         `gorm:"not null;size:255;index" json:"granted_to_tenant_realm"`
+	AccessLevel          AccessLevel    `gorm:"not null;size:50" json:"access_level"`
+	GrantedBy            uuid.UUID      `gorm:"type:uuid;not null" json:"granted_by"`
+	ExpiresAt            *time.Time     `json:"expires_at,omitempty"`
+	IsActive             bool           `gorm:"default:true" json:"is_active"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+	DeletedAt            gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	GrantedToUser   User   `gorm:"-" json:"granted_to_user,omitempty"`
 	GrantedToTenant Tenant `gorm:"foreignKey:GrantedToTenantRealm;references:RealmName" json:"granted_to_tenant,omitempty"`
@@ -356,7 +354,7 @@ type CreateTenantEnvironmentRequest struct {
 	TenantDomain      string             `json:"tenant_domain,omitempty"`
 	Name              string             `json:"name" validate:"required,min=1,max=255"`
 	Description       string             `json:"description,omitempty"`
-	Environment       string             `json:"environment,omitempty"` // production, staging, development, etc.
+	Environment       string             `json:"environment,omitempty"`
 	NetworkRanges     []NetworkRange     `json:"network_ranges,omitempty"`
 	PublicIPs         []PublicIP         `json:"public_ips,omitempty"`
 	EgressIPs         []EgressIP         `json:"egress_ips,omitempty"`
@@ -381,12 +379,12 @@ type TenantEnvironmentListResponse struct {
 }
 
 type CreateTenantAccessGrantRequest struct {
-	EnvironmentID         uuid.UUID   `json:"environment_id" validate:"required"`
-	GrantedToUserID       uuid.UUID   `json:"granted_to_user_id" validate:"required"`
-	GrantedToTenantRealm  string      `json:"granted_to_tenant_realm" validate:"required"`
-	AccessLevel           AccessLevel `json:"access_level" validate:"required,oneof=read read_write full_access"`
-	GrantedBy             uuid.UUID   `json:"granted_by" validate:"required"`
-	ExpiresAt             *time.Time  `json:"expires_at,omitempty"`
+	EnvironmentID        uuid.UUID   `json:"environment_id" validate:"required"`
+	GrantedToUserID      uuid.UUID   `json:"granted_to_user_id" validate:"required"`
+	GrantedToTenantRealm string      `json:"granted_to_tenant_realm" validate:"required"`
+	AccessLevel          AccessLevel `json:"access_level" validate:"required,oneof=read read_write full_access"`
+	GrantedBy            uuid.UUID   `json:"granted_by" validate:"required"`
+	ExpiresAt            *time.Time  `json:"expires_at,omitempty"`
 }
 
 type SIEMEnrichmentData struct {
@@ -400,12 +398,12 @@ type SIEMEnrichmentData struct {
 }
 
 type EnrichmentLookupResult struct {
-	Type            string                 `json:"type"` // ip, domain, network
+	Type            string                 `json:"type"`
 	Value           string                 `json:"value"`
 	TenantRealm     string                 `json:"tenant_realm"`
 	EnvironmentID   uuid.UUID              `json:"environment_id"`
 	EnvironmentName string                 `json:"environment_name"`
-	Classification  string                 `json:"classification"` // internal, external, public, egress, infrastructure
+	Classification  string                 `json:"classification"`
 	Purpose         string                 `json:"purpose,omitempty"`
 	IsPrivate       bool                   `json:"is_private,omitempty"`
 	IsCritical      bool                   `json:"is_critical,omitempty"`

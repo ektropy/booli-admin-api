@@ -34,11 +34,14 @@ script:post-response {
     const body = res.getBody();
     
     if (body.roles) {
+      console.log("User roles:", body.roles);
     }
     
     if (body.message) {
+      console.log("Role assignment message:", body.message);
     }
   } else if (status === 204) {
+    console.log("Roles assigned successfully (no content returned)");
   }
 }
 

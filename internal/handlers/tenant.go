@@ -74,13 +74,10 @@ func (h *TenantHandler) List(c *gin.Context) {
 
 	var filterByMSP string
 	if isMSPAdmin {
-		// MSP admins can see all tenants
 		filterByMSP = ""
 	} else if isMSPUser {
-		// MSP power users can see client tenants only
 		filterByMSP = "master"
 	} else {
-		// Regular users should not list tenants
 		utils.RespondWithError(c, http.StatusForbidden, utils.ErrCodeForbidden, "Access denied", nil)
 		return
 	}
@@ -119,7 +116,6 @@ func (h *TenantHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// All client tenant realms are managed from the master realm
 	mspRealm := "master"
 
 	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req, mspRealm)
@@ -158,7 +154,7 @@ func (h *TenantHandler) Get(c *gin.Context) {
 	}
 
 	response := tenant.ToResponse()
-	
+
 	includeCounts := c.Query("include_counts") == "true"
 	if includeCounts {
 		userCount := 0
@@ -311,9 +307,6 @@ func (h *TenantHandler) ConfigureMSPSSO(c *gin.Context) {
 		return
 	}
 
-	// In the new architecture, SSO configuration will be handled directly in Keycloak
-	// This endpoint should configure Identity Providers in the Keycloak realm
-	
 	updatedSettings := models.TenantSettings{
 		MSPSSOEnabled:  req.MSPSSOEnabled,
 		MSPSSOProvider: req.MSPSSOProvider,
@@ -433,8 +426,6 @@ func (h *TenantHandler) TestMSPSSO(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// Tenant-scoped user management methods
-
 // @Summary Create user in tenant
 // @Description Create a new user within a specific tenant
 // @Tags tenants
@@ -456,7 +447,6 @@ func (h *TenantHandler) CreateTenantUser(c *gin.Context) {
 		return
 	}
 
-	// Get tenant to verify it exists and get realm name
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
@@ -476,11 +466,10 @@ func (h *TenantHandler) CreateTenantUser(c *gin.Context) {
 		return
 	}
 
-	// Use tenant's realm name for user creation
 	createdUser, err := h.userService.CreateUser(c.Request.Context(), tenant.RealmName, &req)
 	if err != nil {
-		h.logger.Error("Failed to create user in tenant", 
-			zap.Error(err), 
+		h.logger.Error("Failed to create user in tenant",
+			zap.Error(err),
 			zap.String("tenant_id", tenantID),
 			zap.String("realm", tenant.RealmName))
 		utils.RespondWithError(c, http.StatusInternalServerError, utils.ErrCodeInternalError, "Failed to create user", nil)
@@ -514,7 +503,6 @@ func (h *TenantHandler) ListTenantUsers(c *gin.Context) {
 		return
 	}
 
-	// Get tenant to verify it exists and get realm name
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
@@ -558,7 +546,7 @@ func (h *TenantHandler) ListTenantUsers(c *gin.Context) {
 
 	users, total, err := h.userService.ListUsers(c.Request.Context(), tenant.RealmName, &req)
 	if err != nil {
-		h.logger.Error("Failed to list tenant users", 
+		h.logger.Error("Failed to list tenant users",
 			zap.Error(err),
 			zap.String("tenant_id", tenantID),
 			zap.String("realm", tenant.RealmName))
@@ -594,18 +582,17 @@ func (h *TenantHandler) ListTenantUsers(c *gin.Context) {
 func (h *TenantHandler) GetTenantUser(c *gin.Context) {
 	tenantID := c.Param("id")
 	userID := c.Param("user_id")
-	
+
 	if tenantID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
 		return
 	}
-	
+
 	if userID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
 		return
 	}
 
-	// Get tenant to verify it exists and get realm name
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
@@ -618,7 +605,7 @@ func (h *TenantHandler) GetTenantUser(c *gin.Context) {
 		if strings.Contains(err.Error(), "user not found") || strings.Contains(err.Error(), "not found") {
 			utils.RespondWithError(c, http.StatusNotFound, utils.ErrCodeNotFound, "User not found", nil)
 		} else {
-			h.logger.Error("Failed to get tenant user", 
+			h.logger.Error("Failed to get tenant user",
 				zap.Error(err),
 				zap.String("tenant_id", tenantID),
 				zap.String("user_id", userID),
@@ -654,18 +641,17 @@ func (h *TenantHandler) GetTenantUser(c *gin.Context) {
 func (h *TenantHandler) UpdateTenantUser(c *gin.Context) {
 	tenantID := c.Param("id")
 	userID := c.Param("user_id")
-	
+
 	if tenantID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
 		return
 	}
-	
+
 	if userID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
 		return
 	}
 
-	// Get tenant to verify it exists and get realm name
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
@@ -687,7 +673,7 @@ func (h *TenantHandler) UpdateTenantUser(c *gin.Context) {
 
 	user, err := h.userService.UpdateUser(c.Request.Context(), tenant.RealmName, userID, &req)
 	if err != nil {
-		h.logger.Error("Failed to update tenant user", 
+		h.logger.Error("Failed to update tenant user",
 			zap.Error(err),
 			zap.String("tenant_id", tenantID),
 			zap.String("user_id", userID),
@@ -719,18 +705,17 @@ func (h *TenantHandler) UpdateTenantUser(c *gin.Context) {
 func (h *TenantHandler) DeleteTenantUser(c *gin.Context) {
 	tenantID := c.Param("id")
 	userID := c.Param("user_id")
-	
+
 	if tenantID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "Tenant ID is required", nil)
 		return
 	}
-	
+
 	if userID == "" {
 		utils.RespondWithError(c, http.StatusBadRequest, utils.ErrCodeBadRequest, "User ID is required", nil)
 		return
 	}
 
-	// Get tenant to verify it exists and get realm name
 	tenant, err := h.tenantService.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get tenant", zap.Error(err))
@@ -740,7 +725,7 @@ func (h *TenantHandler) DeleteTenantUser(c *gin.Context) {
 
 	err = h.userService.DeleteUser(c.Request.Context(), tenant.RealmName, userID)
 	if err != nil {
-		h.logger.Error("Failed to delete tenant user", 
+		h.logger.Error("Failed to delete tenant user",
 			zap.Error(err),
 			zap.String("tenant_id", tenantID),
 			zap.String("user_id", userID),

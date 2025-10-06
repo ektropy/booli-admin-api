@@ -114,10 +114,8 @@ func (s *TenantService) ListTenants(ctx context.Context, filterByMSP string, pag
 		if realm.Realm == "master" {
 			continue
 		}
-		
-		// Filter tenants based on MSP access
+
 		if filterByMSP != "" {
-			// Show only client tenants for MSP users
 			if realm.Attributes["tenant_type"] != string(models.TenantTypeClient) {
 				continue
 			}
@@ -235,7 +233,7 @@ func (s *TenantService) UpdateTenant(ctx context.Context, realmName string, req 
 		if err := json.Unmarshal(*req.Settings, &newSettings); err != nil {
 			return nil, fmt.Errorf("invalid settings format: %w", err)
 		}
-		
+
 		settingsJSON, _ := json.Marshal(newSettings)
 		updateRealm.Attributes["settings"] = string(settingsJSON)
 	}
@@ -277,7 +275,6 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 		zap.String("realm_name", realmName))
 	return nil
 }
-
 
 func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (string, error) {
 	s.logger.Info("Starting Keycloak realm creation",
@@ -529,5 +526,3 @@ func (s *TenantService) RemoveUserFromTenant(ctx context.Context, realmName, use
 
 	return nil
 }
-
-

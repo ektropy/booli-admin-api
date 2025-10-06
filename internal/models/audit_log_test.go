@@ -19,7 +19,7 @@ func TestAuditDetails_Value(t *testing.T) {
 	value, err := details.Value()
 	assert.NoError(t, err)
 	assert.NotNil(t, value)
-	
+
 	var unmarshalled AuditDetails
 	err = json.Unmarshal(value.([]byte), &unmarshalled)
 	assert.NoError(t, err)
@@ -46,7 +46,7 @@ func TestAuditDetails_Scan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var details AuditDetails
 			err := details.Scan(tt.input)
-			
+
 			if tt.hasError {
 				assert.Error(t, err)
 			} else {
@@ -108,14 +108,14 @@ func TestAuditLog_GetUserEmail(t *testing.T) {
 		Action:    AuditActions.UserLogin,
 		CreatedAt: time.Now(),
 	}
-	
+
 	assert.Equal(t, "", log.GetUserEmail())
 }
 
 func TestAuditLog_ToResponse(t *testing.T) {
 	userID := uuid.New().String()
 	now := time.Now()
-	
+
 	log := &AuditLog{
 		ID:             uuid.New().String(),
 		RealmName:      "test-realm",
@@ -131,11 +131,11 @@ func TestAuditLog_ToResponse(t *testing.T) {
 	}
 
 	response := log.ToResponse()
-	
+
 	assert.Equal(t, log.ID, response.ID)
 	assert.Equal(t, log.RealmName, response.RealmName)
 	assert.Equal(t, userID, *response.KeycloakUserID)
-	assert.Equal(t, "", response.UserEmail) // GetUserEmail returns empty string
+	assert.Equal(t, "", response.UserEmail)
 	assert.Equal(t, log.Action, response.Action)
 	assert.Equal(t, log.ResourceType, response.ResourceType)
 	assert.Equal(t, log.ResourceID, response.ResourceID)
@@ -144,7 +144,7 @@ func TestAuditLog_ToResponse(t *testing.T) {
 	assert.Equal(t, log.Severity, response.Severity)
 	assert.Equal(t, log.Status, response.Status)
 	assert.Equal(t, now, response.CreatedAt)
-	
+
 	assert.True(t, log.IsSecurityEvent())
 	assert.False(t, log.IsFailure())
 }
@@ -165,17 +165,17 @@ func TestAuditLog_ToResponse_WithNilValues(t *testing.T) {
 	}
 
 	response := log.ToResponse()
-	
+
 	assert.Equal(t, log.ID, response.ID)
 	assert.Nil(t, response.KeycloakUserID)
 	assert.Equal(t, "", response.UserEmail)
-	assert.True(t, log.IsSecurityEvent()) // user.created is a security event
+	assert.True(t, log.IsSecurityEvent())
 	assert.False(t, log.IsFailure())
 }
 
 func TestCreateAuditLogRequest_Validation(t *testing.T) {
 	userID := uuid.New().String()
-	
+
 	validRequest := CreateAuditLogRequest{
 		KeycloakUserID: &userID,
 		Action:         AuditActions.UserLogin,
@@ -186,7 +186,7 @@ func TestCreateAuditLogRequest_Validation(t *testing.T) {
 		Severity:       AuditSeverityInfo,
 		Status:         AuditStatusSuccess,
 	}
-	
+
 	assert.Equal(t, AuditActions.UserLogin, validRequest.Action)
 	assert.Equal(t, "user", validRequest.ResourceType)
 	assert.NotNil(t, validRequest.KeycloakUserID)
@@ -198,7 +198,7 @@ func TestAuditLogSearchRequest_Defaults(t *testing.T) {
 		Page:     1,
 		PageSize: 50,
 	}
-	
+
 	assert.Equal(t, 1, req.Page)
 	assert.Equal(t, 50, req.PageSize)
 	assert.Nil(t, req.KeycloakUserID)
@@ -213,7 +213,7 @@ func TestAuditLogSearchRequest_WithFilters(t *testing.T) {
 	startDate := time.Now().Add(-24 * time.Hour)
 	endDate := time.Now()
 	severity := AuditSeverityWarning
-	
+
 	req := AuditLogSearchRequest{
 		Page:           1,
 		PageSize:       20,
@@ -223,7 +223,7 @@ func TestAuditLogSearchRequest_WithFilters(t *testing.T) {
 		DateTo:         &endDate,
 		Severity:       &severity,
 	}
-	
+
 	assert.Equal(t, 1, req.Page)
 	assert.Equal(t, 20, req.PageSize)
 	assert.NotNil(t, req.KeycloakUserID)
@@ -239,7 +239,7 @@ func TestAuditLogListResponse_Structure(t *testing.T) {
 		{ID: "1", Action: AuditActions.UserLogin},
 		{ID: "2", Action: AuditActions.UserLogout},
 	}
-	
+
 	response := AuditLogListResponse{
 		Logs:       logs,
 		Total:      100,
@@ -247,7 +247,7 @@ func TestAuditLogListResponse_Structure(t *testing.T) {
 		PageSize:   50,
 		TotalPages: 2,
 	}
-	
+
 	assert.Len(t, response.Logs, 2)
 	assert.Equal(t, int64(100), response.Total)
 	assert.Equal(t, 1, response.Page)
@@ -266,7 +266,7 @@ func TestAuditLogStatsResponse_Structure(t *testing.T) {
 		StatusBreakdown:   map[AuditStatus]int64{AuditStatusSuccess: 900, AuditStatusFailure: 100},
 		Timeline:          []TimelinePoint{{Timestamp: time.Now(), Count: 100}},
 	}
-	
+
 	assert.Equal(t, int64(1000), stats.TotalEvents)
 	assert.Equal(t, int64(150), stats.SecurityEvents)
 	assert.Equal(t, int64(25), stats.FailedEvents)
@@ -287,7 +287,7 @@ func TestUserActivityCount_Structure(t *testing.T) {
 		UserEmail:      "test@example.com",
 		Count:          42,
 	}
-	
+
 	assert.Equal(t, "user-123", activity.KeycloakUserID)
 	assert.Equal(t, "test@example.com", activity.UserEmail)
 	assert.Equal(t, int64(42), activity.Count)
@@ -298,7 +298,7 @@ func TestActionCount_Structure(t *testing.T) {
 		Action: "login",
 		Count:  500,
 	}
-	
+
 	assert.Equal(t, "login", action.Action)
 	assert.Equal(t, int64(500), action.Count)
 }
@@ -309,7 +309,7 @@ func TestTimelinePoint_Structure(t *testing.T) {
 		Timestamp: now,
 		Count:     42,
 	}
-	
+
 	assert.Equal(t, now, point.Timestamp)
 	assert.Equal(t, int64(42), point.Count)
 }
@@ -353,7 +353,7 @@ func TestAuditActions_Constants(t *testing.T) {
 		AuditActions.DataBackedUp,
 		AuditActions.DataRestored,
 	}
-	
+
 	for _, action := range actions {
 		assert.NotEmpty(t, action, "Action should not be empty")
 		assert.True(t, len(action) > 0, "Action should have content")
@@ -367,12 +367,12 @@ func TestAuditSeverityConstants(t *testing.T) {
 		AuditSeverityError,
 		AuditSeverityCritical,
 	}
-	
+
 	for _, severity := range severities {
 		assert.NotEmpty(t, severity, "Severity should not be empty")
 		assert.True(t, len(string(severity)) > 0, "Severity should have content")
 	}
-	
+
 	assert.Equal(t, AuditSeverity("info"), AuditSeverityInfo)
 	assert.Equal(t, AuditSeverity("warning"), AuditSeverityWarning)
 	assert.Equal(t, AuditSeverity("error"), AuditSeverityError)
@@ -385,12 +385,12 @@ func TestAuditStatusConstants(t *testing.T) {
 		AuditStatusFailure,
 		AuditStatusPartial,
 	}
-	
+
 	for _, status := range statuses {
 		assert.NotEmpty(t, status, "Status should not be empty")
 		assert.True(t, len(string(status)) > 0, "Status should have content")
 	}
-	
+
 	assert.Equal(t, AuditStatus("success"), AuditStatusSuccess)
 	assert.Equal(t, AuditStatus("failure"), AuditStatusFailure)
 	assert.Equal(t, AuditStatus("partial"), AuditStatusPartial)

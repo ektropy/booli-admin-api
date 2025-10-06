@@ -95,7 +95,7 @@ docs/site/
 
 # Goreleaser
 dist/
-.goreleaser.yml
+
 
 # Security scanning
 *.sarif

@@ -44,7 +44,7 @@ func (suite *UserInviteIntegrationTestSuite) startMailPitContainer() {
 		Image:        "axllent/mailpit:latest",
 		ExposedPorts: []string{"1025/tcp", "8025/tcp"},
 		Env: map[string]string{
-			"MP_MAX_MESSAGES":      "5000",
+			"MP_MAX_MESSAGES":       "5000",
 			"MP_SMTP_AUTH_DISABLED": "1",
 		},
 		WaitingFor: wait.ForListeningPort("1025/tcp").WithStartupTimeout(30 * time.Second),
@@ -72,15 +72,12 @@ func (suite *UserInviteIntegrationTestSuite) startMailPitContainer() {
 }
 
 func (suite *UserInviteIntegrationTestSuite) configureKeycloakSMTP(realmName string) {
-	// Use the tenant realm admin user for SMTP configuration
-	// The tenant admin user is created as "admin" with password "ChangeMe123!" in each tenant realm
 	token := suite.AuthenticateUser(realmName, suite.Config.KeycloakClientID, suite.Config.KeycloakClientSecret, "admin", "ChangeMe123!")
 	require.NotEmpty(suite.T(), token)
 
-	// First, get the current realm configuration
-	getURL := fmt.Sprintf("http://%s:%s/admin/realms/%s", 
+	getURL := fmt.Sprintf("http://%s:%s/admin/realms/%s",
 		suite.keycloakHost, suite.keycloakPort, realmName)
-	
+
 	getReq, err := http.NewRequest("GET", getURL, nil)
 	require.NoError(suite.T(), err)
 	getReq.Header.Set("Authorization", "Bearer "+token)
@@ -98,34 +95,31 @@ func (suite *UserInviteIntegrationTestSuite) configureKeycloakSMTP(realmName str
 	var realm map[string]interface{}
 	err = json.NewDecoder(getResp.Body).Decode(&realm)
 	require.NoError(suite.T(), err)
-	
-	// Log the current realm structure to understand what we're working with
+
 	if realmJSON, err := json.MarshalIndent(realm, "", "  "); err == nil {
 		suite.T().Logf("Current realm structure for %s:\n%s", realmName, string(realmJSON))
 	}
 
-	// Configure SMTP server settings with correct structure
 	smtpConfig := map[string]string{
-		"host":            suite.mailpitHost,
-		"port":            suite.mailpitPort,
-		"from":            "noreply@booli.test",
-		"fromDisplayName": "Booli Test",
-		"replyTo":         "",
+		"host":               suite.mailpitHost,
+		"port":               suite.mailpitPort,
+		"from":               "noreply@booli.test",
+		"fromDisplayName":    "Booli Test",
+		"replyTo":            "",
 		"replyToDisplayName": "",
-		"envelopeFrom":    "",
-		"ssl":             "false",
-		"starttls":        "false",
-		"auth":            "false",
-		"user":            "",
-		"password":        "",
+		"envelopeFrom":       "",
+		"ssl":                "false",
+		"starttls":           "false",
+		"auth":               "false",
+		"user":               "",
+		"password":           "",
 	}
 
-	// Update the existing realm with SMTP configuration (PUT requires full realm representation)
 	realm["smtpServer"] = smtpConfig
-	
+
 	jsonData, err := json.Marshal(realm)
 	require.NoError(suite.T(), err)
-	
+
 	suite.T().Logf("Sending PUT request to update realm with SMTP config for realm %s", realmName)
 
 	putReq, err := http.NewRequest("PUT", getURL, bytes.NewBuffer(jsonData))
@@ -138,7 +132,7 @@ func (suite *UserInviteIntegrationTestSuite) configureKeycloakSMTP(realmName str
 	defer putResp.Body.Close()
 
 	suite.T().Logf("SMTP config PUT response: %d for realm %s", putResp.StatusCode, realmName)
-	
+
 	if putResp.StatusCode == 200 || putResp.StatusCode == 204 {
 		suite.T().Logf("SMTP configuration PUT request accepted (status %d)", putResp.StatusCode)
 	} else {
@@ -147,18 +141,15 @@ func (suite *UserInviteIntegrationTestSuite) configureKeycloakSMTP(realmName str
 		return
 	}
 
-	// Verify SMTP configuration was applied by re-fetching realm
 	suite.verifySMTPConfiguration(realmName, token, smtpConfig)
-	
-	// Test SMTP configuration using msp-admin who has email
+
 	suite.testSMTPConfiguration(realmName, token, smtpConfig)
 }
 
 func (suite *UserInviteIntegrationTestSuite) verifySMTPConfiguration(realmName, token string, expectedConfig map[string]string) {
-	// Re-fetch realm to verify SMTP configuration was applied
-	getURL := fmt.Sprintf("http://%s:%s/admin/realms/%s", 
+	getURL := fmt.Sprintf("http://%s:%s/admin/realms/%s",
 		suite.keycloakHost, suite.keycloakPort, realmName)
-	
+
 	getReq, err := http.NewRequest("GET", getURL, nil)
 	require.NoError(suite.T(), err)
 	getReq.Header.Set("Authorization", "Bearer "+token)
@@ -177,18 +168,16 @@ func (suite *UserInviteIntegrationTestSuite) verifySMTPConfiguration(realmName, 
 	err = json.NewDecoder(getResp.Body).Decode(&realm)
 	require.NoError(suite.T(), err)
 
-	// Check if smtpServer configuration exists and compare with expected
 	if smtpServer, exists := realm["smtpServer"]; exists {
 		suite.T().Logf("SMTP configuration found in realm %s", realmName)
 		if smtpMap, ok := smtpServer.(map[string]interface{}); ok {
-			suite.T().Logf("Current SMTP config: host=%v, port=%v, from=%v, auth=%v", 
+			suite.T().Logf("Current SMTP config: host=%v, port=%v, from=%v, auth=%v",
 				smtpMap["host"], smtpMap["port"], smtpMap["from"], smtpMap["auth"])
-			
-			// Verify the settings match what we tried to set
+
 			expectedHost := expectedConfig["host"]
 			expectedPort := expectedConfig["port"]
 			expectedFrom := expectedConfig["from"]
-			
+
 			if smtpMap["host"] == expectedHost && smtpMap["port"] == expectedPort && smtpMap["from"] == expectedFrom {
 				suite.T().Logf("SMTP configuration matches expected values")
 			} else {
@@ -205,17 +194,15 @@ func (suite *UserInviteIntegrationTestSuite) verifySMTPConfiguration(realmName, 
 }
 
 func (suite *UserInviteIntegrationTestSuite) testSMTPConfiguration(realmName, token string, smtpConfig map[string]string) {
-	// Test SMTP configuration using Keycloak's test endpoint
-	testURL := fmt.Sprintf("http://%s:%s/admin/realms/%s/testSMTPConnection", 
+	testURL := fmt.Sprintf("http://%s:%s/admin/realms/%s/testSMTPConnection",
 		suite.keycloakHost, suite.keycloakPort, realmName)
-	
-	// Send the SMTP configuration as JSON in the request body
+
 	configJSON, err := json.Marshal(smtpConfig)
 	if err != nil {
 		suite.T().Logf("Failed to marshal SMTP config: %v", err)
 		return
 	}
-	
+
 	testReq, err := http.NewRequest("POST", testURL, bytes.NewBuffer(configJSON))
 	if err != nil {
 		suite.T().Logf("Failed to create test SMTP request: %v", err)
@@ -233,18 +220,18 @@ func (suite *UserInviteIntegrationTestSuite) testSMTPConfiguration(realmName, to
 	defer testResp.Body.Close()
 
 	suite.T().Logf("SMTP test response: %d", testResp.StatusCode)
-	
+
 	body, err := io.ReadAll(testResp.Body)
 	if err != nil {
 		suite.T().Logf("Failed to read SMTP test response body: %v", err)
 		return
 	}
-	
+
 	suite.T().Logf("SMTP test response body length: %d bytes", len(body))
 	if len(body) > 0 {
 		suite.T().Logf("SMTP test response body: %s", string(body))
 	}
-	
+
 	if testResp.StatusCode == 204 {
 		suite.T().Logf("SMTP test successful for realm %s", realmName)
 	} else {
@@ -278,7 +265,7 @@ func (suite *UserInviteIntegrationTestSuite) TestCreateTenant() {
 
 func (suite *UserInviteIntegrationTestSuite) TestCreateUserWithInvite() {
 	suite.TestCreateTenant()
-	
+
 	suite.configureKeycloakSMTP("tenant-test-invite-tenant")
 
 	mspAdmin := suite.Config.DefaultTestUsers[0]
@@ -329,7 +316,7 @@ func (suite *UserInviteIntegrationTestSuite) TestResendInvitation() {
 	token := suite.AuthenticateUser("master", suite.Config.KeycloakClientID, suite.Config.KeycloakClientSecret, mspAdmin.Username, mspAdmin.Password)
 	require.NotEmpty(suite.T(), token)
 
-	usersResp, err := suite.MakeRequest("GET", "/admin/users?tenant_realm=tenant-test-invite-tenant", 
+	usersResp, err := suite.MakeRequest("GET", "/admin/users?tenant_realm=tenant-test-invite-tenant",
 		map[string]string{"Authorization": "Bearer " + token}, nil)
 	require.NoError(suite.T(), err)
 	defer usersResp.Body.Close()
@@ -341,15 +328,15 @@ func (suite *UserInviteIntegrationTestSuite) TestResendInvitation() {
 	require.NoError(suite.T(), err)
 
 	require.Greater(suite.T(), len(usersList.Users), 0)
-	
+
 	userID := usersList.Users[0].ID
-	
+
 	resendRequest := map[string]interface{}{
 		"actions":  []string{"UPDATE_PASSWORD", "VERIFY_EMAIL"},
 		"lifespan": 86400,
 	}
 
-	resp, err := suite.MakeRequest("POST", 
+	resp, err := suite.MakeRequest("POST",
 		fmt.Sprintf("/users/%s/send-invite", userID),
 		map[string]string{"Authorization": "Bearer " + token},
 		resendRequest)
@@ -388,7 +375,7 @@ func (suite *UserInviteIntegrationTestSuite) TestMailPitWebInterface() {
 
 func (suite *UserInviteIntegrationTestSuite) verifyEmailSent(expectedTo string) {
 	time.Sleep(5 * time.Second)
-	
+
 	url := fmt.Sprintf("http://%s:%s/api/v1/messages", suite.mailpitHost, suite.mailpitWebPort)
 	resp, err := http.Get(url)
 	require.NoError(suite.T(), err)
@@ -402,8 +389,8 @@ func (suite *UserInviteIntegrationTestSuite) verifyEmailSent(expectedTo string) 
 	var messages struct {
 		Total    int `json:"total"`
 		Messages []struct {
-			ID   string `json:"ID"`
-			To   []struct {
+			ID string `json:"ID"`
+			To []struct {
 				Address string `json:"Address"`
 			} `json:"To"`
 			Subject string `json:"Subject"`
@@ -412,12 +399,12 @@ func (suite *UserInviteIntegrationTestSuite) verifyEmailSent(expectedTo string) 
 			} `json:"From"`
 		} `json:"messages"`
 	}
-	
+
 	err = json.Unmarshal(body, &messages)
 	require.NoError(suite.T(), err)
 
 	suite.T().Logf("Total messages in MailPit: %d", messages.Total)
-	
+
 	for i, msg := range messages.Messages {
 		suite.T().Logf("Message %d: From=%s, Subject=%s", i+1, msg.From.Address, msg.Subject)
 		for j, to := range msg.To {

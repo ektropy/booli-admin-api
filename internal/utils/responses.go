@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ErrorResponse represents an API error response
 // swagger:model
 type ErrorResponse struct {
 	Error     ErrorDetail `json:"error"`
@@ -16,7 +15,6 @@ type ErrorResponse struct {
 	RequestID string      `json:"request_id,omitempty" example:"req-123456789"`
 }
 
-// ErrorDetail represents detailed error information
 // swagger:model
 type ErrorDetail struct {
 	Code    string      `json:"code" example:"BAD_REQUEST"`

@@ -127,7 +127,7 @@ func TestCreateKeycloakProvider(t *testing.T) {
 			assert.Equal(t, tt.clientSecret, provider.ClientSecret)
 			assert.Equal(t, tt.redirectURL, provider.RedirectURL)
 			assert.Equal(t, tt.realm, provider.RealmName)
-		
+
 			expectedScopes := []string{"openid", "profile", "email", "roles"}
 			assert.Equal(t, expectedScopes, provider.Scopes)
 		})
@@ -190,7 +190,7 @@ func TestOIDCService_ProviderManagement(t *testing.T) {
 			Name:      "azure-ad",
 			IssuerURL: buildAzureADIssuerURL("", "tenant-id"),
 			ClientID:  "azure-client",
-			},
+		},
 	}
 
 	for _, provider := range providers {
@@ -254,7 +254,7 @@ func TestGenerateRandomState(t *testing.T) {
 func TestNewOIDCService(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	service := NewOIDCService(logger)
-	
+
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.providers)
 	assert.Equal(t, logger, service.logger)
@@ -272,7 +272,7 @@ func TestCreateKeycloakMSPProvider(t *testing.T) {
 		true,
 		"/path/to/ca.crt",
 	)
-	
+
 	assert.NotNil(t, provider)
 	assert.Equal(t, "keycloak-msp-realm", provider.Name)
 	assert.Equal(t, "https://keycloak.example.com/realms/msp-realm", provider.IssuerURL)
@@ -334,7 +334,6 @@ func TestBuildAzureADIssuerURL(t *testing.T) {
 	}
 }
 
-
 func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
 	provider := CreateKeycloakProvider(
 		"test-keycloak",
@@ -347,23 +346,21 @@ func TestOIDCProvider_GenerateAuthURL(t *testing.T) {
 		false,
 		"",
 	)
-	
-	// Mock the oauth2Config for testing
+
 	provider.oauth2Config = &oauth2.Config{
 		ClientID:    provider.ClientID,
 		RedirectURL: provider.RedirectURL,
 		Scopes:      provider.Scopes,
 	}
-	
+
 	url := provider.GenerateAuthURL("")
 	assert.Contains(t, url, "client_id=client-id")
 	assert.Contains(t, url, "redirect_uri=")
 	assert.Contains(t, url, "state=")
-	
+
 	url = provider.GenerateAuthURL("test-state-123")
 	assert.Contains(t, url, "state=test-state-123")
 }
-
 
 func TestOIDCProvider_SecurityConfiguration(t *testing.T) {
 	tests := []struct {
@@ -395,7 +392,7 @@ func TestOIDCProvider_SecurityConfiguration(t *testing.T) {
 			expectedCAPath: "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			provider := CreateKeycloakProvider(
@@ -409,7 +406,7 @@ func TestOIDCProvider_SecurityConfiguration(t *testing.T) {
 				tt.skipTLSVerify,
 				tt.caCertPath,
 			)
-			
+
 			assert.Equal(t, tt.expectedSkip, provider.SkipTLSVerify)
 			assert.Equal(t, tt.expectedCAPath, provider.CACertPath)
 		})

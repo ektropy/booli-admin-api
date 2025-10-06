@@ -47,12 +47,10 @@ func TestEnvironmentService_ClearEnvironmentCache(t *testing.T) {
 	tenantRealm := "test-tenant"
 	environmentID := "123e4567-e89b-12d3-a456-426614174000"
 
-	// Test with nil cache - should not panic
 	serviceNilCache := &EnvironmentService{
 		logger: logger,
 		cache:  nil,
 	}
 
-	// Should not panic with nil cache
 	serviceNilCache.clearEnvironmentCache(context.Background(), tenantRealm, environmentID)
 }

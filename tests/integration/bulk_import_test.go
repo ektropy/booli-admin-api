@@ -16,14 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// BulkImportIntegrationTest tests the complete bulk import workflow
 type BulkImportIntegrationTest struct {
 	baseURL string
 	token   string
 	client  *http.Client
 }
 
-// NewBulkImportIntegrationTest creates a new integration test instance
 func NewBulkImportIntegrationTest(baseURL, token string) *BulkImportIntegrationTest {
 	return &BulkImportIntegrationTest{
 		baseURL: baseURL,
@@ -34,9 +32,7 @@ func NewBulkImportIntegrationTest(baseURL, token string) *BulkImportIntegrationT
 	}
 }
 
-// TestBulkImportWorkflow tests the complete bulk import workflow
 func TestBulkImportWorkflow(t *testing.T) {
-	// Skip if not running integration tests
 	if os.Getenv("RUN_INTEGRATION_TESTS") != "true" {
 		t.Skip("Skipping integration test. Set RUN_INTEGRATION_TESTS=true to run.")
 	}
@@ -59,9 +55,7 @@ func TestBulkImportWorkflow(t *testing.T) {
 	t.Run("TestRateLimiting", test.TestRateLimiting)
 }
 
-// TestJSONBulkCreate tests bulk user creation via JSON
 func (test *BulkImportIntegrationTest) TestJSONBulkCreate(t *testing.T) {
-	// Prepare test data
 	users := []map[string]interface{}{
 		{
 			"email":        "bulk1@test.com",
@@ -105,7 +99,6 @@ func (test *BulkImportIntegrationTest) TestJSONBulkCreate(t *testing.T) {
 	require.True(t, ok)
 	assert.Len(t, successful, 2)
 
-	// Cleanup - delete created users
 	for _, user := range successful {
 		userMap := user.(map[string]interface{})
 		userID := userMap["id"].(string)
@@ -113,7 +106,6 @@ func (test *BulkImportIntegrationTest) TestJSONBulkCreate(t *testing.T) {
 	}
 }
 
-// TestCSVImport tests bulk user creation via CSV file upload
 func (test *BulkImportIntegrationTest) TestCSVImport(t *testing.T) {
 	csvContent := `email,first_name,last_name,username,password,role,enabled
 csv1@test.com,CSV,User1,csv.user1,SecurePass123!,tenant-user,true
@@ -137,7 +129,6 @@ csv2@test.com,CSV,User2,csv.user2,SecurePass456!,tenant-admin,true`
 	require.True(t, ok)
 	assert.Len(t, successful, 2)
 
-	// Cleanup - delete created users
 	for _, user := range successful {
 		userMap := user.(map[string]interface{})
 		userID := userMap["id"].(string)
@@ -145,9 +136,7 @@ csv2@test.com,CSV,User2,csv.user2,SecurePass456!,tenant-admin,true`
 	}
 }
 
-// TestCSVImportWithErrors tests CSV import error handling
 func (test *BulkImportIntegrationTest) TestCSVImportWithErrors(t *testing.T) {
-	// Create CSV content with errors
 	csvContent := `email,first_name,last_name,username,password,role,enabled
 valid@test.com,Valid,User,valid.user,SecurePass123!,tenant-user,true
 invalid-email,Invalid,Email,invalid.email,SecurePass456!,tenant-user,true
@@ -168,11 +157,9 @@ invalid-email,Invalid,Email,invalid.email,SecurePass456!,tenant-user,true
 
 	parseErrors, hasParseErrors := result["parse_errors"].([]interface{})
 	failedUsers, hasFailedUsers := result["failed_users"].([]interface{})
-	
-	// Should have either parse errors or failed users
+
 	assert.True(t, (hasParseErrors && len(parseErrors) > 0) || (hasFailedUsers && len(failedUsers) > 0))
 
-	// Cleanup any successfully created users
 	if successful, ok := result["successful_users"].([]interface{}); ok {
 		for _, user := range successful {
 			userMap := user.(map[string]interface{})
@@ -182,11 +169,7 @@ invalid-email,Invalid,Email,invalid.email,SecurePass456!,tenant-user,true
 	}
 }
 
-// TestRateLimiting tests rate limiting for bulk operations
 func (test *BulkImportIntegrationTest) TestRateLimiting(t *testing.T) {
-	// This test is more complex and may require multiple API calls
-	// to trigger rate limiting. For now, we'll test that the headers are present.
-	
 	users := []map[string]interface{}{
 		{
 			"email":        "ratelimit@test.com",
@@ -227,7 +210,6 @@ func (test *BulkImportIntegrationTest) TestRateLimiting(t *testing.T) {
 	}
 }
 
-// makeJSONRequest makes an HTTP request with JSON body
 func (test *BulkImportIntegrationTest) makeJSONRequest(method, path string, body interface{}) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
@@ -249,7 +231,6 @@ func (test *BulkImportIntegrationTest) makeJSONRequest(method, path string, body
 	return test.client.Do(req)
 }
 
-// makeCSVRequest makes an HTTP request with CSV file upload
 func (test *BulkImportIntegrationTest) makeCSVRequest(path, filename, csvContent string) (*http.Response, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -280,7 +261,6 @@ func (test *BulkImportIntegrationTest) makeCSVRequest(path, filename, csvContent
 	return test.client.Do(req)
 }
 
-// cleanupUser deletes a user (cleanup helper)
 func (test *BulkImportIntegrationTest) cleanupUser(userID string) {
 	req, err := http.NewRequestWithContext(
 		context.Background(),
@@ -293,7 +273,7 @@ func (test *BulkImportIntegrationTest) cleanupUser(userID string) {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+test.token)
-	
+
 	resp, err := test.client.Do(req)
 	if err != nil {
 		return
@@ -301,14 +281,7 @@ func (test *BulkImportIntegrationTest) cleanupUser(userID string) {
 	defer resp.Body.Close()
 }
 
-// TestMain sets up and tears down for integration tests
 func TestMain(m *testing.M) {
-	// You could add setup/teardown logic here if needed
-	// For example, starting a test database, setting up test data, etc.
-	
 	code := m.Run()
-	
-	// Cleanup logic could go here
-	
 	os.Exit(code)
 }

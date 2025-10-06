@@ -83,11 +83,11 @@ func (h *UserInviteHandler) CreateWithInvite(c *gin.Context) {
 		zap.String("email", user.Email))
 
 	c.JSON(http.StatusCreated, gin.H{
-		"user":          user,
-		"invite_sent":   true,
-		"expires_at":    time.Now().Add(72 * time.Hour),
-		"status":        "invitation_pending",
-		"next_action":   "user_must_complete_setup",
+		"user":        user,
+		"invite_sent": true,
+		"expires_at":  time.Now().Add(72 * time.Hour),
+		"status":      "invitation_pending",
+		"next_action": "user_must_complete_setup",
 	})
 }
 
@@ -128,7 +128,7 @@ func (h *UserInviteHandler) SendInvite(c *gin.Context) {
 			options.Actions = []string{"UPDATE_PASSWORD", "VERIFY_EMAIL"}
 		}
 		if options.Lifespan == 0 {
-			options.Lifespan = 259200 // 72 hours
+			options.Lifespan = 259200
 		}
 	} else {
 		options.Actions = []string{"UPDATE_PASSWORD", "VERIFY_EMAIL"}

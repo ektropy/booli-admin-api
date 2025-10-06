@@ -74,7 +74,6 @@ func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string
 	}
 
 	if providerName == "keycloak" && claims.Issuer != "" {
-		// The issuer URL contains the realm name after "/realms/"
 		parts := strings.Split(claims.Issuer, "/realms/")
 		if len(parts) == 2 {
 			return parts[1]
@@ -83,7 +82,6 @@ func extractRealmFromClaims(claims *auth.OIDCClaims, providerName string) string
 
 	return providerName
 }
-
 
 func RealmContextRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -285,7 +283,6 @@ func extractToken(c *gin.Context) (string, error) {
 
 	return parts[1], nil
 }
-
 
 func containsRole(userRoles []string, targetRole string) bool {
 	for _, role := range userRoles {

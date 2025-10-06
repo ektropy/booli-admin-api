@@ -154,6 +154,8 @@ func CreateIndexes(db *gorm.DB) error {
 }
 
 func CreateExtensions(db *gorm.DB) error {
+	// PostgreSQL 18+ has built-in uuidv7() function for time-ordered UUIDs
+	// Also keeping uuid-ossp and pgcrypto for compatibility
 	extensions := []string{
 		`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`,
 		`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`,

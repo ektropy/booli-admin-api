@@ -39,26 +39,10 @@ tasks:
     generates:
       - bin/booli-admin-api
 
-  build-fast:
-    desc: Fast build with caching
-    cmds:
-      - mkdir -p bin
-      - CGO_ENABLED=0 go build -ldflags="{{.LDFLAGS}}" -trimpath -o bin/booli-admin-api ./cmd/server
-    env:
-      GOCACHE: /tmp/go-build-cache
-      GOMODCACHE: /tmp/go-mod-cache
-
   test:
     desc: Run unit tests
     cmds:
       - go test ./... -short -v
-
-  test-fast:
-    desc: Run tests in parallel with caching
-    cmds:
-      - go test -short -race -parallel 4 ./...
-    env:
-      GOCACHE: /tmp/go-build-cache
 
   test-coverage:
     desc: Run tests with coverage
@@ -73,29 +57,6 @@ tasks:
       RUN_INTEGRATION_TESTS: true
     cmds:
       - go test -tags=integration ./tests/integration/... -v -timeout 30m
-
-  test-integration-smoke:
-    desc: Run integration smoke test
-    cmds:
-      - go test -tags=integration -v ./tests/integration -run TestIntegrationEnvironmentSmokeTest
-
-  test-integration-sso:
-    desc: Run SSO workflow integration tests
-    env:
-      RUN_INTEGRATION_TESTS: true
-    cmds:
-      - go test -tags=integration -v ./tests/integration -run TestSSOWorkflowTestSuite -timeout 30m
-
-  test-integration-user:
-    desc: Run User workflow integration tests
-    env:
-      RUN_INTEGRATION_TESTS: true
-    cmds:
-      - go test -tags=integration -v ./tests/integration -run TestUserWorkflowTestSuite -timeout 30m
-
-  test-integration-all:
-    desc: Run all workflow integration tests
-    deps: [test-integration-smoke, test-integration-sso, test-integration-user]
 
   fmt:
     desc: Format code
@@ -147,78 +108,36 @@ tasks:
     cmds:
       - docker build -t booli-admin-api:{{.VERSION}} .
 
-  docker-build-fast:
-    desc: Fast Docker build with buildkit caching
-    cmds:
-      - docker buildx build --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache,mode=max -f Dockerfile.fast -t booli-admin-api:{{.VERSION}} --load .
-    env:
-      DOCKER_BUILDKIT: 1
-
-  docker-build-multi:
-    desc: Build multi-architecture Docker image
-    cmds:
-      - docker buildx build --platform linux/amd64,linux/arm64 -f Dockerfile.fast -t booli-admin-api:{{.VERSION}} .
-    env:
-      DOCKER_BUILDKIT: 1
-
   docker-test:
-    desc: Build Docker image for testing
+    desc: Build Docker test image
     cmds:
       - docker build -t booli-admin-api:test .
 
-  docker-up:
-    desc: Start services with docker-compose
+  start:
+    desc: Start all services
     cmds:
-      - docker-compose up -d
+      - docker-compose -f docker-compose.bruno.yml up -d
 
-  docker-down:
-    desc: Stop services with docker-compose
+  stop:
+    desc: Stop all services
     cmds:
-      - docker-compose down
+      - docker-compose -f docker-compose.bruno.yml down
+
+  clean-docker:
+    desc: Stop services, remove images, volumes and rebuild
+    cmds:
+      - docker-compose -f docker-compose.bruno.yml down -v
+      - docker image rm -f backend-booli-admin-api || true
+      - docker volume prune -f
+      - docker-compose -f docker-compose.bruno.yml up -d --build
 
   swagger:
     desc: Generate Swagger documentation
     cmds:
       - swag init -g cmd/server/main.go -o docs/
 
-  install-dev-deps:
-    desc: Install development dependencies
-    cmds:
-      - go mod download
-      - go install github.com/goreleaser/goreleaser@latest
-      - go install github.com/swaggo/swag/cmd/swag@latest
-
-  init-dev:
-    desc: Initialize development environment
-    deps: [build]
-    env:
-      BOOLI_ENVIRONMENT: development
-      BOOLI_DATABASE_HOST: localhost
-      BOOLI_DATABASE_PORT: 5432
-      BOOLI_DATABASE_USER: postgres
-      BOOLI_DATABASE_PASSWORD: postgres
-      BOOLI_DATABASE_SSLMODE: disable
-      BOOLI_KEYCLOAK_URL: http://localhost:8083
-      BOOLI_KEYCLOAK_ADMIN_USER: admin
-      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
-    cmds:
-      - ./bin/booli-admin-api -init
-
-  init-database:
-    desc: Initialize databases only
-    deps: [build]
-    env:
-      BOOLI_ENVIRONMENT: development
-      BOOLI_DATABASE_HOST: localhost
-      BOOLI_DATABASE_PORT: 5432
-      BOOLI_DATABASE_USER: postgres
-      BOOLI_DATABASE_PASSWORD: postgres
-      BOOLI_DATABASE_SSLMODE: disable
-    cmds:
-      - ./bin/booli-admin-api -init-database
-
-  bruno-test:
-    desc: Run Bruno API tests with docker-compose
+  bruno:
+    desc: Run full Bruno test suite
     deps: [docker-test]
     cmds:
       - echo "Starting services for Bruno tests..."
@@ -226,7 +145,7 @@ tasks:
       - echo "Waiting for all services to be ready..."
       - |
         for i in {1..60}; do
-          if curl -f http://localhost:8082/api/admin/v1/health >/dev/null 2>&1; then
+          if curl -f http://localhost:8083/api/admin/v1/health >/dev/null 2>&1; then
             echo "Backend is ready!"
             break
           fi
@@ -247,39 +166,10 @@ tasks:
       - echo "Stopping services..."
       - docker-compose -f docker-compose.bruno.yml --env-file .env.bruno down -v
 
-  bruno-test-dev:
-    desc: Run Bruno API tests against running development environment
+  bruno-local:
+    desc: Run Bruno tests against local services
     cmds:
       - cd bruno && bru run --env local
-
-  bruno-test-auth:
-    desc: Run Bruno authentication tests only
-    cmds:
-      - cd bruno && bru run 1-authentication --env local
-
-  bruno-install:
-    desc: Install Bruno CLI
-    cmds:
-      - npm install -g @usebruno/cli
-
-  bruno-test-core:
-    desc: Run core Bruno tests (auth, MSP lifecycle, client operations)
-    cmds:
-      - cd bruno && bru run --env docker 1-authentication 3-msp-lifecycle 4-client-operations
-
-  dev-env-start:
-    desc: Start development environment
-    deps: [docker-test]
-    cmds:
-      - docker-compose up -d
-      - echo "Services started. Backend available at http://localhost:8081"
-      - echo "Keycloak available at http://localhost:8083"
-      - echo "Run 'task bruno-test-dev' to test against this environment"
-
-  dev-env-stop:
-    desc: Stop development environment
-    cmds:
-      - docker-compose down
 
   snapshot:
     desc: Build snapshot release with goreleaser
@@ -296,36 +186,3 @@ tasks:
     cmds:
       - goreleaser release --skip=publish --clean
 
-  sbom:
-    desc: Generate SBOM for the application
-    cmds:
-      - syft . -o json=sbom.json
-      - syft . -o spdx-json=sbom.spdx.json
-
-  sign:
-    desc: Sign artifacts with cosign
-    cmds:
-      - cosign sign-blob --output-signature=checksums.txt.sig --output-certificate=checksums.txt.cert checksums.txt
-
-  verify:
-    desc: Verify signatures with cosign
-    cmds:
-      - cosign verify-blob --certificate checksums.txt.cert --signature checksums.txt.sig checksums.txt
-
-  ci:
-    desc: CI pipeline simulation
-    deps: [check, build]
-
-  ci-fast:
-    desc: Fast CI pipeline (parallel execution)
-    cmds:
-      - task: test-fast
-      - task: lint
-      - task: build-fast
-    silent: true
-
-  ci-docker:
-    desc: Build and push Docker image
-    cmds:
-      - task: docker-build-fast
-      - echo "Image built successfully"
