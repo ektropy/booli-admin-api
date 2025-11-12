@@ -384,7 +384,7 @@ func (cli *CLI) RunFullSystemInitialization(cfg *config.Config, force bool) erro
 			if callbackURL == "" {
 				callbackURL = "http://localhost:" + cfg.Server.Port + constants.PathAuthCallback
 			}
-			initConfig = initialization.GetDefaultTestConfig(cfg.Keycloak.URL, callbackURL)
+			initConfig = initialization.GetDefaultTestConfig(cfg.Keycloak.URL, callbackURL, cfg.Keycloak.ClientSecret)
 		} else {
 			if envConfig, err := initialization.ParseConfigFromEnv(); err == nil && envConfig != nil {
 				initConfig = envConfig
@@ -448,7 +448,7 @@ func (cli *CLI) RunFullSystemInitialization(cfg *config.Config, force bool) erro
 		if callbackURL == "" {
 			callbackURL = "http://localhost:" + cfg.Server.Port + constants.PathAuthCallback
 		}
-		initConfig = initialization.GetDefaultTestConfig(cfg.Keycloak.URL, callbackURL)
+		initConfig = initialization.GetDefaultTestConfig(cfg.Keycloak.URL, callbackURL, cfg.Keycloak.ClientSecret)
 	} else {
 		if envConfig, err := initialization.ParseConfigFromEnv(); err == nil && envConfig != nil {
 			initConfig = envConfig

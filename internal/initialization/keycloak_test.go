@@ -253,7 +253,7 @@ func TestGetDefaultTestConfig(t *testing.T) {
 	keycloakURL := "https://keycloak.example.com"
 	callbackURL := "https://app.example.com/callback"
 
-	config := GetDefaultTestConfig(keycloakURL, callbackURL)
+	config := GetDefaultTestConfig(keycloakURL, callbackURL, "msp-secret")
 
 	require.NotNil(t, config)
 
@@ -278,7 +278,7 @@ func TestGetDefaultTestConfig(t *testing.T) {
 }
 
 func TestGetDefaultTestConfig_DefaultCallbackURL(t *testing.T) {
-	config := GetDefaultTestConfig("https://keycloak.example.com", "")
+	config := GetDefaultTestConfig("https://keycloak.example.com", "", "msp-secret")
 
 	require.NotNil(t, config)
 	assert.Len(t, config.OIDCProviders, 1)

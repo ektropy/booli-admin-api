@@ -73,7 +73,7 @@ func (h *HealthHandler) ValidateKeycloak(c *gin.Context) {
 		if callbackURL == "" {
 			callbackURL = fmt.Sprintf("http://localhost:%s%s", h.config.Server.Port, constants.PathAuthCallback)
 		}
-		initConfig = initialization.GetDefaultTestConfig(h.config.Keycloak.URL, callbackURL)
+		initConfig = initialization.GetDefaultTestConfig(h.config.Keycloak.URL, callbackURL, h.config.Keycloak.ClientSecret)
 	} else {
 		if envConfig, err := initialization.ParseConfigFromEnv(); err == nil && envConfig != nil {
 			initConfig = envConfig

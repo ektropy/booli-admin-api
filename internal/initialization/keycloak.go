@@ -587,7 +587,7 @@ func (k *KeycloakInitializer) validateClient(ctx context.Context, realmName, cli
 	return nil
 }
 
-func GetDefaultTestConfig(keycloakURL, callbackURL string) *InitializationConfig {
+func GetDefaultTestConfig(keycloakURL, callbackURL, clientSecret string) *InitializationConfig {
 	if callbackURL == "" {
 		callbackURL = "http://localhost:8081" + constants.PathAuthCallback
 	}
@@ -604,7 +604,7 @@ func GetDefaultTestConfig(keycloakURL, callbackURL string) *InitializationConfig
 			{
 				RealmName:                 "master",
 				ClientID:                  "msp-client",
-				Secret:                    "msp-secret",
+				Secret:                    clientSecret,
 				RedirectURIs:              []string{"*"},
 				WebOrigins:                []string{"*"},
 				StandardFlowEnabled:       true,
@@ -620,7 +620,7 @@ func GetDefaultTestConfig(keycloakURL, callbackURL string) *InitializationConfig
 				Name:         "keycloak-msp",
 				RealmName:    "master",
 				ClientID:     "msp-client",
-				ClientSecret: "msp-secret",
+				ClientSecret: clientSecret,
 				CallbackURL:  callbackURL,
 			},
 		},
