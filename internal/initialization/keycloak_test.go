@@ -21,7 +21,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		"KEYCLOAK_MSP_REALM_ENABLED",
 		"KEYCLOAK_MSP_REALM_DISPLAY_NAME",
 		"KEYCLOAK_MSP_CLIENT_ID",
-		"KEYCLOAK_MSP_CLIENT_SECRET",
+		"BOOLI_KEYCLOAK_CLIENT_SECRET",
 	}
 
 	for _, env := range envVars {
@@ -59,7 +59,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 		os.Setenv("KEYCLOAK_MSP_REALM_ENABLED", "true")
 		os.Setenv("KEYCLOAK_MSP_REALM_DISPLAY_NAME", "MSP Realm")
 		os.Setenv("KEYCLOAK_MSP_CLIENT_ID", "msp-client")
-		os.Setenv("KEYCLOAK_MSP_CLIENT_SECRET", "test-secret")
+		os.Setenv("BOOLI_KEYCLOAK_CLIENT_SECRET", "test-secret")
 
 		defer func() {
 			for _, env := range envVars {
@@ -118,7 +118,7 @@ func TestParseConfigFromEnv(t *testing.T) {
 
 	t.Run("Client with default realm", func(t *testing.T) {
 		os.Setenv("KEYCLOAK_MSP_CLIENT_ID", "test-client")
-		os.Setenv("KEYCLOAK_MSP_CLIENT_SECRET", "test-secret")
+		os.Setenv("BOOLI_KEYCLOAK_CLIENT_SECRET", "test-secret")
 
 		defer func() {
 			for _, env := range envVars {

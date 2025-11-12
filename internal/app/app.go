@@ -93,8 +93,8 @@ func (app *Application) Initialize() error {
 	keycloakAdmin := keycloak.NewAdminClient(
 		app.config.Keycloak.URL,
 		app.config.Keycloak.MasterRealm,
-		app.config.Keycloak.ClientID,
-		app.config.Keycloak.ClientSecret,
+		"admin-cli",
+		"",
 		app.config.Keycloak.AdminUser,
 		app.config.Keycloak.AdminPass,
 		app.config.Keycloak.SkipTLSVerify,
@@ -109,10 +109,8 @@ func (app *Application) Initialize() error {
 
 	envConfig, err := initialization.ParseConfigFromEnv()
 	if err == nil && envConfig != nil {
-		// Check if automatic initialization should run
 		shouldAutoInit := app.config.Environment == "development" || app.config.Environment == "test"
 		if !shouldAutoInit {
-			// In production, require explicit opt-in
 			if os.Getenv("KEYCLOAK_AUTO_INIT") == "true" {
 				shouldAutoInit = true
 				app.logger.Warn("Keycloak auto-initialization enabled in production via KEYCLOAK_AUTO_INIT flag")

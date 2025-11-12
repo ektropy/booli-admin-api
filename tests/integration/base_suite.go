@@ -338,7 +338,7 @@ func (suite *BaseIntegrationTestSuite) buildAndStartBackendBinary() {
 		"KEYCLOAK_MSP_REALM_ENABLED=true",
 		"KEYCLOAK_MSP_REALM_DISPLAY_NAME=MSP Realm",
 		fmt.Sprintf("KEYCLOAK_MSP_CLIENT_ID=%s", suite.Config.KeycloakClientID),
-		fmt.Sprintf("KEYCLOAK_MSP_CLIENT_SECRET=%s", suite.Config.KeycloakClientSecret),
+		fmt.Sprintf("BOOLI_KEYCLOAK_CLIENT_SECRET=%s", suite.Config.KeycloakClientSecret),
 		fmt.Sprintf("KEYCLOAK_MSP_API_AUDIENCE=%s", suite.Config.APIAudience),
 		"KEYCLOAK_MSP_DEFAULT_USER_USERNAME=msp-admin",
 		"KEYCLOAK_MSP_DEFAULT_USER_PASSWORD=admin123",

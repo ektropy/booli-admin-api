@@ -115,7 +115,7 @@ services:
       KEYCLOAK_MSP_REALM_ENABLED: true
       KEYCLOAK_MSP_REALM_DISPLAY_NAME: Acme MSP Platform
       KEYCLOAK_MSP_CLIENT_ID: msp-client
-      KEYCLOAK_MSP_CLIENT_SECRET: test-secret
+      BOOLI_KEYCLOAK_CLIENT_SECRET: test-secret
       KEYCLOAK_MSP_CLIENT_REDIRECT_URIS: http://localhost:8083/auth/callback
       KEYCLOAK_MSP_CLIENT_WEB_ORIGINS: http://localhost:8083
       KEYCLOAK_MSP_CLIENT_STANDARD_FLOW: true
