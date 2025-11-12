@@ -684,6 +684,9 @@ func ParseConfigFromEnv() (*InitializationConfig, error) {
 
 	clientSecret := os.Getenv("KEYCLOAK_MSP_CLIENT_SECRET")
 	if clientSecret == "" {
+		clientSecret = os.Getenv("BOOLI_KEYCLOAK_CLIENT_SECRET")
+	}
+	if clientSecret == "" {
 		clientSecret = "msp-secret"
 	}
 

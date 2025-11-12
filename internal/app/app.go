@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/booli/booli-admin-api/internal/auth"
@@ -108,19 +109,36 @@ func (app *Application) Initialize() error {
 
 	envConfig, err := initialization.ParseConfigFromEnv()
 	if err == nil && envConfig != nil {
-		app.logger.Info("Using environment-based initialization config",
-			zap.Int("realms", len(envConfig.Realms)),
-			zap.Int("clients", len(envConfig.Clients)),
-			zap.Int("roles", len(envConfig.Roles)),
-			zap.Int("users", len(envConfig.Users)))
-
-		if err := initializer.Initialize(context.Background(), envConfig); err != nil {
-			app.logger.Error("Keycloak initialization failed", zap.Error(err))
-			return fmt.Errorf("keycloak initialization failed: %w", err)
+		// Check if automatic initialization should run
+		shouldAutoInit := app.config.Environment == "development" || app.config.Environment == "test"
+		if !shouldAutoInit {
+			// In production, require explicit opt-in
+			if os.Getenv("KEYCLOAK_AUTO_INIT") == "true" {
+				shouldAutoInit = true
+				app.logger.Warn("Keycloak auto-initialization enabled in production via KEYCLOAK_AUTO_INIT flag")
+			}
 		}
-		
-		if err := initialization.CreateDefaultMSP(context.Background(), db, app.logger); err != nil {
-			app.logger.Error("Failed to create default MSP", zap.Error(err))
+
+		if shouldAutoInit {
+			app.logger.Info("Using environment-based initialization config",
+				zap.String("environment", app.config.Environment),
+				zap.Int("realms", len(envConfig.Realms)),
+				zap.Int("clients", len(envConfig.Clients)),
+				zap.Int("roles", len(envConfig.Roles)),
+				zap.Int("users", len(envConfig.Users)))
+
+			if err := initializer.Initialize(context.Background(), envConfig); err != nil {
+				app.logger.Error("Keycloak initialization failed", zap.Error(err))
+				return fmt.Errorf("keycloak initialization failed: %w", err)
+			}
+
+			if err := initialization.CreateDefaultMSP(context.Background(), db, app.logger); err != nil {
+				app.logger.Error("Failed to create default MSP", zap.Error(err))
+			}
+		} else {
+			app.logger.Info("Skipping automatic Keycloak initialization in production",
+				zap.String("environment", app.config.Environment),
+				zap.String("hint", "Set KEYCLOAK_AUTO_INIT=true to enable"))
 		}
 	}
 
