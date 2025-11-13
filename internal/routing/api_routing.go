@@ -53,20 +53,19 @@ func (r *APIRouter) setupMSPRoutes(group *gin.RouterGroup, mspHandler *handlers.
 
 func (r *APIRouter) setupTenantRoutes(group *gin.RouterGroup, tenantHandler *handlers.TenantHandler) {
 	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
-	group.Use(r.rbac.RequireReadAccess())
-	
-	group.GET("/", tenantHandler.List)
-	group.POST("/", tenantHandler.Create)
-	group.GET("/:id", tenantHandler.Get)
-	group.PUT("/:id", tenantHandler.Update)
-	group.DELETE("/:id", tenantHandler.Delete)
-	
+
+	group.GET("/", r.rbac.RequireReadAccess(), tenantHandler.List)
+	group.POST("/", r.rbac.RequireAdminAccess(), tenantHandler.Create)
+	group.GET("/:id", r.rbac.RequireReadAccess(), tenantHandler.Get)
+	group.PUT("/:id", r.rbac.RequireAdminAccess(), tenantHandler.Update)
+	group.DELETE("/:id", r.rbac.RequireAdminAccess(), tenantHandler.Delete)
+
 	usersGroup := group.Group("/:id/users")
-	usersGroup.POST("", tenantHandler.CreateTenantUser)
-	usersGroup.GET("", tenantHandler.ListTenantUsers)
-	usersGroup.GET("/:user_id", tenantHandler.GetTenantUser)
-	usersGroup.PUT("/:user_id", tenantHandler.UpdateTenantUser)
-	usersGroup.DELETE("/:user_id", tenantHandler.DeleteTenantUser)
+	usersGroup.POST("", r.rbac.RequireWriteAccess(), tenantHandler.CreateTenantUser)
+	usersGroup.GET("", r.rbac.RequireReadAccess(), tenantHandler.ListTenantUsers)
+	usersGroup.GET("/:user_id", r.rbac.RequireReadAccess(), tenantHandler.GetTenantUser)
+	usersGroup.PUT("/:user_id", r.rbac.RequireWriteAccess(), tenantHandler.UpdateTenantUser)
+	usersGroup.DELETE("/:user_id", r.rbac.RequireWriteAccess(), tenantHandler.DeleteTenantUser)
 }
 
 func (r *APIRouter) setupAuthRoutes(group *gin.RouterGroup, authHandler *handlers.AuthHandler) {
@@ -80,23 +79,20 @@ func (r *APIRouter) setupAuthRoutes(group *gin.RouterGroup, authHandler *handler
 
 func (r *APIRouter) setupUserRoutes(group *gin.RouterGroup, userHandler *handlers.UserHandler) {
 	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
-	group.Use(r.rbac.RequireReadAccess())
-	
-	group.GET("/", userHandler.List)
-	group.POST("/", userHandler.Create)
-	group.GET("/:id", userHandler.Get)
-	group.PUT("/:id", userHandler.Update)
-	group.DELETE("/:id", userHandler.Delete)
+
+	group.GET("/", r.rbac.RequireReadAccess(), userHandler.List)
+	group.POST("/", r.rbac.RequireWriteAccess(), userHandler.Create)
+	group.GET("/:id", r.rbac.RequireReadAccess(), userHandler.Get)
+	group.PUT("/:id", r.rbac.RequireWriteAccess(), userHandler.Update)
+	group.DELETE("/:id", r.rbac.RequireWriteAccess(), userHandler.Delete)
 }
 
 func (r *APIRouter) setupIdentityRoutes(group *gin.RouterGroup, idpHandler *handlers.IdentityProviderHandler) {
-	group.Use(r.rbac.RequireReadAccess())
-	
-	group.GET("/", idpHandler.ListIdentityProviders)
-	group.POST("/", idpHandler.CreateIdentityProvider)
-	group.GET("/:alias", idpHandler.GetIdentityProvider)
-	group.PUT("/:alias", idpHandler.UpdateIdentityProvider)
-	group.DELETE("/:alias", idpHandler.DeleteIdentityProvider)
+	group.GET("/", r.rbac.RequireReadAccess(), idpHandler.ListIdentityProviders)
+	group.POST("/", r.rbac.RequireAdminAccess(), idpHandler.CreateIdentityProvider)
+	group.GET("/:alias", r.rbac.RequireReadAccess(), idpHandler.GetIdentityProvider)
+	group.PUT("/:alias", r.rbac.RequireAdminAccess(), idpHandler.UpdateIdentityProvider)
+	group.DELETE("/:alias", r.rbac.RequireAdminAccess(), idpHandler.DeleteIdentityProvider)
 }
 
 func (r *APIRouter) setupAdminRoutes(group *gin.RouterGroup, handlersContainer *handlers.Container) {
