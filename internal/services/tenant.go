@@ -48,7 +48,12 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		s.logger.Info("Defaulting tenant type to client")
 	}
 
-	realmName, adminPassword, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, req.AdminEmail, tenantType, mspRealm)
+	displayName := req.DisplayName
+	if displayName == "" {
+		displayName = req.Name
+	}
+
+	realmName, adminPassword, err := s.createKeycloakRealm(ctx, req.Name, displayName, req.Domain, req.AdminEmail, tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -279,9 +284,10 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 	return nil
 }
 
-func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain, adminEmail string, tenantType models.TenantType, mspRealm string) (string, string, error) {
+func (s *TenantService) createKeycloakRealm(ctx context.Context, name, displayName, domain, adminEmail string, tenantType models.TenantType, mspRealm string) (string, string, error) {
 	s.logger.Info("Starting Keycloak realm creation",
 		zap.String("tenant_name", name),
+		zap.String("display_name", displayName),
 		zap.String("domain", domain),
 		zap.String("type", string(tenantType)))
 
@@ -295,7 +301,7 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain, a
 
 	realm := &keycloak.RealmRepresentation{
 		Realm:                 realmName,
-		DisplayName:           name,
+		DisplayName:           displayName,
 		Enabled:               true,
 		LoginWithEmailAllowed: true,
 		RegistrationAllowed:   false,
@@ -499,7 +505,7 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 }
 
 func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (*models.Tenant, error) {
-	realmName, _, err := s.createKeycloakRealm(ctx, name, domain, "", tenantType, mspRealm)
+	realmName, _, err := s.createKeycloakRealm(ctx, name, name, domain, "", tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}

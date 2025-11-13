@@ -153,11 +153,12 @@ func (t *Tenant) IsEmailDomainAllowed(email string) bool {
 }
 
 type CreateTenantRequest struct {
-	Name       string         `json:"name" validate:"required,min=1,max=255"`
-	Domain     string         `json:"domain" validate:"omitempty,fqdn"`
-	Type       TenantType     `json:"type" validate:"omitempty,oneof=client msp"`
-	AdminEmail string         `json:"admin_email,omitempty" validate:"omitempty,email"`
-	Settings   datatypes.JSON `json:"settings"`
+	Name        string         `json:"name" validate:"required,min=1,max=255"`
+	DisplayName string         `json:"display_name,omitempty" validate:"omitempty,min=1,max=255"`
+	Domain      string         `json:"domain" validate:"omitempty,fqdn"`
+	Type        TenantType     `json:"type" validate:"omitempty,oneof=client msp"`
+	AdminEmail  string         `json:"admin_email,omitempty" validate:"omitempty,email"`
+	Settings    datatypes.JSON `json:"settings"`
 }
 
 type UpdateTenantRequest struct {
