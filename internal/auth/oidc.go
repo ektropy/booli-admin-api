@@ -143,7 +143,7 @@ func (s *OIDCService) addStandardOIDCProvider(ctx context.Context, config *OIDCP
 	})
 
 	accessTokenVerifier := provider.Verifier(&oidc.Config{
-		ClientID: config.APIAudience,
+		SkipClientIDCheck: true,
 	})
 
 	config.provider = provider
