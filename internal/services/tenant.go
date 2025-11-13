@@ -48,7 +48,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *models.CreateTena
 		s.logger.Info("Defaulting tenant type to client")
 	}
 
-	realmName, adminPassword, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, tenantType, mspRealm)
+	realmName, adminPassword, err := s.createKeycloakRealm(ctx, req.Name, req.Domain, req.AdminEmail, tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
@@ -279,7 +279,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, realmName string) erro
 	return nil
 }
 
-func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (string, string, error) {
+func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain, adminEmail string, tenantType models.TenantType, mspRealm string) (string, string, error) {
 	s.logger.Info("Starting Keycloak realm creation",
 		zap.String("tenant_name", name),
 		zap.String("domain", domain),
@@ -343,7 +343,7 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, domain st
 		return "", "", fmt.Errorf("failed to create default realm roles: %w", err)
 	}
 
-	adminUser, adminPassword, err := s.createRealmAdminUser(ctx, realmName, name, domain)
+	adminUser, adminPassword, err := s.createRealmAdminUser(ctx, realmName, name, domain, adminEmail)
 	if err != nil {
 		s.logger.Error("Failed to create admin user, cleaning up realm",
 			zap.String("realm_name", realmName),
@@ -406,14 +406,18 @@ func (s *TenantService) createRealmDefaultRoles(ctx context.Context, realmName s
 	return nil
 }
 
-func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, tenantName, domain string) (*keycloak.UserRepresentation, string, error) {
+func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, tenantName, domain, providedEmail string) (*keycloak.UserRepresentation, string, error) {
 	s.logger.Info("Creating realm admin user",
 		zap.String("realm", realmName),
 		zap.String("tenant_name", tenantName))
 
-	adminEmail := fmt.Sprintf("admin@%s", domain)
-	if domain == "" {
-		adminEmail = fmt.Sprintf("admin@%s.local", strings.ToLower(strings.ReplaceAll(tenantName, " ", "-")))
+	adminEmail := providedEmail
+	if adminEmail == "" {
+		if domain != "" {
+			adminEmail = fmt.Sprintf("booli-admin@%s", domain)
+		} else {
+			adminEmail = fmt.Sprintf("booli-admin@%s.local", strings.ToLower(strings.ReplaceAll(tenantName, " ", "-")))
+		}
 	}
 
 	securePassword, err := generateSecurePassword()
@@ -495,7 +499,7 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 }
 
 func (s *TenantService) ProvisionTenant(ctx context.Context, name, domain string, tenantType models.TenantType, mspRealm string) (*models.Tenant, error) {
-	realmName, _, err := s.createKeycloakRealm(ctx, name, domain, tenantType, mspRealm)
+	realmName, _, err := s.createKeycloakRealm(ctx, name, domain, "", tenantType, mspRealm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Keycloak realm: %w", err)
 	}
