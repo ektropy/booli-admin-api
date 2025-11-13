@@ -25,6 +25,7 @@ type Tenant struct {
 	ParentMSP     string         `gorm:"index;size:255" json:"parent_msp,omitempty"`
 	Settings      datatypes.JSON `gorm:"type:jsonb" json:"settings"`
 	AdminPassword string         `gorm:"-" json:"admin_password,omitempty"`
+	ClientSecret  string         `gorm:"-" json:"client_secret,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
@@ -176,6 +177,7 @@ type TenantResponse struct {
 	Active           bool           `json:"active"`
 	Settings         TenantSettings `json:"settings"`
 	AdminPassword    string         `json:"admin_password,omitempty"`
+	ClientSecret     string         `json:"client_secret,omitempty"`
 	UserCount        int            `json:"user_count,omitempty"`
 	RoleCount        int            `json:"role_count,omitempty"`
 	SSOProviderCount int            `json:"sso_provider_count,omitempty"`
@@ -206,6 +208,7 @@ func (t *Tenant) ToResponse() *TenantResponse {
 		Active:        t.Active,
 		Settings:      settings,
 		AdminPassword: t.AdminPassword,
+		ClientSecret:  t.ClientSecret,
 		CreatedAt:     t.CreatedAt,
 		UpdatedAt:     t.UpdatedAt,
 	}

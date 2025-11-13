@@ -99,6 +99,7 @@ var MSPPermissionTemplates = map[string]PermissionTemplate{
 		Name:        "Tenant Administrator",
 		Description: "Full administrative access within own tenant",
 		Scopes: []string{
+			"manage-realm",
 			"manage-users",
 			"view-users",
 			"manage-groups",
