@@ -595,7 +595,7 @@ func (s *TenantService) createRealmAPIClient(ctx context.Context, realmName stri
 		PublicClient:              false,
 		DirectAccessGrantsEnabled: true,
 		StandardFlowEnabled:       true,
-		ServiceAccountsEnabled:    false,
+		ServiceAccountsEnabled:    true,
 		ClientAuthenticatorType:   "client-secret",
 		Secret:                    clientSecret,
 		RedirectUris:              []string{"*"},
