@@ -17,16 +17,17 @@ const (
 )
 
 type Tenant struct {
-	RealmName string         `gorm:"primaryKey;size:255" json:"realm"`
-	Name      string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
-	Domain    string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
-	Type      TenantType     `gorm:"default:'client'" json:"type"`
-	Active    bool           `gorm:"default:true" json:"active"`
-	ParentMSP string         `gorm:"index;size:255" json:"parent_msp,omitempty"`
-	Settings  datatypes.JSON `gorm:"type:jsonb" json:"settings"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	RealmName     string         `gorm:"primaryKey;size:255" json:"realm"`
+	Name          string         `gorm:"not null;size:255" json:"name" validate:"required,min=1,max=255"`
+	Domain        string         `gorm:"unique;size:255" json:"domain" validate:"omitempty,fqdn"`
+	Type          TenantType     `gorm:"default:'client'" json:"type"`
+	Active        bool           `gorm:"default:true" json:"active"`
+	ParentMSP     string         `gorm:"index;size:255" json:"parent_msp,omitempty"`
+	Settings      datatypes.JSON `gorm:"type:jsonb" json:"settings"`
+	AdminPassword string         `gorm:"-" json:"admin_password,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 
@@ -172,6 +173,7 @@ type TenantResponse struct {
 	Type             TenantType     `json:"type"`
 	Active           bool           `json:"active"`
 	Settings         TenantSettings `json:"settings"`
+	AdminPassword    string         `json:"admin_password,omitempty"`
 	UserCount        int            `json:"user_count,omitempty"`
 	RoleCount        int            `json:"role_count,omitempty"`
 	SSOProviderCount int            `json:"sso_provider_count,omitempty"`
@@ -195,13 +197,14 @@ func (t *Tenant) ToResponse() *TenantResponse {
 	}
 
 	return &TenantResponse{
-		Realm:     t.RealmName,
-		Name:      t.Name,
-		Domain:    t.Domain,
-		Type:      t.Type,
-		Active:    t.Active,
-		Settings:  settings,
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
+		Realm:         t.RealmName,
+		Name:          t.Name,
+		Domain:        t.Domain,
+		Type:          t.Type,
+		Active:        t.Active,
+		Settings:      settings,
+		AdminPassword: t.AdminPassword,
+		CreatedAt:     t.CreatedAt,
+		UpdatedAt:     t.UpdatedAt,
 	}
 }
