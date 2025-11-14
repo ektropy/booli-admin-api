@@ -164,6 +164,29 @@ func (app *Application) Initialize() error {
 
 	serviceContainer := services.NewContainer(db, redis, keycloakAdmin, oidcService, app.logger, app.config)
 
+	// Provision tenants from YAML if configuration file exists
+	yamlPath := database.LoadTenantsYAMLFromConfig()
+	if yamlPath != "" {
+		app.logger.Info("Found tenants configuration YAML, provisioning tenants",
+			zap.String("path", yamlPath))
+
+		if err := database.ProvisionTenantsFromYAML(
+			context.Background(),
+			db,
+			serviceContainer.Tenant,
+			keycloakAdmin,
+			app.logger,
+			yamlPath,
+		); err != nil {
+			app.logger.Error("Failed to provision tenants from YAML",
+				zap.Error(err),
+				zap.String("path", yamlPath))
+			// Don't fail startup, just log the error
+		}
+	} else {
+		app.logger.Debug("No tenants YAML configuration found, skipping tenant provisioning")
+	}
+
 	router := app.setupRouter(serviceContainer, oidcService, initializer)
 
 	app.server = &http.Server{
