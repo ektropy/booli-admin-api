@@ -88,45 +88,30 @@ services:
     network_mode: host
     environment:
       BOOLI_ENVIRONMENT: production
+      BOOLI_SERVER_HOST: 0.0.0.0
       BOOLI_SERVER_PORT: 8083
       BOOLI_DATABASE_HOST: localhost
       BOOLI_DATABASE_PORT: 5434
       BOOLI_DATABASE_USER: postgres
       BOOLI_DATABASE_PASSWORD: postgres
-      BOOLI_DATABASE_DBNAME: booli_test
+      BOOLI_DATABASE_DBNAME: booli_admin
       BOOLI_DATABASE_SSLMODE: disable
       BOOLI_REDIS_HOST: localhost
       BOOLI_REDIS_PORT: 6380
+      BOOLI_REDIS_DB: 0
       BOOLI_KEYCLOAK_URL: http://localhost:8084
-      BOOLI_KEYCLOAK_ADMIN_REALM: master
-      BOOLI_KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
-      BOOLI_KEYCLOAK_ADMIN_USERNAME: admin
-      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
-      BOOLI_KEYCLOAK_MSP_REALM: msp-acme-local
+      BOOLI_KEYCLOAK_MASTER_REALM: master
+      BOOLI_KEYCLOAK_MSP_REALM: master
       BOOLI_KEYCLOAK_CLIENT_ID: msp-client
       BOOLI_KEYCLOAK_CLIENT_SECRET: test-secret
-      BOOLI_KEYCLOAK_INIT_TIMEOUT: 60
+      BOOLI_KEYCLOAK_API_AUDIENCE: booli-admin-api
+      BOOLI_KEYCLOAK_CALLBACK_URL: http://localhost:8083/callback
+      BOOLI_KEYCLOAK_CA_CERT_PATH: /etc/ssl/certs/ca-certificates.crt
+      BOOLI_KEYCLOAK_ADMIN_USER: admin
+      BOOLI_KEYCLOAK_ADMIN_PASSWORD: admin
       BOOLI_LOG_LEVEL: debug
-      KEYCLOAK_DEFAULT_MSP_ENABLED: true
-      KEYCLOAK_DEFAULT_MSP_NAME: Acme MSP
-      KEYCLOAK_DEFAULT_MSP_DOMAIN: acme.local
-      KEYCLOAK_DEFAULT_MSP_REALM: msp-acme-local
-      KEYCLOAK_MSP_REALM: msp-acme-local
-      KEYCLOAK_MSP_REALM_ENABLED: true
-      KEYCLOAK_MSP_REALM_DISPLAY_NAME: Acme MSP Platform
-      KEYCLOAK_MSP_CLIENT_ID: msp-client
-      BOOLI_KEYCLOAK_CLIENT_SECRET: test-secret
-      KEYCLOAK_MSP_CLIENT_REDIRECT_URIS: http://localhost:8083/auth/callback
-      KEYCLOAK_MSP_CLIENT_WEB_ORIGINS: http://localhost:8083
-      KEYCLOAK_MSP_CLIENT_STANDARD_FLOW: true
-      KEYCLOAK_MSP_CLIENT_SERVICE_ACCOUNTS: true
-      KEYCLOAK_MSP_CLIENT_DIRECT_ACCESS: true
-      KEYCLOAK_MSP_DEFAULT_USER_USERNAME: admin
-      KEYCLOAK_MSP_DEFAULT_USER_PASSWORD: admin
-      KEYCLOAK_MSP_DEFAULT_USER_EMAIL: admin@booli.test
-      KEYCLOAK_MSP_DEFAULT_USER_FIRST_NAME: Admin
-      KEYCLOAK_MSP_DEFAULT_USER_LAST_NAME: User
-      KEYCLOAK_MSP_DEFAULT_USER_ROLES: msp-admin
+      BOOLI_JWT_SECRET: test-jwt-secret-local
+      BOOLI_ENCRYPTION_KEY: test-encryption-key-local123456
     depends_on:
       postgres:
         condition: service_healthy

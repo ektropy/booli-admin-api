@@ -88,6 +88,8 @@ func (r *APIRouter) setupUserRoutes(group *gin.RouterGroup, userHandler *handler
 }
 
 func (r *APIRouter) setupIdentityRoutes(group *gin.RouterGroup, idpHandler *handlers.IdentityProviderHandler) {
+	group.Use(middleware.OIDCAuthRequired(r.oidcService, r.logger))
+
 	group.GET("/", r.rbac.RequireReadAccess(), idpHandler.ListIdentityProviders)
 	group.POST("/", r.rbac.RequireAdminAccess(), idpHandler.CreateIdentityProvider)
 	group.GET("/:alias", r.rbac.RequireReadAccess(), idpHandler.GetIdentityProvider)
