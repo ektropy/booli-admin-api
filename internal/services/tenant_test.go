@@ -217,7 +217,7 @@ func TestTenantService_ValidationLogic(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	
 	t.Run("empty tenant name validation", func(t *testing.T) {
-		service := NewTenantService(nil, logger)
+		service := NewTenantService(nil, nil, nil, logger)
 		req := &models.CreateTenantRequest{
 			Name:   "",
 			Domain: "test.example.com",
@@ -232,7 +232,7 @@ func TestTenantService_ValidationLogic(t *testing.T) {
 	})
 
 	t.Run("nil keycloak admin validation", func(t *testing.T) {
-		service := NewTenantService(nil, logger)
+		service := NewTenantService(nil, nil, nil, logger)
 		req := &models.CreateTenantRequest{
 			Name:   "test-tenant",
 			Domain: "test.example.com",

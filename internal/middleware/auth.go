@@ -42,8 +42,28 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 				zap.String("token_prefix", tokenPrefix))
 		}
 
-		claims, err := oidcService.ValidateToken(context.Background(), providerName, token)
-		if err != nil {
+
+	claims, err := oidcService.ValidateToken(context.Background(), providerName, token)
+	if err != nil {
+		// Try all providers if the default one fails
+		allProviders := oidcService.GetProviderNames()
+		var lastErr error
+		for _, pName := range allProviders {
+			if pName == providerName {
+				continue // Already tried this one
+			}
+			claims, lastErr = oidcService.ValidateToken(context.Background(), pName, token)
+			if lastErr == nil {
+				providerName = pName // Update to the working provider
+				if logger != nil {
+					logger.Debug("Token validated with fallback provider",
+						zap.String("provider", providerName))
+				}
+				break
+			}
+		}
+
+		if lastErr != nil {
 			if logger != nil {
 				logger.Info("Token validation failed",
 					zap.Error(err),
@@ -54,7 +74,7 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 			c.Abort()
 			return
 		}
-
+	}
 		realmName := extractRealmFromClaims(claims, providerName)
 
 		c.Set("user_id", claims.Subject)

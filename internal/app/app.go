@@ -162,7 +162,7 @@ func (app *Application) Initialize() error {
 		return fmt.Errorf("MSP realm OIDC provider configuration failed: %w", err)
 	}
 
-	serviceContainer := services.NewContainer(db, redis, keycloakAdmin, app.logger, app.config)
+	serviceContainer := services.NewContainer(db, redis, keycloakAdmin, oidcService, app.logger, app.config)
 
 	router := app.setupRouter(serviceContainer, oidcService, initializer)
 

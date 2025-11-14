@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/booli/booli-admin-api/internal/auth"
+	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/keycloak"
 	"github.com/booli/booli-admin-api/internal/models"
 	"go.uber.org/zap"
@@ -16,12 +18,16 @@ import (
 
 type TenantService struct {
 	keycloakAdmin *keycloak.AdminClient
+	oidcService   *auth.OIDCService
+	config        *config.Config
 	logger        *zap.Logger
 }
 
-func NewTenantService(keycloakAdmin *keycloak.AdminClient, logger *zap.Logger) *TenantService {
+func NewTenantService(keycloakAdmin *keycloak.AdminClient, oidcService *auth.OIDCService, cfg *config.Config, logger *zap.Logger) *TenantService {
 	return &TenantService{
 		keycloakAdmin: keycloakAdmin,
+		oidcService:   oidcService,
+		config:        cfg,
 		logger:        logger,
 	}
 }
@@ -338,6 +344,18 @@ func (s *TenantService) createKeycloakRealm(ctx context.Context, name, displayNa
 		s.logger.Info("Keycloak realm created successfully", zap.String("realm_name", realmName))
 	}
 
+	if err := s.registerTenantOIDCProvider(ctx, realmName); err != nil {
+		s.logger.Error("Failed to register OIDC provider, cleaning up realm",
+			zap.String("realm_name", realmName),
+			zap.Error(err))
+		if deleteErr := s.keycloakAdmin.DeleteRealm(ctx, realmName); deleteErr != nil {
+			s.logger.Error("Failed to cleanup realm after OIDC provider registration failure",
+				zap.String("realm_name", realmName),
+				zap.Error(deleteErr))
+		}
+		return "", "", "", fmt.Errorf("failed to register OIDC provider: %w", err)
+	}
+
 	if err := s.createRealmDefaultRoles(ctx, realmName, tenantType); err != nil {
 		s.logger.Error("Failed to create default roles, cleaning up realm",
 			zap.String("realm_name", realmName),
@@ -558,6 +576,35 @@ func (s *TenantService) RemoveUserFromTenant(ctx context.Context, realmName, use
 
 	s.logger.Info("Removed user from tenant realm",
 		zap.String("user_id", userID),
+		zap.String("realm", realmName))
+
+	return nil
+}
+
+func (s *TenantService) registerTenantOIDCProvider(ctx context.Context, realmName string) error {
+	s.logger.Info("Registering OIDC provider for tenant realm",
+		zap.String("realm", realmName))
+
+	providerName := fmt.Sprintf("keycloak-%s", realmName)
+
+	tenantProvider := auth.CreateKeycloakProvider(
+		providerName,
+		s.config.Keycloak.URL,
+		realmName,
+		"",
+		"",
+		"",
+		s.config.Keycloak.APIAudience,
+		s.config.Keycloak.SkipTLSVerify,
+		s.config.Keycloak.CACertPath,
+	)
+
+	if err := s.oidcService.AddProvider(ctx, tenantProvider); err != nil {
+		return fmt.Errorf("failed to register OIDC provider %s: %w", providerName, err)
+	}
+
+	s.logger.Info("OIDC provider registered successfully",
+		zap.String("provider", providerName),
 		zap.String("realm", realmName))
 
 	return nil

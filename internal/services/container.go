@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/booli/booli-admin-api/internal/auth"
 	"github.com/booli/booli-admin-api/internal/cache"
 	"github.com/booli/booli-admin-api/internal/config"
 	"github.com/booli/booli-admin-api/internal/keycloak"
@@ -19,7 +20,7 @@ type Container struct {
 	MSP              *MSPService
 }
 
-func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.AdminClient, logger *zap.Logger, cfg *config.Config) *Container {
+func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.AdminClient, oidcService *auth.OIDCService, logger *zap.Logger, cfg *config.Config) *Container {
 	valkeyCache, err := cache.NewValkeyCache(cache.Config{
 		Host:     cfg.Redis.Host,
 		Port:     cfg.Redis.Port,
@@ -32,7 +33,7 @@ func NewContainer(db *gorm.DB, redis *redis.Client, keycloakAdmin *keycloak.Admi
 	}
 
 	return &Container{
-		Tenant:           NewTenantService(keycloakAdmin, logger),
+		Tenant:           NewTenantService(keycloakAdmin, oidcService, cfg, logger),
 		User:             NewUserService(keycloakAdmin, logger),
 		SSO:              NewSSOService(keycloakAdmin, logger),
 		Audit:            NewAuditService(db, logger, cfg),
