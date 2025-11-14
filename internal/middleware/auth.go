@@ -47,7 +47,9 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 	if err != nil {
 		// Try all providers if the default one fails
 		allProviders := oidcService.GetProviderNames()
-		var lastErr error
+		lastErr := err  // Initialize with original error
+		found := false
+
 		for _, pName := range allProviders {
 			if pName == providerName {
 				continue // Already tried this one
@@ -55,6 +57,7 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 			claims, lastErr = oidcService.ValidateToken(context.Background(), pName, token)
 			if lastErr == nil {
 				providerName = pName // Update to the working provider
+				found = true
 				if logger != nil {
 					logger.Debug("Token validated with fallback provider",
 						zap.String("provider", providerName))
@@ -63,14 +66,14 @@ func OIDCAuthRequired(oidcService *auth.OIDCService, logger *zap.Logger) gin.Han
 			}
 		}
 
-		if lastErr != nil {
+		if !found {
 			if logger != nil {
 				logger.Info("Token validation failed",
-					zap.Error(err),
+					zap.Error(lastErr),
 					zap.String("provider", providerName))
 			}
 			utils.RespondWithError(c, http.StatusUnauthorized, utils.ErrCodeInvalidToken,
-				"Invalid or expired token", err.Error())
+				"Invalid or expired token", lastErr.Error())
 			c.Abort()
 			return
 		}
