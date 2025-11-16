@@ -473,6 +473,9 @@ func (s *TenantService) createRealmAdminUser(ctx context.Context, realmName, ten
 		LastName:      "Administrator",
 		Enabled:       true,
 		EmailVerified: false,
+		Attributes: map[string][]string{
+			"tenant_id": {realmName},
+		},
 		Credentials: []keycloak.CredentialRepresentation{
 			{
 				Type:      "password",
