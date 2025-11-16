@@ -228,7 +228,6 @@ func provisionTenant(
 			Enabled:     idpConfig.Enabled,
 			TrustEmail:  true,
 			Config:      idpConfigMap,
-			Mappers:     mappers,
 		}
 
 		err := keycloakAdmin.CreateIdentityProvider(ctx, tenant.RealmName, idp)
@@ -245,6 +244,25 @@ func provisionTenant(
 			zap.String("tenant", config.Name),
 			zap.String("realm", tenant.RealmName),
 			zap.String("idp", idpConfig.Alias))
+
+		for _, mapper := range mappers {
+			mapper.IdentityProviderAlias = idpConfig.Alias
+			err := keycloakAdmin.CreateIdentityProviderMapper(ctx, tenant.RealmName, idpConfig.Alias, &mapper)
+			if err != nil {
+				logger.Error("Failed to create identity provider mapper",
+					zap.String("tenant", config.Name),
+					zap.String("realm", tenant.RealmName),
+					zap.String("idp", idpConfig.Alias),
+					zap.String("mapper", mapper.Name),
+					zap.Error(err))
+			} else {
+				logger.Info("Created identity provider mapper",
+					zap.String("tenant", config.Name),
+					zap.String("realm", tenant.RealmName),
+					zap.String("idp", idpConfig.Alias),
+					zap.String("mapper", mapper.Name))
+			}
+		}
 	}
 
 	return nil
