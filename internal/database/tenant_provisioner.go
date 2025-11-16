@@ -202,12 +202,16 @@ func provisionTenant(
 			idpConfigMap["prompt"] = "select_account"
 		}
 
+		if idpConfig.ProviderID == "microsoft" && idpConfigMap["tenant"] != "" && idpConfigMap["tenantId"] == "" {
+			idpConfigMap["tenantId"] = idpConfigMap["tenant"]
+		}
+
 		mappers := []keycloak.IdentityProviderMapper{
 			{
 				Name:                   "tenant-id-mapper",
 				IdentityProviderMapper: "hardcoded-attribute-idp-mapper",
 				Config: map[string]string{
-					"attribute":       "tenant_id",
+					"attribute.name":  "tenant_id",
 					"attribute.value": tenant.RealmName,
 				},
 			},
@@ -229,6 +233,12 @@ func provisionTenant(
 			TrustEmail:  true,
 			Config:      idpConfigMap,
 		}
+
+		logger.Info("Creating identity provider with config",
+			zap.String("tenant", config.Name),
+			zap.String("realm", tenant.RealmName),
+			zap.String("idp", idpConfig.Alias),
+			zap.Any("config", idpConfigMap))
 
 		err := keycloakAdmin.CreateIdentityProvider(ctx, tenant.RealmName, idp)
 		if err != nil {
