@@ -17,11 +17,12 @@ import (
 
 // TenantConfig represents a single tenant configuration in YAML
 type TenantConfig struct {
-	Name     string                  `yaml:"name"`
-	Domain   string                  `yaml:"domain"`
-	Type     string                  `yaml:"type"` // "msp", "partner", "direct", or "client"
-	Settings TenantSettingsConfig    `yaml:"settings"`
-	IDPs     []IDPConfig             `yaml:"idps,omitempty"`
+	Name        string                  `yaml:"name"`
+	DisplayName string                  `yaml:"display_name,omitempty"`
+	Domain      string                  `yaml:"domain"`
+	Type        string                  `yaml:"type"` // "msp", "partner", "direct", or "client"
+	Settings    TenantSettingsConfig    `yaml:"settings"`
+	IDPs        []IDPConfig             `yaml:"idps,omitempty"`
 }
 
 // TenantSettingsConfig represents tenant settings in YAML
@@ -151,11 +152,17 @@ func provisionTenant(
 		return fmt.Errorf("failed to marshal tenant settings: %w", err)
 	}
 
+	displayName := config.DisplayName
+	if displayName == "" {
+		displayName = config.Name
+	}
+
 	createReq := &models.CreateTenantRequest{
-		Name:     config.Name,
-		Domain:   config.Domain,
-		Type:     tenantType,
-		Settings: settingsJSON,
+		Name:        config.Name,
+		DisplayName: displayName,
+		Domain:      config.Domain,
+		Type:        tenantType,
+		Settings:    settingsJSON,
 	}
 
 	tenant, err := tenantService.CreateTenant(ctx, createReq, "")
