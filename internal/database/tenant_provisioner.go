@@ -44,6 +44,14 @@ type IDPConfig struct {
 	ProviderID  string            `yaml:"provider_id"`
 	Enabled     bool              `yaml:"enabled"`
 	Config      map[string]string `yaml:"config"`
+	Mappers     []IDPMapperConfig `yaml:"mappers,omitempty"`
+}
+
+// IDPMapperConfig represents an identity provider mapper configuration in YAML
+type IDPMapperConfig struct {
+	Name       string            `yaml:"name"`
+	MapperType string            `yaml:"mapper_type"`
+	Config     map[string]string `yaml:"config"`
 }
 
 // TenantsYAML represents the root structure of the tenants YAML file
@@ -194,6 +202,25 @@ func provisionTenant(
 			idpConfigMap["prompt"] = "select_account"
 		}
 
+		mappers := []keycloak.IdentityProviderMapper{
+			{
+				Name:                   "tenant-id-mapper",
+				IdentityProviderMapper: "hardcoded-attribute-idp-mapper",
+				Config: map[string]string{
+					"attribute":       "tenant_id",
+					"attribute.value": tenant.RealmName,
+				},
+			},
+		}
+
+		for _, mapperConfig := range idpConfig.Mappers {
+			mappers = append(mappers, keycloak.IdentityProviderMapper{
+				Name:                   mapperConfig.Name,
+				IdentityProviderMapper: mapperConfig.MapperType,
+				Config:                 mapperConfig.Config,
+			})
+		}
+
 		idp := &keycloak.IdentityProviderRepresentation{
 			Alias:       idpConfig.Alias,
 			DisplayName: displayName,
@@ -201,16 +228,7 @@ func provisionTenant(
 			Enabled:     idpConfig.Enabled,
 			TrustEmail:  true,
 			Config:      idpConfigMap,
-			Mappers: []keycloak.IdentityProviderMapper{
-				{
-					Name:                   "tenant-id-mapper",
-					IdentityProviderMapper: "hardcoded-attribute-idp-mapper",
-					Config: map[string]string{
-						"attribute":       "tenant_id",
-						"attribute.value": tenant.RealmName,
-					},
-				},
-			},
+			Mappers:     mappers,
 		}
 
 		err := keycloakAdmin.CreateIdentityProvider(ctx, tenant.RealmName, idp)
